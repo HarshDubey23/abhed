@@ -114,12 +114,41 @@ export function WorldProvider({ children }: { children: React.ReactNode }) {
 }
 
 const NAV = [
+  { href: '/fleet', label: 'Fleet · live' },
   { href: '/command', label: 'Command Center' },
   { href: '/twin', label: 'Twin Universe' },
   { href: '/incidents', label: 'Incidents' },
   { href: '/ledger', label: 'Ledger' },
   { href: '/rules', label: 'Rulebook' },
+  { href: '/integrate', label: 'Integrate' },
 ];
+
+const COMPANIES: [string, string][] = [
+  ['banking', 'NovaBank'],
+  ['healthcare', 'Sanjeevani Hospital'],
+  ['ecommerce', 'Bazaar.in'],
+];
+
+function TenantSwitch({ current }: { current?: string }) {
+  return (
+    <select
+      aria-label="Company"
+      className="pill"
+      style={{ appearance: 'none', cursor: 'pointer', paddingRight: 14 }}
+      value={current ?? 'banking'}
+      onChange={(e) => {
+        document.cookie = `kv_tenant=${e.target.value}; path=/; max-age=31536000; samesite=lax`;
+        window.location.reload();
+      }}
+    >
+      {COMPANIES.map(([id, name]) => (
+        <option key={id} value={id} style={{ background: '#111' }}>
+          {name} · fictional
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -156,7 +185,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             <span className="live-dot" style={view?.verify.valid === false ? { background: 'var(--block)', boxShadow: '0 0 10px var(--block)' } : undefined} />
             {view ? (view.verify.valid ? `ledger intact · ${view.ledgerTotal}` : `ledger broken at #${view.verify.firstBadSeq}`) : 'connecting…'}
           </span>
-          <span className="chip chip-muted" title="NovaBank and every person in it are fictional">NovaBank · fictional</span>
+          <TenantSwitch current={view?.sector} />
         </div>
       </header>
       {children}
@@ -285,7 +314,7 @@ function DemoDock() {
     return () => window.removeEventListener('keydown', onKey);
   }, [steps]);
 
-  if (hidden) return null;
+  if (hidden || (view && view.sector !== 'banking')) return null;
   const s = steps() as Record<string, () => Promise<void>>;
   const items: [string, string][] = [
     ['1', 'Rex asks ₹40,000'],

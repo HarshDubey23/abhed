@@ -25,22 +25,22 @@ export default function Landing() {
             </span>
           </Link>
           <nav id="site-nav" className="lp-nav" aria-label="Primary">
-            <Link href="/command" className="pill appear appear--scale" style={d('0.16s')}>
+            <Link href="/fleet" className="pill appear appear--scale" style={d('0.16s')}>
+              Live Fleet
+            </Link>
+            <Link href="/command" className="pill appear appear--soft" style={d('0.28s')}>
               Command Center
             </Link>
-            <Link href="/twin" className="pill appear appear--soft" style={d('0.28s')}>
-              Twin Universe
-            </Link>
-            <Link href="/incidents" className="pill appear appear--scale" style={d('0.40s')}>
-              Incidents
+            <Link href="/integrate" className="pill appear appear--scale" style={d('0.40s')}>
+              Integrate
             </Link>
             <Link href="/ledger" className="pill appear appear--soft" style={d('0.52s')}>
               Ledger
             </Link>
           </nav>
           <div className="row" style={{ justifySelf: 'end', gap: 8 }}>
-            <Link href="/command" className="btn btn-solid lp-cta appear appear--scale" style={d('0.34s')}>
-              Open Command Center
+            <Link href="/fleet" className="btn btn-solid lp-cta appear appear--scale" style={d('0.34s')}>
+              Watch agents live
             </Link>
             <button className="lp-burger appear appear--scale" style={d('0.34s')} aria-controls="site-nav" aria-expanded="false" aria-label="Open menu">
               <span className="bars">
@@ -76,11 +76,11 @@ export default function Landing() {
               One registry, one rulebook and one tamper-evident ledger for a workforce of people and AI agents. Big actions wait for a person. Every outcome is traced to someone.
             </p>
             <div className="lp-actions">
-              <Link href="/command" className="btn btn-solid appear appear--btn" style={d('0.96s')}>
-                Open Command Center
+              <Link href="/fleet" className="btn btn-solid appear appear--btn" style={d('0.96s')}>
+                Watch agents live
               </Link>
-              <Link href="/twin" className="btn btn-ghost appear appear--side" style={d('1.10s')}>
-                See it in action
+              <Link href="/integrate" className="btn btn-ghost appear appear--side" style={d('1.10s')}>
+                Plug in your agents
               </Link>
             </div>
           </div>

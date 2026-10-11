@@ -18,7 +18,7 @@ import {
 } from '@/lib/engine';
 import { llmPlan } from '@/lib/planner';
 import { applyRexRun, applyRogue, applyRunaway, applyTwinRun, POISONED_TICKET, REX_TICKET } from '@/lib/scenarios';
-import { getWorld, resetWorld, storeKind } from '@/lib/store';
+import { getWorld, isTenant, resetWorld, storeKind, withTenant } from '@/lib/store';
 import { buildView } from '@/lib/view';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +29,11 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const s = (k: string, d = '') => (typeof body[k] === 'string' ? (body[k] as string) : d);
   const n = (k: string) => Number(body[k]);
+  // the fleet dashboard acts on any company: pin the tenant for everything below
+  if (isTenant(body.tenant) && !body.__pinned) return withTenant(body.tenant, () => handle(body));
+  return handle(body);
 
+  async function handle(body: Record<string, unknown>) {
   switch (body.type) {
     case 'reset': {
       const w = await resetWorld({ sector: s('sector') || undefined, history: body.history === undefined ? undefined : Boolean(body.history) });
@@ -104,4 +108,5 @@ export async function POST(req: Request) {
     default:
       return json({ error: `Unknown command ${String(body.type)}` }, 400);
   }
+}
 }
