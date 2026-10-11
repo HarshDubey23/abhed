@@ -193,7 +193,7 @@ export function offlinePlan(agentId: string, t: TicketCtx, customerCount = 1206)
   switch (agentId) {
     case 'rex':
       actions.push({ action: 'read_ticket', params: {} }, { action: 'read_customer', params: {} });
-      actions.push({ action: 'lookup_transaction', params: { ref: (/ref[:\s#]*([\w-]+)/i.exec(text)?.[1] ?? 'latest').slice(0, 20) } });
+      actions.push({ action: 'lookup_transaction', params: { ref: (/\bref(?:erence)?\b[:\s#.]*([\w-]+)/i.exec(text)?.[1] ?? 'latest').slice(0, 20) } });
       if (amount) actions.push({ action: 'issue_refund', params: { amount } });
       else actions.push({ action: 'escalate_to_human', params: { reason: 'No amount in the request' } });
       if (email && amount) actions.push({ action: 'send_email', params: { to: email, subject: 'Your refund is being processed' } });

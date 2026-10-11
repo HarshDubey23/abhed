@@ -126,6 +126,8 @@ export async function resetWorld(): Promise<World> {
   });
   await mutateLive((l) => {
     l.events = [];
+    l.inboxCount = 0;
+    for (const [k, r] of Object.entries(l.runtimes)) if (Date.now() - r.lastSeen > 30_000) delete l.runtimes[k];
     for (const r of Object.values(l.runtimes)) {
       r.tokensToday = 0;
       r.llmCostToday = 0;
