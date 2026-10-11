@@ -1054,7 +1054,8 @@ function activateRule(w: World, req: ActionReq, approvers: string[], now: number
 export function tamper(w: World, now = Date.now()) {
   if (w.tamper) return w.tamper;
   // pick a refund record in the middle of history and quietly change its amount
-  const target = w.ledger.filter((r) => r.action === 'issue_refund' && r.decision === 'ALLOWED')[3] ?? w.ledger[Math.floor(w.ledger.length / 2)];
+  const refunds = w.ledger.filter((r) => r.action === 'issue_refund' && r.decision === 'ALLOWED');
+  const target = refunds[refunds.length - 3] ?? w.ledger[Math.floor(w.ledger.length / 2)];
   const original = target.params.amount;
   w.tamper = { seq: target.seq, field: 'amount', original };
   target.params = { ...target.params, amount: Number(original ?? 0) + 90000 };

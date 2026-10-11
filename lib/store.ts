@@ -60,12 +60,13 @@ function supabase(url: string, key: string, table: string): Backend {
 
 function backend(): Backend {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY;
   if (url && key) return supabase(url.replace(/\/$/, ''), key, process.env.KAVACH_TABLE ?? 'kavach_state');
   return memory;
 }
 
-export const storeKind = () => (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? 'postgres' : 'memory');
+export const storeKind = () =>
+  process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY) ? 'postgres' : 'memory';
 
 export async function getWorld(): Promise<World> {
   const b = backend();
