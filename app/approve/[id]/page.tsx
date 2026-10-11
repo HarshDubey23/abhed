@@ -4,11 +4,15 @@ import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { KavachMark } from '@/components/mark';
 import type { Approval } from '@/lib/types';
+import { authHeader, saveToken } from '@/lib/approver-client';
 import GazeVideo from '../gaze-video';
 import '../approve.css';
 
 interface Payload {
-  approval: Approval & { currentHash: string };
+  approval: Approval & { currentHash: string; assigneeNames?: string[] };
+  tenant: string;
+  company: string;
+  me: { id: string; name: string; title: string; roles: string[]; can: { ok: boolean; why?: string } } | null;
   agent: { name: string; framework: string; model: string; risk: string; ownerName: string; purpose: string } | null;
   proposer: string | null;
   ownerName: string | null;
@@ -17,6 +21,7 @@ interface Payload {
 
 type Tab = 'why' | 'evidence' | 'reasoning' | 'fingerprint';
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+
 
 function Icon({ kind }: { kind: 'shield' | 'clock' | 'print' }) {
   if (kind === 'clock')
@@ -48,7 +53,10 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const [data, setData] = useState<Payload | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [name, setName] = useState('');
+  const [people, setPeople] = useState<{ id: string; name: string; title: string }[]>([]);
+  const [who, setWho] = useState('');
+  const [pin, setPin] = useState('');
+  const [note, setNote] = useState('');
   const [tab, setTab] = useState<Tab>('why');
   const [evViewed, setEvViewed] = useState(false);
   const [sending, setSending] = useState(false);
@@ -60,16 +68,11 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
 
   useEffect(() => {
     setFromApprover(new URLSearchParams(window.location.search).get('from') === 'approver');
-    try {
-      setName(localStorage.getItem('kavach-approver') ?? '');
-    } catch {
-      /* private mode */
-    }
   }, []);
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`/api/approvals/${id}`, { cache: 'no-store' });
+      const r = await fetch(`/api/approvals/${id}`, { cache: 'no-store', headers: authHeader() });
       const d = (await r.json()) as Payload & { error?: string };
       if (!r.ok) {
         setErr(d.error ?? 'Not found');
@@ -100,36 +103,54 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
     if (t === 'evidence') setEvViewed(true);
   };
 
-  const decide = async (decision: 'approve' | 'reject') => {
+  // people of this company who can sign in to decide
+  useEffect(() => {
+    if (!data || data.me || people.length) return;
+    fetch('/api/approver/people')
+      .then((r) => r.json())
+      .then((all: { tenant: string; people: { id: string; name: string; title: string }[] }[]) => {
+        const list = all.find((c) => c.tenant === data.tenant)?.people ?? [];
+        setPeople(list);
+        setWho((w) => w || list.find((p) => p.id === 'judge')?.id || list[0]?.id || '');
+      })
+      .catch(() => undefined);
+  }, [data, people.length]);
+
+  const signIn = async () => {
     if (!data) return;
-    const who = name.trim();
-    if (!who) {
-      setErr('type your name first. it goes into the audit trail.');
-      return;
-    }
-    try {
-      localStorage.setItem('kavach-approver', who);
-    } catch {
-      /* ignore */
-    }
+    setSending(true);
+    setErr(null);
+    const r = await fetch('/api/approver/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tenant: data.tenant, humanId: who, pin }) });
+    const d = (await r.json()) as { token?: string; error?: string };
+    setSending(false);
+    if (!r.ok || !d.token) return setErr((d.error ?? 'could not sign in').toLowerCase());
+    saveToken(data.tenant, d.token);
+    setPin('');
+    void load();
+  };
+
+  const decide = async (decision: 'approve' | 'reject' | 'hold' | 'release' | 'escalate') => {
+    if (!data) return;
     setSending(true);
     setErr(null);
     const decisionMs = Math.round(performance.now() - (openedAt.current ?? performance.now()));
     const r = await fetch(`/api/approvals/${id}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...authHeader() },
       body: JSON.stringify({
         decision,
-        name: who,
+        note,
         actionHash: shownHash.current,
         decisionMs,
         evidenceViewed: evViewed,
         device: /iPhone|Android/i.test(navigator.userAgent) ? 'phone' : 'browser',
       }),
     });
-    const d = (await r.json()) as { error?: string };
+    const d = (await r.json()) as { error?: string; needSignIn?: boolean };
     setSending(false);
+    if (d.needSignIn) saveToken(data.tenant, null);
     if (!r.ok) setErr((d.error ?? 'refused').toLowerCase());
+    setNote('');
     void load();
   };
 
@@ -140,7 +161,8 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
   const clock = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
   const isRule = ap?.kind === 'rule_change';
   const actor = data?.agent?.name ?? data?.proposer ?? 'someone';
-  const myVote = ap?.votes.find((v) => v.name.toLowerCase() === name.trim().toLowerCase());
+  const me = data?.me ?? null;
+  const myVote = ap?.votes.find((v) => (me ? v.approverId === me.id || v.name === me.name : false));
   const pending = ap?.status === 'PENDING' && !myVote;
   const done = ap && !pending;
 
@@ -233,9 +255,25 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
                   <div>{ap.summary}.</div>
                   <div style={{ marginTop: '0.6em' }}>{ap.why}</div>
                   <div style={{ marginTop: '0.6em', opacity: 0.6 }}>
-                    {ap.ruleIds.join(' · ') || 'no rule covers this high-impact action'} · needs {ap.approverRole.replace('_', ' ')}
+                    {data?.company.replace(' (fictional)', '')} · {ap.ruleIds.join(' · ') || 'no rule covers this high-impact action'} · needs {ap.approverRole.replace('_', ' ')}
                     {ap.twoKey > 1 ? ` × ${ap.twoKey}` : ''}
+                    {ap.assigneeNames?.length ? ` · routed to ${ap.assigneeNames.join(', ')}` : ''}
                   </div>
+                  {ap.hold && (
+                    <div style={{ marginTop: '0.6em' }}>
+                      on hold by {ap.hold.by}
+                      {ap.hold.note ? `: “${ap.hold.note}”` : ''}
+                    </div>
+                  )}
+                  {ap.history?.length ? (
+                    <div style={{ marginTop: '0.6em', opacity: 0.6 }}>
+                      {ap.history.slice(-3).map((h) => (
+                        <div key={h.at}>
+                          {h.by} {h.what}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </>
               )}
               {tab === 'evidence' &&
@@ -283,25 +321,62 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
 
       <div className="ap-contact">
         <span className="ap-tag">{done ? 'ledger' : 'your call'}</span>
-        {ap && pending ? (
+        {ap && pending && !me ? (
           <>
+            <p className="ap-note" style={{ marginTop: 0 }}>
+              sign in as a {data?.company.replace(' (fictional)', '').toLowerCase()} approver. your decision is signed with your identity.
+            </p>
+            <select className="ap-name" value={who} onChange={(e) => setWho(e.target.value)} aria-label="Who are you">
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} · {p.title}
+                </option>
+              ))}
+            </select>
+            <input className="ap-name" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="your PIN" inputMode="numeric" type="password" aria-label="PIN" />
             <div className="ap-contact-links">
-              <button disabled={sending} onClick={() => decide('approve')}>
-                approve it →
-              </button>
-              <button disabled={sending} onClick={() => decide('reject')}>
-                reject it*
+              <button disabled={sending || pin.length < 4 || !who} onClick={signIn}>
+                sign in →
               </button>
             </div>
-            <input
-              className="ap-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="your name (goes into the audit trail)"
-              maxLength={40}
-              autoComplete="name"
-              aria-label="Your name"
-            />
+          </>
+        ) : ap && pending && me ? (
+          <>
+            <p className="ap-note" style={{ marginTop: 0 }}>
+              signed in as {me.name.toLowerCase()} · {me.title.toLowerCase()}{' '}
+              <button style={{ textDecoration: 'underline', background: 'none', border: 0, color: 'inherit', cursor: 'pointer', font: 'inherit' }} onClick={() => { saveToken(data!.tenant, null); void load(); }}>
+                switch
+              </button>
+            </p>
+            {me.can.ok ? (
+              <div className="ap-contact-links">
+                <button disabled={sending} onClick={() => decide('approve')}>
+                  approve it →
+                </button>
+                <button disabled={sending} onClick={() => decide('reject')}>
+                  reject it*
+                </button>
+              </div>
+            ) : (
+              <p className="ap-err">{me.can.why?.toLowerCase()}</p>
+            )}
+            <input className="ap-name" value={note} onChange={(e) => setNote(e.target.value.slice(0, 160))} placeholder="note (optional, for hold or escalate)" aria-label="Note" />
+            <div className="ap-contact-links" style={{ fontSize: '0.8em' }}>
+              {ap.hold ? (
+                <button disabled={sending} onClick={() => decide('release')}>
+                  release hold
+                </button>
+              ) : (
+                <button disabled={sending || !me.can.ok} onClick={() => decide('hold')}>
+                  hold ⏸
+                </button>
+              )}
+              {ap.approverRole !== 'executive' && ap.kind !== 'rule_change' && (
+                <button disabled={sending} onClick={() => decide('escalate')}>
+                  escalate ↑
+                </button>
+              )}
+            </div>
             <p className="ap-note">*approves only this exact action, once, before the timer ends.</p>
           </>
         ) : (

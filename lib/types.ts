@@ -17,6 +17,13 @@ export interface Human {
   name: string;
   title: string;
   roles: Role[];
+  /** salted SHA-256 of the approver PIN; never sent to a browser */
+  pin?: string;
+  email?: string;
+  phone?: string;
+  department?: string;
+  addedBy?: string;
+  addedAt?: number;
 }
 
 export interface Delegation {
@@ -95,6 +102,7 @@ export interface ActionReq {
 
 export interface ApprovalVote {
   name: string;
+  approverId?: string;
   at: number;
   decisionMs: number;
   evidenceViewed: boolean;
@@ -126,6 +134,11 @@ export interface Approval {
   ruleChangeId?: string;
   output?: unknown;
   runId?: string;
+  /** parked by a person: the agent keeps waiting, the clock is extended */
+  hold?: { by: string; at: number; note?: string };
+  /** people the admin routed this to (anyone with the right authority can still decide) */
+  assignees?: string[];
+  history?: { at: number; by: string; what: string }[];
 }
 
 export interface LedgerRecord {

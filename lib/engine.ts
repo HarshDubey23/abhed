@@ -14,13 +14,14 @@ import type {
   Ticket,
   World,
 } from './types';
+import { canDecide } from './people';
 import { dlpScan, OWASP, securityEvent } from './security';
 import { packFor } from './sectors';
 import { canonical, inr, maskParams, sha256 } from './util';
 
 export const GENESIS = '0'.repeat(64);
 export const APPROVAL_TTL_MS = 15 * 60_000;
-export const ESCALATE_AFTER_MS = 120_000; // demo clock: L1 → L2 after 2 minutes
+export const ESCALATE_AFTER_MS = 300_000; // unanswered for 5 minutes → the next level
 export const READ_ONLY = new Set([
   'read_ticket',
   'read_customer',
@@ -675,6 +676,8 @@ function evidenceFor(w: World, req: ActionReq, a?: Agent) {
 export interface DecideInput {
   decision: 'approve' | 'reject';
   name: string;
+  /** a signed-in approver; when present, Kavach checks their authority instead of trusting a typed name */
+  approverId?: string;
   actionHash: string;
   decisionMs: number;
   evidenceViewed: boolean;
@@ -685,7 +688,15 @@ export function decideApproval(w: World, id: string, input: DecideInput, now = D
   const ap = w.approvals.find((x) => x.id === id);
   if (!ap) throw new GovError('Approval not found', 404);
   if (ap.status !== 'PENDING') throw new GovError(`This approval is already ${ap.status.toLowerCase()}.`, 409);
-  const name = input.name.trim().slice(0, 40) || 'Guest Judge';
+  let name = input.name.trim().slice(0, 40) || 'Guest Judge';
+  if (input.approverId) {
+    const h = human(w, input.approverId);
+    if (!h) throw new GovError('This approver is no longer registered with the company.', 403);
+    const can = canDecide(h, ap);
+    if (!can.ok) throw new GovError(`${can.why} Escalate it or ask someone senior.`, 403);
+    if (ap.kind === 'rule_change' && ap.req.actorId === h.id) throw new GovError(`${h.name} proposed this rule, so a second person must approve it.`, 403);
+    name = h.name;
+  }
 
   if (now > ap.expiresAt) {
     ap.status = 'EXPIRED';
@@ -716,7 +727,7 @@ export function decideApproval(w: World, id: string, input: DecideInput, now = D
     throw new GovError('Two-key means two different people. You already approved this.', 403);
   }
 
-  const vote = { name, at: now, decisionMs: input.decisionMs, evidenceViewed: input.evidenceViewed, device: input.device ?? 'phone' };
+  const vote = { name, approverId: input.approverId, at: now, decisionMs: input.decisionMs, evidenceViewed: input.evidenceViewed, device: input.device ?? 'phone' };
 
   // oversight of the overseer: rubber-stamp detection
   if (input.decision === 'approve' && input.decisionMs < 4000 && !input.evidenceViewed) {
@@ -837,6 +848,7 @@ export function tick(w: World, now = Date.now()): boolean {
   let changed = false;
   for (const ap of w.approvals) {
     if (ap.status !== 'PENDING') continue;
+    if (ap.hold && now <= ap.expiresAt) continue; // parked by a person: no auto-escalation
     if (now > ap.expiresAt) {
       ap.status = 'EXPIRED';
       appendLedger(w, sys(w, now, 'approval_expired', { approval: ap.id }, 'VOID', `Approval ${ap.id} expired unanswered; the agent was told no.`));

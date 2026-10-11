@@ -1,3 +1,4 @@
+import { DEFAULT_PIN, hashPin } from './people';
 import { packFor } from './sectors';
 import type { World } from './types';
 
@@ -35,5 +36,7 @@ export function seedWorld(now = Date.now(), opts: { sector?: string; history?: b
     humanMinutesToday: 0,
   };
   pack.seed(w, now, { history: opts.history ?? pack.id === 'banking' });
+  // demo companies: every employee starts with the default PIN; the company admin changes it
+  for (const h of w.humans) h.pin ??= hashPin(h.id, DEFAULT_PIN);
   return w;
 }

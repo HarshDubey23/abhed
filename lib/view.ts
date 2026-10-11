@@ -18,7 +18,7 @@ export interface AgentRow extends Agent {
 export function buildView(w: World, now = Date.now()) {
   const today = w.ledger.filter((r) => now - r.ts < DAY);
   const outcomes = effectiveOutcomes(w);
-  const work = today.filter((r) => r.action !== 'llm_call' && (r.actorType === 'agent' || (r.actorType === 'human' && !['approve', 'reject', 'outcome'].includes(r.action))));
+  const work = today.filter((r) => r.action !== 'llm_call' && (r.actorType === 'agent' || (r.actorType === 'human' && !['approve', 'reject', 'outcome', 'approval_hold', 'approval_release', 'approval_assign', 'escalate', 'roster_change', 'audit_export', 'data_import'].includes(r.action))));
   const agentActs = today.filter((r) => r.actorType === 'agent' && r.action !== 'llm_call');
   const auto = agentActs.filter((r) => r.decision === 'ALLOWED');
   const pending = w.approvals.filter((a) => a.status === 'PENDING');
