@@ -88,6 +88,9 @@ export function buildView(w: World, now = Date.now()) {
     version: w.version,
     now,
     company: w.company,
+    sector: w.sector ?? 'banking',
+    blocks: (w.blocks ?? []).length,
+    runsActive: (w.runs ?? []).filter((r) => r.status === 'running' || r.status === 'waiting').length,
     kpi: {
       actionsToday: work.length,
       autoPct: agentActs.length ? Math.round((auto.length / agentActs.length) * 1000) / 10 : 0,

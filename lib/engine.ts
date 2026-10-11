@@ -360,10 +360,13 @@ export function describeAction(w: World, req: ActionReq): string {
   }
 }
 
+const APPROVAL_PREFIX: Record<string, string> = { banking: 'APR', healthcare: 'APH', ecommerce: 'APE' };
 function newApprovalId(w: World) {
   w.counters.approval += 1;
-  return `APR-${w.counters.approval}`;
+  return `${APPROVAL_PREFIX[w.sector] ?? 'APR'}-${w.counters.approval}`;
 }
+/** Approval ids carry their company, so a phone approval always reaches the right tenant. */
+export const tenantOfApproval = (id: string) => (id.startsWith('APH-') ? 'healthcare' : id.startsWith('APE-') ? 'ecommerce' : 'banking');
 
 export function gateway(w: World, req: ActionReq, opts: { now?: number; reasoning?: string } = {}): GatewayResult {
   const t0 = performance.now();

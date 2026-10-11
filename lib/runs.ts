@@ -5,7 +5,8 @@ import { sealAndAnchor } from './sealer';
 import { scanInjection, securityEvent, OWASP } from './security';
 import { offlinePlanFor, packFor } from './sectors';
 import type { SectorPack } from './sectors';
-import { getWorld, mutate } from './store';
+import { currentTenant, getWorld, mutate } from './store';
+import { chat, DEFAULT_MODEL, llmAvailable } from './llm';
 import type { Approval, LlmMsg, Run, RunStep, World } from './types';
 
 /**
@@ -16,17 +17,7 @@ import type { Approval, LlmMsg, Run, RunStep, World } from './types';
 
 const MAX_STEPS = 10;
 const KEEP_RUNS = 20;
-export const llmAvailable = () => Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
-
-function llmConfig() {
-  const groq = process.env.GROQ_API_KEY;
-  if (groq)
-    return { endpoint: 'https://api.groq.com/openai/v1/chat/completions', key: groq, model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile', inrPerToken: 0.000066 };
-  const gem = process.env.GEMINI_API_KEY;
-  if (gem)
-    return { endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', key: gem, model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash', inrPerToken: 0.00003 };
-  return null;
-}
+export { llmAvailable };
 
 const step = (run: Run, s: Omit<RunStep, 'at'>, now = Date.now()) => {
   run.steps.push({ at: now, ...s });
@@ -55,7 +46,7 @@ export function startRun(w: World, input: { agentId: string; command: string; by
     command,
     by: (input.by ?? 'Operator').slice(0, 40),
     planner,
-    model: planner === 'llm' ? llmConfig()?.model : 'deterministic planner',
+    model: planner === 'llm' ? DEFAULT_MODEL : 'deterministic planner',
     status: 'running',
     steps: [],
     actions: 0,
@@ -167,30 +158,12 @@ When the task is finished (or cannot be), reply in two short sentences without c
 }
 
 async function llmTurn(run: Run, w: World): Promise<{ msg: LlmMsg; tokens: number; costInr: number }> {
-  const cfg = llmConfig();
-  if (!cfg) throw new Error('no LLM key');
   const pack = packFor(w.sector);
   const messages: LlmMsg[] = [{ role: 'system', content: systemPrompt(w, pack, run) }, { role: 'user', content: run.command }, ...(run.llm ?? [])];
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15000);
-  try {
-    const res = await fetch(cfg.endpoint, {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${cfg.key}` },
-      body: JSON.stringify({ model: cfg.model, temperature: 0, messages, tools: toolSchemas(pack, run.agentId), tool_choice: 'auto', parallel_tool_calls: false }),
-    });
-    if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 160)}`);
-    const data = (await res.json()) as { choices?: { message?: LlmMsg }[]; usage?: { total_tokens?: number } };
-    const m = data.choices?.[0]?.message;
-    if (!m) throw new Error('LLM returned nothing');
-    const tokens = data.usage?.total_tokens ?? 0;
-    const msg: LlmMsg = { role: 'assistant', content: m.content ?? null };
-    if (m.tool_calls?.length) msg.tool_calls = m.tool_calls.slice(0, 1).map((t) => ({ id: t.id, type: 'function', function: { name: t.function.name, arguments: t.function.arguments } }));
-    return { msg, tokens, costInr: Number((tokens * cfg.inrPerToken).toFixed(4)) };
-  } finally {
-    clearTimeout(timer);
-  }
+  const r = await chat({ messages, tools: toolSchemas(pack, run.agentId), max_tokens: 900 });
+  const msg: LlmMsg = { role: 'assistant', content: r.message.content ?? r.message.reasoning ?? null };
+  if (r.message.tool_calls?.length) msg.tool_calls = r.message.tool_calls.slice(0, 1);
+  return { msg, tokens: r.tokens, costInr: r.costInr };
 }
 
 function toolResult(run: Run, toolCallId: string, content: unknown) {
@@ -203,12 +176,13 @@ function toolResult(run: Run, toolCallId: string, content: unknown) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Work the run until it finishes, waits for a person, or is stopped. Safe to call repeatedly. */
-export async function driveRun(runId: string, opts: { paceMs?: number } = {}) {
+export async function driveRun(runId: string, opts: { paceMs?: number; tenant?: string } = {}) {
   const pace = opts.paceMs ?? 500;
+  const tenant = await currentTenant(opts.tenant);
   for (let i = 0; i < MAX_STEPS + 4; i++) {
-    const w = await getWorld();
+    const w = await getWorld(tenant);
     const run = w.runs?.find((r) => r.id === runId);
-    if (!run || run.status !== 'running') return;
+    if (!run || run.status !== 'running' || run.planner === 'external') return;
     const mark = run.steps.length;
 
     let llm: Awaited<ReturnType<typeof llmTurn>> | undefined;
@@ -230,9 +204,9 @@ export async function driveRun(runId: string, opts: { paceMs?: number } = {}) {
       const out = advance(w2, r, llm, llmError, now);
       created = w2.approvals.filter((x) => !before.has(x.id) && x.status === 'PENDING');
       return out;
-    });
+    }, tenant);
     if (created.length) await pushApprovals(created).catch(() => undefined);
-    if (unsealedCount(after) >= BLOCK_EVERY) await sealAndAnchor().catch(() => undefined);
+    if (unsealedCount(after) >= BLOCK_EVERY) await sealAndAnchor({ tenant }).catch(() => undefined);
     if (!cont) return;
     if (pace) await sleep(pace);
   }
@@ -365,6 +339,12 @@ export function onApprovalDecided(w: World, ap: Approval, now = Date.now()): str
   if (!run || run.status !== 'waiting' || run.pendingApprovalId !== ap.id) return undefined;
   const who = ap.votes.map((v) => v.name).join(' + ');
   run.pendingApprovalId = undefined;
+  if (run.planner === 'external') {
+    // the company's own agent is polling this approval; it continues by itself
+    step(run, { kind: 'result', action: ap.req.action, decision: ap.status, approvalId: ap.id, seq: ap.executedSeq, output: ap.status === 'EXECUTED' ? clip(ap.output) : undefined, text: ap.status === 'EXECUTED' ? `${who} approved ${ap.id} on their phone. Executed exactly as approved.` : ap.status === 'REJECTED' ? `${who} rejected ${ap.id}.` : `${ap.id} is ${ap.status.toLowerCase()}.` }, now);
+    run.status = 'running';
+    return undefined;
+  }
   if (ap.status === 'EXECUTED') {
     step(run, { kind: 'result', action: ap.req.action, decision: 'EXECUTED', approvalId: ap.id, seq: ap.executedSeq, output: clip(ap.output), text: `${who} approved ${ap.id} on their phone. Executed exactly as approved.` }, now);
     if (run.pendingToolCallId) toolResult(run, run.pendingToolCallId, { decision: 'APPROVED_AND_EXECUTED', approvedBy: who, result: ap.output ?? 'done' });

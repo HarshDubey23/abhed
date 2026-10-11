@@ -1,6 +1,7 @@
 import { after } from 'next/server';
 import { govMutate, json } from '@/lib/api';
-import { actionHash, agent, human, nameOf } from '@/lib/engine';
+import { actionHash, agent, human, nameOf, tenantOfApproval } from '@/lib/engine';
+import { packFor } from '@/lib/sectors';
 import { decideAndResume, driveRun } from '@/lib/runs';
 import { getWorld } from '@/lib/store';
 
@@ -9,7 +10,7 @@ export const maxDuration = 60;
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const w = await getWorld();
+  const w = await getWorld(tenantOfApproval(id));
   const ap = w.approvals.find((a) => a.id === id);
   if (!ap) return json({ error: 'Approval not found' }, 404);
   const a = agent(w, ap.req.actorId);
@@ -19,6 +20,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     proposer: !a ? human(w, ap.req.actorId)?.name ?? null : null,
     ownerName: ap.ownerId ? nameOf(w, ap.ownerId) : null,
     now: Date.now(),
+    company: packFor(w.sector).company,
   });
 }
 
@@ -39,7 +41,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     runId = r.runId;
     const ap = r.ap;
     return { status: ap.status, votes: ap.votes.length, twoKey: ap.twoKey, executedSeq: ap.executedSeq ?? null, runId: ap.runId ?? null };
-  });
-  if (runId) after(() => driveRun(runId!));
+  }, { tenant: tenantOfApproval(id) });
+  if (runId) after(() => driveRun(runId!, { tenant: tenantOfApproval(id) }));
   return res;
 }

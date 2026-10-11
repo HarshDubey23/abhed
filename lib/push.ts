@@ -18,7 +18,7 @@ export const pushPublicKey = () => process.env.VAPID_PUBLIC_KEY ?? null;
 /** Buzz every connected approver phone. Expired subscriptions are dropped. */
 export async function pushApprovals(approvals: Approval[]) {
   if (!approvals.length || !configure()) return;
-  const live = await getLive();
+  const live = await getLive('banking'); // approver phones are registered once, for every company
   const subs = Object.values(live.approvers).filter((a) => a.subscription);
   const dead: string[] = [];
   await Promise.all(
@@ -44,6 +44,6 @@ export async function pushApprovals(approvals: Approval[]) {
     await mutateLive((l) => {
       for (const k of dead) if (l.approvers[k]) l.approvers[k].subscription = undefined;
       return null;
-    }).catch(() => undefined);
+    }, 'banking').catch(() => undefined);
   }
 }

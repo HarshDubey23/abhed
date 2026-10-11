@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { tick } from './engine';
 import { seedWorld } from './seed';
 import type { LiveDoc, World } from './types';
@@ -92,14 +93,44 @@ async function mutateDoc<D extends Doc, T>(id: string, init: () => D, fn: (d: D)
   throw new Error('Busy: too many concurrent writes, try again');
 }
 
+// ───────── tenants: every company gets its own isolated governed world ─────────
+
+export const TENANTS = ['banking', 'healthcare', 'ecommerce'] as const;
+export type Tenant = (typeof TENANTS)[number];
+export const isTenant = (t: unknown): t is Tenant => typeof t === 'string' && (TENANTS as readonly string[]).includes(t);
+const als = new AsyncLocalStorage<Tenant>();
+
+/** Run code (e.g. an agent call authenticated by key) against one tenant. */
+export const withTenant = <T,>(t: Tenant, fn: () => T) => als.run(t, fn);
+
+/** Explicit > async context > ?tenant / header / cookie of the current request > banking. */
+export async function currentTenant(t?: string): Promise<Tenant> {
+  if (isTenant(t)) return t;
+  const ctx = als.getStore();
+  if (ctx) return ctx;
+  try {
+    const { headers, cookies } = await import('next/headers');
+    const h = await headers();
+    const v = h.get('x-kavach-tenant') ?? (await cookies()).get('kv_tenant')?.value;
+    if (isTenant(v)) return v;
+  } catch {
+    /* outside a request (tests, scripts) */
+  }
+  return 'banking';
+}
+const mainId = (t: Tenant) => (t === 'banking' ? 'main' : `main:${t}`);
+const liveId = (t: Tenant) => (t === 'banking' ? 'live' : `live:${t}`);
+const seedFor = (t: Tenant) => () => seedWorld(Date.now(), { sector: t });
+
 // ───────── main: the governed world ─────────
 
-export async function getWorld(): Promise<World> {
+export async function getWorld(tenant?: string): Promise<World> {
+  const t = await currentTenant(tenant);
   const b = backend();
-  let w = await b.load<World>('main');
+  let w = await b.load<World>(mainId(t));
   if (!w) {
-    w = seedWorld();
-    await b.save('main', w, -1);
+    w = seedFor(t)();
+    await b.save(mainId(t), w, -1);
   }
   // lazy clock for escalations / expiry
   const probe = structuredClone(w);
@@ -107,19 +138,21 @@ export async function getWorld(): Promise<World> {
     return mutate((x) => {
       tick(x);
       return null;
-    }).then((r) => r.world);
+    }, t).then((r) => r.world);
   }
   return w;
 }
 
-export async function mutate<T>(fn: (w: World) => T): Promise<{ world: World; result: T }> {
-  const { doc, result } = await mutateDoc<World, T>('main', () => seedWorld(), fn);
+export async function mutate<T>(fn: (w: World) => T, tenant?: string): Promise<{ world: World; result: T }> {
+  const t = await currentTenant(tenant);
+  const { doc, result } = await mutateDoc<World, T>(mainId(t), seedFor(t), fn);
   return { world: doc, result };
 }
 
-export async function resetWorld(opts: { sector?: string; history?: boolean } = {}): Promise<World> {
-  const { doc } = await mutateDoc<World, null>('main', () => seedWorld(), (w) => {
-    const fresh = seedWorld(Date.now(), opts);
+export async function resetWorld(opts: { sector?: string; history?: boolean; tenant?: string } = {}): Promise<World> {
+  const t = await currentTenant(opts.tenant ?? opts.sector);
+  const { doc } = await mutateDoc<World, null>(mainId(t), seedFor(t), (w) => {
+    const fresh = seedWorld(Date.now(), { sector: t, history: opts.history });
     for (const k of Object.keys(w)) delete (w as unknown as Record<string, unknown>)[k];
     Object.assign(w, fresh);
     return null;
@@ -137,7 +170,7 @@ export async function resetWorld(opts: { sector?: string; history?: boolean } = 
       r.lastThought = undefined;
     }
     return null;
-  });
+  }, t);
   return doc;
 }
 
@@ -145,12 +178,14 @@ export async function resetWorld(opts: { sector?: string; history?: boolean } = 
 
 export const emptyLive = (): LiveDoc => ({ version: 0, runtimes: {}, approvers: {}, events: [], inboxCount: 0 });
 
-export async function getLive(): Promise<LiveDoc> {
-  return (await backend().load<LiveDoc>('live')) ?? emptyLive();
+export async function getLive(tenant?: string): Promise<LiveDoc> {
+  const t = await currentTenant(tenant);
+  return (await backend().load<LiveDoc>(liveId(t))) ?? emptyLive();
 }
 
-export async function mutateLive<T>(fn: (l: LiveDoc) => T) {
-  return mutateDoc<LiveDoc, T>('live', emptyLive, fn);
+export async function mutateLive<T>(fn: (l: LiveDoc) => T, tenant?: string) {
+  const t = await currentTenant(tenant);
+  return mutateDoc<LiveDoc, T>(liveId(t), emptyLive, fn);
 }
 
 export function liveEvent(l: LiveDoc, e: Omit<LiveDoc['events'][number], 'at'> & { at?: number }) {

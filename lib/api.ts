@@ -14,7 +14,7 @@ export const json = (data: unknown, status = 200) =>
  * Run a governed mutation. Gov errors still persist side effects (e.g. a VOID record) and return 4xx.
  * Any approval created by the mutation buzzes the approvers' phones after the response is sent.
  */
-export async function govMutate<T>(fn: (w: World) => T, opts: { view?: boolean } = {}) {
+export async function govMutate<T>(fn: (w: World) => T, opts: { view?: boolean; tenant?: string } = {}) {
   try {
     let created: Approval[] = [];
     const { world, result } = await mutate((w) => {
@@ -27,9 +27,9 @@ export async function govMutate<T>(fn: (w: World) => T, opts: { view?: boolean }
         if (e instanceof GovError) return { ok: false as const, error: e.message, status: e.status };
         throw e;
       }
-    });
+    }, opts.tenant);
     if (created.length) after(() => pushApprovals(created));
-    if (unsealedCount(world) >= BLOCK_EVERY) after(() => sealAndAnchor().then(() => undefined, () => undefined));
+    if (unsealedCount(world) >= BLOCK_EVERY) after(() => sealAndAnchor({ tenant: world.sector }).then(() => undefined, () => undefined));
     const view = opts.view === false ? undefined : buildView(world);
     if (!result.ok) return json({ error: result.error, view }, result.status);
     return json({ result: result.value, view });

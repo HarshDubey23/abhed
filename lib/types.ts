@@ -358,7 +358,8 @@ export interface Run {
   agentId: string;
   command: string;
   by: string;
-  planner: 'llm' | 'offline';
+  planner: 'llm' | 'offline' | 'external';
+  site?: string;
   model?: string;
   status: 'running' | 'waiting' | 'done' | 'blocked' | 'paused' | 'failed';
   steps: RunStep[];

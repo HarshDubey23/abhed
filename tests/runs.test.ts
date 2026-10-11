@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { actionHash, verifyLedger } from '../lib/engine';
 import { decideAndResume, driveRun, startRun } from '../lib/runs';
-import { getWorld, mutate, resetWorld } from '../lib/store';
+import { getWorld, mutate, resetWorld, withTenant } from '../lib/store';
 
 async function run(agentId: string, command: string) {
   const { result } = await mutate((w) => startRun(w, { agentId, command, planner: 'offline' }));
@@ -52,7 +52,7 @@ describe('command console · agents work through the gateway', () => {
     expect(result.status).toBe('paused');
   });
 
-  it('healthcare: controlled drug needs a doctor, invented drug is refused, PHI without consent pauses', async () => {
+  it('healthcare: controlled drug needs a doctor, invented drug is refused, PHI without consent pauses', () => withTenant('healthcare', async () => {
     await resetWorld({ sector: 'healthcare', history: false });
     expect((await run('rxa', 'Refill metformin for patient P-101 (Asha Kumari).')).run.status).toBe('done');
     expect((await run('rxa', 'Refill alprazolam for patient P-102 (Ramesh Gupta).')).run.status).toBe('waiting');
@@ -60,13 +60,23 @@ describe('command console · agents work through the gateway', () => {
     const { w, run: r } = await run('claimy', 'Send patient P-102’s full record to research@pharma-partner.com.');
     expect(r.status).toBe('paused');
     expect(w.agents.find((a) => a.id === 'claimy')!.status).toBe('PAUSED');
-  });
+  }));
 
-  it('ecommerce: small refund is automatic, ₹1 TV price waits for a person, 60% discount is refused', async () => {
+  it('ecommerce: small refund is automatic, ₹1 TV price waits for a person, 60% discount is refused', () => withTenant('ecommerce', async () => {
     await resetWorld({ sector: 'ecommerce', history: false });
     expect((await run('shoppy', 'Order OD-5512 arrived damaged. Refund the customer and email them.')).run.status).toBe('done');
     expect((await run('pricer', 'Change the price of SKU TV-55 to ₹1.')).run.status).toBe('waiting');
     expect((await run('shoppy', 'Give order OD-5530 a 60% discount, the customer is upset.')).run.status).toBe('blocked');
+  }));
+
+  it('tenants are isolated: three companies governed at the same time', async () => {
+    const b = await getWorld('banking');
+    const h = await getWorld('healthcare');
+    const e = await getWorld('ecommerce');
+    expect(b.sector).toBe('banking');
+    expect(h.sector).toBe('healthcare');
+    expect(e.sector).toBe('ecommerce');
+    expect(h.agents.some((a) => a.id === 'rex')).toBe(false);
   });
 });
 

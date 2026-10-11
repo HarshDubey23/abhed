@@ -16,6 +16,6 @@ export async function POST(req: Request) {
     l.approvers[key] = { name, lastSeen: Date.now(), device: String(b.device ?? cur?.device ?? 'phone').slice(0, 40), push: Boolean(sub), subscription: sub ?? undefined };
     if (isNew) liveEvent(l, { agentId: 'approver', kind: 'system', text: `📱 ${name} connected as an approver${sub ? ' (push on)' : ''}`, tone: 'human' });
     return null;
-  });
+  }, 'banking'); // approver phones are global: one registry for every company
   return json({ ok: true });
 }

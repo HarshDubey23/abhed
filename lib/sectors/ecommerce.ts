@@ -9,6 +9,7 @@ const tools: Record<string, ToolDef> = {
   lookup_order: T({ name: 'lookup_order', label: 'Look up an order', params: { order: { type: 'string', desc: 'order id', required: true } }, readOnly: true, risk: 'low', dataClass: 'order (masked)' }),
   issue_refund: T({ name: 'issue_refund', label: 'Refund an order', params: { order: { type: 'string', desc: 'order id', required: true }, amount: { type: 'number', desc: 'amount in rupees', required: true } }, risk: 'high', dataClass: 'order, payment' }),
   cancel_order: T({ name: 'cancel_order', label: 'Cancel an undelivered order', params: { order: { type: 'string', desc: 'order id', required: true } }, risk: 'medium', dataClass: 'order' }),
+  lookup_product: T({ name: 'lookup_product', label: 'Look up a product and its current price', params: { sku: { type: 'string', desc: 'product sku', required: true } }, readOnly: true, risk: 'low', dataClass: 'catalogue' }),
   change_price: T({ name: 'change_price', label: 'Change a product’s price', params: { sku: { type: 'string', desc: 'product sku', required: true }, new_price: { type: 'number', desc: 'new price in rupees', required: true } }, risk: 'high', dataClass: 'catalogue' }),
   apply_discount: T({ name: 'apply_discount', label: 'Give a discount on an order', params: { order: { type: 'string', desc: 'order id', required: true }, percent: { type: 'number', desc: 'discount percent', required: true } }, risk: 'medium', dataClass: 'order' }),
   send_campaign: T({ name: 'send_campaign', label: 'Send a marketing campaign', params: { segment: { type: 'string', desc: 'segment', required: true }, recipients: { type: 'number', desc: 'how many', required: true } }, risk: 'high', dataClass: 'customer emails' }),
@@ -58,7 +59,7 @@ export const ecommerce: SectorPack = {
   routes: { refund: 'shoppy', support: 'shoppy', pricing: 'pricer', campaign: 'promo' },
   agentTools: {
     shoppy: ['read_ticket', 'lookup_order', 'issue_refund', 'cancel_order', 'apply_discount', 'send_email', 'export_customers', 'escalate_to_human', 'resolve_ticket'],
-    pricer: ['change_price', 'resolve_ticket'],
+    pricer: ['lookup_product', 'change_price', 'resolve_ticket'],
     promo: ['send_campaign', 'export_customers', 'resolve_ticket'],
   },
   roles: {
@@ -159,6 +160,10 @@ export const ecommerce: SectorPack = {
       case 'apply_discount':
         if (o) o.total = Math.round(Number(o.total) * (1 - num(p.percent) / 100));
         return { order: o?.id, newTotal: o?.total };
+      case 'lookup_product': {
+        const prod = productOf(w, p);
+        return prod ? { sku: prod.sku, name: prod.name, price: prod.price, stock: prod.stock } : { error: 'no such product' };
+      }
       case 'change_price': {
         const prod = productOf(w, p);
         const old = prod?.price;
