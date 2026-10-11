@@ -115,12 +115,14 @@ export function WorldProvider({ children }: { children: React.ReactNode }) {
 
 const NAV = [
   { href: '/fleet', label: 'Fleet · live' },
-  { href: '/command', label: 'Command Center' },
-  { href: '/twin', label: 'Twin Universe' },
+  { href: '/command', label: 'Command' },
   { href: '/incidents', label: 'Incidents' },
   { href: '/ledger', label: 'Ledger' },
+  { href: '/insights', label: 'Insights' },
+  { href: '/security', label: 'Security' },
   { href: '/rules', label: 'Rulebook' },
   { href: '/integrate', label: 'Integrate' },
+  { href: '/business', label: 'Business' },
 ];
 
 const COMPANIES: [string, string][] = [

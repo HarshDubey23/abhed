@@ -1,6 +1,7 @@
 'use client';
 
 import { useWorld } from '@/components/app';
+import { RuleBuilder } from '@/components/rule-builder';
 
 const MATRIX: { role: string; who: string; cells: Record<string, string> }[] = [
   { role: 'Agent (Rex / Aria)', who: 'AI', cells: { refund: '≤ delegation', bulk_export: 'never', email_out: 'limit', rule_change: 'never', approve: 'never', pause: 'never' } },
@@ -29,6 +30,7 @@ export default function RulesPage() {
           <p className="page-sub">Plain English first, versioned, and every edit is itself a governed action that needs a second person. Block wins. Unknown high-impact actions go to a person.</p>
         </div>
       </div>
+      <RuleBuilder />
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', marginBottom: 14 }}>
         {latest.map((r) => {
           const on = active.has(`${r.id}@${r.version}`);
@@ -56,6 +58,7 @@ export default function RulesPage() {
           );
         })}
       </div>
+      {view.sector === 'banking' && (
       <div className="panel" style={{ overflowX: 'auto' }}>
         <div className="panel-title">
           <span>
@@ -87,6 +90,7 @@ export default function RulesPage() {
           </tbody>
         </table>
       </div>
+      )}
     </main>
   );
 }

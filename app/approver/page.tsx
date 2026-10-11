@@ -8,6 +8,7 @@ import '../approve/approve.css';
 
 interface Pending {
   id: string;
+  company?: string;
   kind: string;
   summary: string;
   why: string;
@@ -213,7 +214,8 @@ export default function ApproverPage() {
           <div className="ap-nav ap-facts" style={{ marginTop: '1.3vw' }}>
             {pending.map((p) => (
               <button key={p.id} onClick={() => router.push(`/approve/${p.id}?from=approver`)} style={{ textDecoration: 'underline', textUnderlineOffset: '0.25em' }}>
-                {p.actor.toLowerCase()} · {p.kind === 'rule_change' ? 'rule change' : p.amount ? `refund ${inr(p.amount)}` : p.summary.split('→')[1]?.trim().slice(0, 40)} →
+                {p.company ? `${p.company.replace(' (fictional)', '').toLowerCase()} · ` : ''}
+                {p.actor.toLowerCase()} · {p.kind === 'rule_change' ? 'rule change' : (p.summary.split('→')[1]?.trim() ?? (p.amount ? inr(p.amount) : '')).slice(0, 44)} →
               </button>
             ))}
             {!pending.length && <span style={{ opacity: 0.6 }}>nothing waiting. agents are inside their limits.</span>}
