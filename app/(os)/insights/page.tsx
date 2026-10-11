@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Chip, hhmm } from '@/components/app';
-import { SpeedChart } from '@/components/charts';
+import { Donut, HBars, PALETTE, SpeedChart } from '@/components/charts';
 import type { Insights } from '@/lib/insights';
 
 export default function InsightsPage() {
@@ -99,6 +99,41 @@ export default function InsightsPage() {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', marginBottom: 14 }}>
+        <div className="panel">
+          <div className="panel-title">
+            <span>
+              <b>Outcome mix</b>
+            </span>
+          </div>
+          <Donut label="actions" slices={[{ label: 'on its own', value: d.mix.auto, color: 'var(--allow)' }, { label: 'asked a person', value: d.mix.held, color: 'var(--human)' }, { label: 'refused', value: d.mix.blocked, color: 'var(--block)' }]} />
+        </div>
+        <div className="panel">
+          <div className="panel-title">
+            <span>
+              <b>Refusals by layer</b>
+            </span>
+          </div>
+          <Donut label="refused" slices={d.blockReasons.map((b, i) => ({ label: b.category, value: b.count, color: PALETTE[i % PALETTE.length] }))} />
+        </div>
+        <div className="panel">
+          <div className="panel-title">
+            <span>
+              <b>LLM cost</b> by agent (₹)
+            </span>
+          </div>
+          <HBars items={d.agents.filter((a) => a.costInr > 0).map((a) => ({ label: a.name, value: Math.round(a.costInr * 100) / 100 }))} color="var(--ledger)" />
+        </div>
+        <div className="panel">
+          <div className="panel-title">
+            <span>
+              <b>Risk score</b> by agent
+            </span>
+          </div>
+          <HBars items={d.agents.map((a) => ({ label: a.name, value: a.riskScore, color: a.riskScore >= 60 ? 'var(--block)' : a.riskScore >= 30 ? 'var(--warn)' : 'var(--allow)' }))} />
         </div>
       </div>
 

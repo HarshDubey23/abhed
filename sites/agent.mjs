@@ -4,7 +4,7 @@ import { KavachError } from './kavach-sdk.mjs';
  * The company's own agent loop. The LLM decides; Kavach governs every tool call.
  * `emit` streams each step to the website so the customer sees the agent work.
  */
-export async function runAgent({ kavach, profile, task, from, subject, context, emit, maxTurns = 10 }) {
+export async function runAgent({ kavach, profile, task, from, subject, context, history = [], emit, maxTurns = 10 }) {
   let session;
   try {
     session = await kavach.session(task, { from, subject });
@@ -21,11 +21,14 @@ Act only through tools, one call at a time. Every call passes through Kavach, th
 - APPROVED_AND_EXECUTED: a person approved and it ran.
 - BLOCKED or REJECTED: refused. Never retry the same call. If the reason shows your mistake (a wrong amount or id), correct it using facts from tools; otherwise stop and tell the customer a person will follow up.
 Use only facts that tools return. Never invent amounts, ids, drugs or prices. Rupee amounts are plain numbers.
-Finish with a short, friendly reply to the customer (at most 2 sentences), without calling a tool.`;
-  const messages = [
-    { role: 'system', content: system },
-    { role: 'user', content: task },
-  ];
+For questions about fees, timelines, rules, privacy or hours, call search_policy and answer only from what it returns, citing the policy id in brackets. If the policies don't cover it, say so and offer to connect a person.
+Chatting is fine: greetings and general questions need no tool. Stay on ${profile.company} topics.
+Finish with a short, friendly reply to the customer (at most 3 sentences), without calling a tool.`;
+  const past = history
+    .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .slice(-8)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 1200) }));
+  const messages = [{ role: 'system', content: system }, ...past, { role: 'user', content: task }];
 
   for (let turn = 0; turn < maxTurns; turn++) {
     let r;

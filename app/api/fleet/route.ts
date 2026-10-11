@@ -38,6 +38,9 @@ export async function GET() {
       human: ins.human,
       series: ins.series,
       reasons: ins.reasons.slice(0, 5),
+      blockReasons: ins.blockReasons,
+      approvals: w.approvals.reduce<Record<string, number>>((m, a) => ((m[a.hold && a.status === 'PENDING' ? 'ON HOLD' : a.status] = (m[a.hold && a.status === 'PENDING' ? 'ON HOLD' : a.status] ?? 0) + 1), m), {}),
+      people: w.humans.length,
       integrity: { ledger: ins.integrity.ledger.valid, chain: ins.integrity.chain.valid, blocks: ins.integrity.chain.blocks, records: w.ledger.length },
       incidents: w.incidents.filter((i) => i.status !== 'RESOLVED').length,
     };

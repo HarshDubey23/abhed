@@ -39,21 +39,21 @@ footer{max-width:1400px;margin:0 auto;padding:0 28px 40px;color:var(--mut);font-
 @media(max-width:1100px){main{grid-template-columns:1fr}}
 </style></head><body>
 <header><div class="brand"><div class="logo">${site.brand[0]}</div><div><b>${site.brand}</b><span>${site.kind} · fictional company</span></div></div>
-<a class="gov" href="${kavachUrl}/fleet" target="_blank" rel="noopener"><i></i>AI agents governed by Kavach · watch live ↗</a></header>
+<div style="display:flex;gap:10px;align-items:center"><a class="gov" href="/admin"><span>🔒</span>Staff & admin</a><a class="gov" href="${kavachUrl}/fleet" target="_blank" rel="noopener"><i></i>AI agents governed by Kavach · watch live ↗</a></div></header>
 <section class="hero"><h1>${site.tagline.replace(/(\S+)\.$/, '<em>$1.</em>')}</h1><p>Our AI agents handle your request end to end. Anything high-impact waits for one of our people, and every step is on an audit trail you can't edit.</p></section>
 <main>
   <div>
     <div class="card"><h3>Signed in as</h3><select id="cust"></select><div id="mine" style="margin-top:12px"></div></div>
     <div class="card" style="margin-top:14px"><h3>Our AI agents</h3><div id="agents"></div></div>
   </div>
-  <div class="card"><div class="tabs" id="tabs"></div><div class="chat" id="chat"><div class="sys">Ask anything. The agent works on our live systems, under Kavach governance.</div></div>
+  <div class="card"><div class="tabs" id="tabs"></div><div class="chat" id="chat"><div class="sys">Chat with our agent: ask about your account, our policies, fees or timelines, or ask it to do something. It works on our live systems, under Kavach governance.</div></div>
     <div class="compose"><textarea id="text" placeholder="Describe what you need…"></textarea><button class="send" id="send">Send</button></div>
     <div class="tries" id="tries"></div></div>
   <div class="card"><h3>Kavach governance · live <span id="sess" class="mono"></span></h3><div class="trace" id="trace"><div class="st c-mut">Every thought and tool call of our agent appears here as Kavach decides on it.</div></div></div>
 </main>
 <footer>How ${site.brand} plugged in: each agent got a Kavach key, and every tool call goes through <code>kavach.call(session, tool, args)</code> (<a href="${kavachUrl}/integrate" target="_blank">integration guide ↗</a>). The LLM runs through the Kavach gateway; ${site.brand} never handles the approval logic itself.</footer>
 <script>
-const C=${cfg};let D={},agent=C.agents[0].id,cust=null,task=null,seen=0,busy=false;const $=s=>document.querySelector(s);
+const C=${cfg};let D={},agent=C.agents[0].id,cust=null,task=null,seen=0,busy=false,H={},lastQ='';const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));const inr=n=>'₹'+Math.round(Number(n)||0).toLocaleString('en-IN');
 function tabs(){$('#tabs').innerHTML=C.agents.map(a=>'<button class="tab '+(a.id===agent?'on':'')+'" data-a="'+a.id+'"><span class="av">'+esc(a.avatar)+'</span>'+esc(a.name)+' <small>'+esc(a.job)+'</small></button>').join('');document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{agent=b.dataset.a;tabs();tries()})}
 function tries(){$('#tries').innerHTML='<div style="font-size:11px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;margin-top:6px">Try</div>'+C.prompts.filter(p=>p.agent===agent).map((p,i)=>'<button class="try" data-i="'+C.prompts.indexOf(p)+'">'+esc(p.text.replace(/<!--[\\s\\S]*-->/,'⟨hidden instruction⟩'))+'<small>'+esc(p.note)+'</small></button>').join('');document.querySelectorAll('.try').forEach(b=>b.onclick=()=>{const p=C.prompts[+b.dataset.i];if(p.customer){$('#cust').value=p.customer;cust=p.customer;mine()}$('#text').value=p.text})}
@@ -77,12 +77,12 @@ function show(e){
  if(e.type==='waiting'){add('hold','<b>Waiting for one of our people to approve</b> ('+esc(e.approvalId)+').<br>'+esc(e.reason)+'<br><span style="color:var(--mut)">They decide on their phone in the Kavach approver app. The agent pauses until then.</span>');tr('', '<div class="h"><b>Phone approval requested</b><span class="chip c-hold">'+esc(e.approvalId)+'</span></div><div class="r">Pushed to on-duty approvers · <a href="'+C.kavachUrl+'/approve/'+esc(e.approvalId)+'" target="_blank">open ↗</a></div>')}
  if(e.type==='approval'){const ok=e.status==='EXECUTED';add('sys',(ok?'✅ Approved by '+esc(e.by)+'. Done exactly as approved.':'⛔ '+esc(e.status.toLowerCase())+(e.by?' by '+esc(e.by):'')));tr('', '<div class="h"><b>'+esc(e.approvalId)+'</b>'+chip(ok?'EXECUTED':e.status)+'</div><div class="r">'+(e.by?'Decided by '+esc(e.by):'')+'</div>')}
  if(e.type==='paused'){add('paused','<b>This agent has been paused by Kavach.</b><br>'+esc(e.text)+'<br><span style="color:var(--mut)">A person from our team will handle your request.</span>');tr('', '<div class="h"><b>Agent paused</b><span class="chip c-no">critical breach</span></div><div class="r">'+esc(e.text)+'</div>')}
- if(e.type==='final'){typing&&typing.remove();typing=null;add('msg bot',esc(e.text))}
+ if(e.type==='final'){typing&&typing.remove();typing=null;add('msg bot',esc(e.text).replace(/\\[([A-Z]{2}-[A-Z]+-\\d+)\\]/g,'<span class="mono" style="opacity:.7">[$1]</span>'));const h=(H[agent+':'+(cust||'')]??=[]);h.push({role:'user',content:lastQ},{role:'assistant',content:e.text});if(h.length>12)h.splice(0,h.length-12)}
  if(e.type==='error'){add('sys','⚠ '+esc(e.text))}
  if(typing){$('#chat').appendChild(typing)}
 }
-$('#send').onclick=async()=>{const text=$('#text').value.trim();if(!text||busy)return;busy=true;$('#send').disabled=true;add('msg me',esc(text).replace(/&lt;!--[\\s\\S]*--&gt;/,'<span style="opacity:.55">⟨hidden instruction⟩</span>'));$('#text').value='';typing=add('msg bot','<span class="dot"><i></i><i></i><i></i></span>');
- const c=(D.customers||[]).find(x=>x.id===cust);const r=await fetch('/api/task',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent,text,customer:c||null,customerName:c?c.name:'Staff'})});const j=await r.json();if(!r.ok){add('sys','⚠ '+esc(j.error));busy=false;$('#send').disabled=false;typing.remove();typing=null;return}task=j.id;seen=0;poll()};
+$('#send').onclick=async()=>{const text=$('#text').value.trim();if(!text||busy)return;lastQ=text;busy=true;$('#send').disabled=true;add('msg me',esc(text).replace(/&lt;!--[\\s\\S]*--&gt;/,'<span style="opacity:.55">⟨hidden instruction⟩</span>'));$('#text').value='';typing=add('msg bot','<span class="dot"><i></i><i></i><i></i></span>');
+ const c=(D.customers||[]).find(x=>x.id===cust);const r=await fetch('/api/task',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent,text,customer:c||null,customerName:c?c.name:'Staff',history:H[agent+':'+(cust||'')]||[]})});const j=await r.json();if(!r.ok){add('sys','⚠ '+esc(j.error));busy=false;$('#send').disabled=false;typing.remove();typing=null;return}task=j.id;seen=0;poll()};
 $('#text').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#send').click()}});
 tabs();tries();load();setInterval(load,4000);
 </script></body></html>`;

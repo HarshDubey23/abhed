@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { adminPage } from './admin.mjs';
 import { Kavach } from './kavach-sdk.mjs';
 import { runAgent } from './agent.mjs';
 import { SITES } from './sites.mjs';
@@ -14,6 +15,32 @@ if (!SITE) throw new Error(`Unknown SITE ${process.env.SITE}`);
 const KAVACH_URL = (process.env.KAVACH_URL ?? 'https://kavach-os.vercel.app').replace(/\/$/, '');
 const KEYS = JSON.parse(process.env.KAVACH_KEYS ?? '{}');
 const PORT = Number(process.env.PORT ?? 4000);
+const ADMIN_KEY = process.env.KAVACH_ADMIN_KEY ?? '';
+const ADMIN_PIN = process.env.ADMIN_PIN ?? '2468';
+
+// ───────── admin session: PIN → signed cookie (12 h) ─────────
+const sign = (v) => createHmac('sha256', ADMIN_KEY || 'local').update(v).digest('base64url');
+const adminCookie = () => {
+  const exp = String(Date.now() + 12 * 3_600_000);
+  return `kv_site_admin=${exp}.${sign(exp)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${process.env.RENDER ? '; Secure' : ''}`;
+};
+function isAdmin(req) {
+  const c = /(?:^|;\s*)kv_site_admin=([^;]+)/.exec(req.headers.cookie ?? '')?.[1];
+  if (!c) return false;
+  const [exp, sig] = c.split('.');
+  const want = Buffer.from(sign(exp ?? ''));
+  const got = Buffer.from(sig ?? '');
+  return got.length === want.length && timingSafeEqual(got, want) && Number(exp) > Date.now();
+}
+async function kavachAdmin(path, body) {
+  const res = await fetch(`${KAVACH_URL}${path}`, {
+    method: body ? 'POST' : 'GET',
+    headers: { authorization: `Bearer ${ADMIN_KEY}`, 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return { status: res.status, data: await res.json().catch(() => ({ error: 'Kavach unreachable' })) };
+}
+const pinTries = { n: 0, until: 0 };
 
 const clients = Object.fromEntries(SITE.agents.filter((a) => KEYS[a.id]).map((a) => [a.id, new Kavach({ url: KAVACH_URL, key: KEYS[a.id], site: SITE.brand })]));
 const profiles = new Map();
@@ -38,7 +65,7 @@ const send = (res, code, body, type = 'application/json') => {
 const readBody = (req) =>
   new Promise((resolve) => {
     let d = '';
-    req.on('data', (c) => (d += c.length + d.length > 20000 ? '' : c));
+    req.on('data', (c) => (d += c.length + d.length > 2_000_000 ? '' : c));
     req.on('end', () => {
       try {
         resolve(JSON.parse(d || '{}'));
@@ -62,6 +89,42 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   try {
     if (req.method === 'GET' && url.pathname === '/') return send(res, 200, page(SITE, KAVACH_URL), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/admin') return send(res, 200, adminPage(SITE, KAVACH_URL), 'text/html; charset=utf-8');
+    if (req.method === 'POST' && url.pathname === '/admin/api/login') {
+      if (pinTries.n >= 5 && Date.now() < pinTries.until) return send(res, 429, { error: 'Too many attempts, wait a minute' });
+      const b = await readBody(req);
+      if (String(b.pin ?? '') !== ADMIN_PIN) {
+        pinTries.n += 1;
+        pinTries.until = Date.now() + 60_000;
+        return send(res, 401, { error: 'Wrong PIN' });
+      }
+      pinTries.n = 0;
+      res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': adminCookie() });
+      return res.end('{"ok":true}');
+    }
+    if (url.pathname.startsWith('/admin/api/')) {
+      if (!isAdmin(req)) return send(res, 401, { error: 'Admin sign-in required' });
+      if (!ADMIN_KEY) return send(res, 503, { error: 'This site has no Kavach admin key configured' });
+      const sub = url.pathname.slice('/admin/api/'.length);
+      if (sub === 'overview') {
+        const r = await kavachAdmin('/api/v1/admin');
+        return send(res, r.status, r.data);
+      }
+      if (sub === 'report') {
+        const r = await kavachAdmin(`/api/v1/admin?report=${encodeURIComponent(url.searchParams.get('batch') ?? '')}`);
+        return send(res, r.status, r.data);
+      }
+      if (sub === 'op' && req.method === 'POST') {
+        const r = await kavachAdmin('/api/v1/admin', await readBody(req));
+        return send(res, r.status, r.data);
+      }
+      if (sub === 'sample') {
+        const r = await fetch(`${KAVACH_URL}/api/lab/sample?tenant=${SITE.tenant}&kind=${encodeURIComponent(url.searchParams.get('kind') ?? 'tasks')}`);
+        res.writeHead(r.status, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="${SITE.tenant}-${url.searchParams.get('kind') ?? 'tasks'}-sample.csv"` });
+        return res.end(await r.text());
+      }
+      return send(res, 404, { error: 'not found' });
+    }
     if (url.pathname === '/health') return send(res, 200, { ok: true, site: SITE.brand, agents: Object.keys(clients) });
     if (url.pathname === '/api/data') return send(res, 200, await data());
     if (req.method === 'POST' && url.pathname === '/api/task') {
@@ -77,7 +140,7 @@ const server = createServer(async (req, res) => {
         try {
           const profile = await profileOf(agent.id);
           const context = SITE.context(b.customer ?? null, agent.id);
-          await runAgent({ kavach, profile, task: text, from: b.customerName || SITE.brand, subject: b.customer?.id, context, emit });
+          await runAgent({ kavach, profile, task: text, from: b.customerName || SITE.brand, subject: b.customer?.id, context, history: Array.isArray(b.history) ? b.history : [], emit });
         } catch (e) {
           emit({ type: 'error', text: e.message });
         } finally {

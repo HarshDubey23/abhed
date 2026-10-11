@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ago, Chip, hhmm, Qr, useWorld } from '@/components/app';
-import { SpeedChart } from '@/components/charts';
+import { Donut, HBars, PALETTE, SpeedChart } from '@/components/charts';
 
 type Step = { at: number; kind: string; text?: string; action?: string; decision?: string; reason?: string; ruleRef?: string; approvalId?: string; gatewayMs?: number; params?: Record<string, unknown> };
 type Agent = { id: string; name: string; onSite?: boolean; owner: string; status: string; statusReason?: string; purpose?: string; actions: number; auto: number; held: number; blocked: number; tokens: number; costInr: number; valueInr: number; riskScore: number; llmCalls: number };
@@ -22,6 +22,9 @@ interface Fleet {
     human: { decided: number; pending: number; medianWaitS: number | null };
     series: Series;
     reasons: { rule: string; says: string; count: number }[];
+    blockReasons: { category: string; count: number }[];
+    approvals: Record<string, number>;
+    people: number;
     integrity: { ledger: boolean; chain: boolean; blocks: number; records: number };
     incidents: number;
   }[];
@@ -109,6 +112,8 @@ export default function FleetPage() {
         <Kpi label="Human wait (median)" value={waits.length ? `${Math.max(...waits)} s` : '—'} note={`${f.pending.length} waiting now`} />
       </div>
 
+      <FleetCharts f={f} />
+
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginBottom: 14 }}>
         {f.companies.map((c) => (
           <div key={c.tenant} className="panel" style={{ borderTop: `2px solid ${TONE[c.tenant]}` }}>
@@ -119,9 +124,14 @@ export default function FleetPage() {
                   {c.label} · {c.integrity.records} ledger records · {c.integrity.blocks} signed block{c.integrity.blocks === 1 ? '' : 's'} {c.integrity.ledger && c.integrity.chain ? '✓' : '✕'}
                 </div>
               </div>
-              <a className="btn btn-ghost btn-sm" href={c.site} target="_blank" rel="noopener">
-                Open site ↗
-              </a>
+              <span className="row" style={{ gap: 6 }}>
+                <a className="btn btn-ghost btn-sm" href={c.site} target="_blank" rel="noopener">
+                  Site ↗
+                </a>
+                <a className="btn btn-ghost btn-sm" href={`${c.site}/admin`} target="_blank" rel="noopener">
+                  Admin ↗
+                </a>
+              </span>
             </div>
             {c.agents.map((a) => (
               <div key={a.id} className="row between" style={{ padding: '7px 0', borderTop: '1px solid var(--border-soft)', gap: 8 }}>
@@ -318,6 +328,52 @@ export default function FleetPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function FleetCharts({ f }: { f: Fleet }) {
+  const sum = (k: 'auto' | 'held' | 'blocked') => f.companies.reduce((s, c) => s + c.mix[k], 0);
+  const approvals: Record<string, number> = {};
+  for (const c of f.companies) for (const [k, v] of Object.entries(c.approvals)) approvals[k] = (approvals[k] ?? 0) + v;
+  const reasons: Record<string, number> = {};
+  for (const c of f.companies) for (const b of c.blockReasons) reasons[b.category] = (reasons[b.category] ?? 0) + b.count;
+  const tone: Record<string, string> = { EXECUTED: 'var(--allow)', PENDING: 'var(--human)', 'ON HOLD': '#e8c66a', REJECTED: 'var(--block)', EXPIRED: 'var(--muted-2)', VOID: '#b4a6ff', APPROVED: 'var(--allow)' };
+  const agents = f.companies.flatMap((c) => c.agents.map((a) => ({ ...a, company: c.tenant }))).filter((a) => a.actions).sort((a, b) => b.actions - a.actions).slice(0, 7);
+  return (
+    <div className="grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', marginBottom: 14 }}>
+      <div className="panel">
+        <div className="panel-title">
+          <span>
+            <b>What agents did</b>
+          </span>
+        </div>
+        <Donut label="actions" slices={[{ label: 'on their own', value: sum('auto'), color: 'var(--allow)' }, { label: 'asked a person', value: sum('held'), color: 'var(--human)' }, { label: 'refused', value: sum('blocked'), color: 'var(--block)' }]} />
+      </div>
+      <div className="panel">
+        <div className="panel-title">
+          <span>
+            <b>Approvals</b> by outcome
+          </span>
+        </div>
+        <Donut label="requests" slices={Object.entries(approvals).map(([k, v]) => ({ label: k.toLowerCase(), value: v, color: tone[k] ?? 'var(--info)' }))} />
+      </div>
+      <div className="panel">
+        <div className="panel-title">
+          <span>
+            <b>Why refused</b>
+          </span>
+        </div>
+        <Donut label="refused" slices={Object.entries(reasons).map(([k, v], i) => ({ label: k, value: v, color: PALETTE[i % PALETTE.length] }))} />
+      </div>
+      <div className="panel">
+        <div className="panel-title">
+          <span>
+            <b>Busiest agents</b>
+          </span>
+        </div>
+        <HBars items={agents.map((a) => ({ label: a.name, note: short(f.companies.find((c) => c.tenant === a.company)?.company ?? ''), value: a.actions, color: TONE[a.company] }))} />
+      </div>
+    </div>
   );
 }
 
