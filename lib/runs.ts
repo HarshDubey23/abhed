@@ -1,5 +1,7 @@
 import { agent, appendLedger, decideApproval, gateway, GovError, nameOf } from './engine';
+import { BLOCK_EVERY, unsealedCount } from './chain';
 import { pushApprovals } from './push';
+import { sealAndAnchor } from './sealer';
 import { scanInjection, securityEvent, OWASP } from './security';
 import { offlinePlanFor, packFor } from './sectors';
 import type { SectorPack } from './sectors';
@@ -220,7 +222,7 @@ export async function driveRun(runId: string, opts: { paceMs?: number } = {}) {
     }
 
     let created: Approval[] = [];
-    const { result: cont } = await mutate((w2) => {
+    const { world: after, result: cont } = await mutate((w2) => {
       const r = w2.runs?.find((x) => x.id === runId);
       if (!r || r.status !== 'running' || r.steps.length !== mark) return false; // someone else advanced it
       const before = new Set(w2.approvals.map((x) => x.id));
@@ -230,6 +232,7 @@ export async function driveRun(runId: string, opts: { paceMs?: number } = {}) {
       return out;
     });
     if (created.length) await pushApprovals(created).catch(() => undefined);
+    if (unsealedCount(after) >= BLOCK_EVERY) await sealAndAnchor().catch(() => undefined);
     if (!cont) return;
     if (pace) await sleep(pace);
   }

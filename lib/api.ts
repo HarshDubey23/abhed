@@ -1,6 +1,8 @@
 import { after, NextResponse } from 'next/server';
 import { GovError } from './engine';
+import { BLOCK_EVERY, unsealedCount } from './chain';
 import { pushApprovals } from './push';
+import { sealAndAnchor } from './sealer';
 import { mutate } from './store';
 import type { Approval, World } from './types';
 import { buildView } from './view';
@@ -27,6 +29,7 @@ export async function govMutate<T>(fn: (w: World) => T, opts: { view?: boolean }
       }
     });
     if (created.length) after(() => pushApprovals(created));
+    if (unsealedCount(world) >= BLOCK_EVERY) after(() => sealAndAnchor().then(() => undefined, () => undefined));
     const view = opts.view === false ? undefined : buildView(world);
     if (!result.ok) return json({ error: result.error, view }, result.status);
     return json({ result: result.value, view });

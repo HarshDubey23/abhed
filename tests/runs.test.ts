@@ -69,3 +69,50 @@ describe('command console · agents work through the gateway', () => {
     expect((await run('shoppy', 'Give order OD-5530 a 60% discount, the customer is upset.')).run.status).toBe('blocked');
   });
 });
+
+describe('chain, rules, insights, audit', () => {
+  it('seals signed blocks, detects tampering, gives inclusion proofs', async () => {
+    const { sealBlock, verifyChain, inclusionProof } = await import('../lib/chain');
+    const { tamper, restore } = await import('../lib/engine');
+    const { seedWorld } = await import('../lib/seed');
+    const w = seedWorld(Date.now(), { sector: 'banking', history: true });
+    const b = sealBlock(w)!;
+    expect(b.count).toBe(w.ledger.length);
+    expect(verifyChain(w).valid).toBe(true);
+    const p = inclusionProof(w, 3)!;
+    expect(p.recomputedRoot).toBe(b.merkleRoot);
+    tamper(w);
+    const v = verifyChain(w);
+    expect(v.valid).toBe(false);
+    expect(v.reason).toMatch(/edited after it was sealed/);
+    restore(w);
+    expect(verifyChain(w).valid).toBe(true);
+  });
+
+  it('a company rule is replayed, needs a second person, then governs the next action', async () => {
+    const { proposeCustomRule, decideApproval, actionHash, gateway } = await import('../lib/engine');
+    const { seedWorld } = await import('../lib/seed');
+    const w = seedWorld(Date.now(), { sector: 'ecommerce', history: false });
+    const by = w.humans[0].id;
+    const r = proposeCustomRule(w, by, { id: 'cancel-big', says: 'Cancelling an order above ₹20,000 needs a person.', when: { action: 'cancel_order', amount_gt: 20000 }, decision: 'NEEDS_APPROVAL' });
+    expect(r.decision).toBe('NEEDS_APPROVAL');
+    const ap = w.approvals.find((a) => a.id === r.approvalId)!;
+    expect(() => decideApproval(w, ap.id, { decision: 'approve', name: w.humans[0].name, actionHash: actionHash(ap.req), decisionMs: 9000, evidenceViewed: true, device: 'phone' })).toThrow();
+    decideApproval(w, ap.id, { decision: 'approve', name: w.humans[1].name, actionHash: actionHash(ap.req), decisionMs: 9000, evidenceViewed: true, device: 'phone' });
+    expect(w.rules.some((x) => x.id === 'CANCEL-BIG' && x.active)).toBe(true);
+    const res = gateway(w, { actorType: 'agent', actorId: 'shoppy', action: 'cancel_order', params: { order: 'OD-5530', amount: 38990 } });
+    expect(res.decision).toBe('NEEDS_APPROVAL');
+  });
+
+  it('insights and the audit PDF are built from the ledger', async () => {
+    const { buildInsights } = await import('../lib/insights');
+    const { auditPdf } = await import('../lib/audit-pdf');
+    const w = await getWorld();
+    const ins = buildInsights(w);
+    expect(ins.speed.measured).toBeGreaterThan(0);
+    expect(ins.speed.p95ms).not.toBeNull();
+    const bytes = await auditPdf(w, { requestedBy: 'Test' });
+    expect(Buffer.from(bytes).subarray(0, 4).toString()).toBe('%PDF');
+    expect(bytes.length).toBeGreaterThan(3000);
+  });
+});

@@ -1161,8 +1161,12 @@ function activateRule(w: World, req: ActionReq, approvers: string[], now: number
   const ruleId = String(p.ruleId);
   const prev = w.rules.filter((r) => r.id === ruleId);
   const version = prev.length ? Math.max(...prev.map((r) => r.version)) + 1 : 1;
+  const custom = typeof p.decision === 'string';
   w.rules.push({
-    ...BENEFICIARY_RULE,
+    ...(custom ? { decision: p.decision as Decision } : BENEFICIARY_RULE),
+    ...(custom && p.approverRole ? { approverRole: p.approverRole as Role } : {}),
+    ...(custom && Number(p.twoKey) > 1 ? { twoKey: Number(p.twoKey) } : {}),
+    ...(custom && p.severity === 'critical' ? { severity: 'critical' as const } : {}),
     id: ruleId,
     says: String(p.says),
     when: p.when as RuleWhen,
@@ -1177,6 +1181,82 @@ function activateRule(w: World, req: ActionReq, approvers: string[], now: number
     inc.status = 'RESOLVED';
     inc.timeline.push({ ts: now, text: `${ruleId} v${version} live, approved by ${approvers.join(' + ')}`, tone: 'allow' });
   }
+}
+
+// ───────────────────────────── company rules (rule builder) ─────────────────────────────
+
+const WHEN_KEYS: Record<string, 'number' | 'boolean' | 'string'> = {
+  action: 'string',
+  amount_gt: 'number',
+  amount_lte: 'number',
+  records_gt: 'number',
+  percent_gt: 'number',
+  beneficiary_changed_days_lte: 'number',
+  external: 'boolean',
+  session_untrusted: 'boolean',
+  session_customer_data: 'boolean',
+  flag: 'string',
+  actor_type: 'string',
+};
+
+export interface CustomRuleInput {
+  id: string;
+  says: string;
+  when: Record<string, unknown>;
+  decision: Decision;
+  approverRole?: Role;
+  twoKey?: number;
+  severity?: 'normal' | 'critical';
+}
+
+export function validateRule(input: CustomRuleInput): { rule: CustomRuleInput; when: RuleWhen } {
+  const id = String(input.id ?? '').toUpperCase().replace(/[^A-Z0-9-]/g, '-').slice(0, 30);
+  if (id.length < 3) throw new GovError('Rule id needs at least 3 letters', 400);
+  const says = String(input.says ?? '').trim().slice(0, 200);
+  if (says.length < 8) throw new GovError('Say what the rule does in plain words', 400);
+  if (!['ALLOWED', 'NEEDS_APPROVAL', 'BLOCKED'].includes(input.decision)) throw new GovError('Decision must be ALLOWED, NEEDS_APPROVAL or BLOCKED', 400);
+  const when: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input.when ?? {})) {
+    const t = WHEN_KEYS[k];
+    if (!t || v === '' || v === null || v === undefined) continue;
+    if (t === 'number') {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) throw new GovError(`${k} must be a number`, 400);
+      when[k] = n;
+    } else if (t === 'boolean') when[k] = v === true || v === 'true';
+    else when[k] = String(v).slice(0, 40);
+  }
+  if (!when.action) throw new GovError('A rule must name the action it governs', 400);
+  const approverRole = (['approver_l1', 'approver_l2', 'executive'] as Role[]).includes(input.approverRole as Role) ? input.approverRole : 'approver_l1';
+  const twoKey = Math.min(2, Math.max(1, Number(input.twoKey) || 1));
+  return { rule: { id, says, when, decision: input.decision, approverRole, twoKey, severity: input.severity === 'critical' ? 'critical' : 'normal' }, when: when as RuleWhen };
+}
+
+/** What a proposed rule would have done to the last 30 days of real agent actions (same matcher as live). */
+export function replayCustom(w: World, when: RuleWhen, now = Date.now()) {
+  const since = now - 30 * 86_400_000;
+  const outcomes = effectiveOutcomes(w);
+  const acts = w.ledger.filter((r) => r.actorType === 'agent' && r.ts >= since && r.action === when.action && ['ALLOWED', 'EXECUTED', 'NEEDS_APPROVAL'].includes(r.decision));
+  const hit = acts.filter((r) =>
+    matches(when, {
+      action: r.action,
+      amount: typeof r.meta?.amount === 'number' ? (r.meta.amount as number) : typeof r.params.amount === 'number' ? (r.params.amount as number) : undefined,
+      records: typeof r.params.records === 'number' ? (r.params.records as number) : undefined,
+      beneficiaryChangedDays: typeof r.meta?.beneficiaryChangedDays === 'number' ? (r.meta.beneficiaryChangedDays as number) : undefined,
+      actorType: 'agent',
+    }),
+  );
+  return { scanned: acts.length, matched: hit.length, disputed: hit.filter((r) => outcomes.get(r.seq) === 'disputed').length };
+}
+
+/** A company adds its own rule. It is itself a governed action: replayed on history, then a second person approves. */
+export function proposeCustomRule(w: World, by: string, input: CustomRuleInput, now = Date.now()) {
+  if (!human(w, by)) throw new GovError('Only a registered person can propose a rule', 403);
+  const { rule, when } = validateRule(input);
+  const r = replayCustom(w, when, now);
+  const replay = `would have matched ${r.matched} of ${r.scanned} ${String(when.action).replace(/_/g, ' ')} actions in 30 days${r.disputed ? ` (${r.disputed} later disputed)` : ''}`;
+  const res = gateway(w, { actorType: 'human', actorId: by, action: 'rule_change', params: { ruleId: rule.id, says: rule.says, when, decision: rule.decision, approverRole: rule.approverRole, twoKey: rule.twoKey, severity: rule.severity, replay } }, { now });
+  return { approvalId: res.approvalId, decision: res.decision, reason: res.reason, replay: r };
 }
 
 // ───────────────────────────── tamper / restore (insider edits the DB) ─────────────────────────────
