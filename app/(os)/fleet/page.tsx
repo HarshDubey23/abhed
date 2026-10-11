@@ -6,7 +6,7 @@ import { ago, Chip, hhmm, Qr, useWorld } from '@/components/app';
 import { SpeedChart } from '@/components/charts';
 
 type Step = { at: number; kind: string; text?: string; action?: string; decision?: string; reason?: string; ruleRef?: string; approvalId?: string; gatewayMs?: number; params?: Record<string, unknown> };
-type Agent = { id: string; name: string; owner: string; status: string; statusReason?: string; purpose?: string; actions: number; auto: number; held: number; blocked: number; tokens: number; costInr: number; valueInr: number; riskScore: number; llmCalls: number };
+type Agent = { id: string; name: string; onSite?: boolean; owner: string; status: string; statusReason?: string; purpose?: string; actions: number; auto: number; held: number; blocked: number; tokens: number; costInr: number; valueInr: number; riskScore: number; llmCalls: number };
 type Series = { bucketMs: number; points: { t: number; auto: number; held: number; blocked: number; p95ms: number | null }[] };
 interface Fleet {
   now: number;
@@ -82,7 +82,7 @@ export default function FleetPage() {
             The <em>Fleet</em>, live
           </h1>
           <p className="page-sub">
-            {f.companies.length} companies · {all.length} AI agents on their own websites, each plugged into Kavach with one key. Every thought, tool call, approval and pause shows up here as it happens.
+            {f.companies.length} companies · {all.length} governed AI agents · {all.filter((a) => a.onSite).length} of them serve customers live on the companies’ own websites, each plugged in with one Kavach key. Every thought, tool call, approval and pause shows up here as it happens.
           </p>
         </div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -115,7 +115,7 @@ export default function FleetPage() {
               <div>
                 <div style={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.02em' }}>{short(c.company)}</div>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  {c.label} · {c.integrity.records} ledger records · {c.integrity.blocks} signed blocks {c.integrity.ledger && c.integrity.chain ? '✓' : '✕'}
+                  {c.label} · {c.integrity.records} ledger records · {c.integrity.blocks} signed block{c.integrity.blocks === 1 ? '' : 's'} {c.integrity.ledger && c.integrity.chain ? '✓' : '✕'}
                 </div>
               </div>
               <a className="btn btn-ghost btn-sm" href={c.site} target="_blank" rel="noopener">
@@ -128,6 +128,7 @@ export default function FleetPage() {
                   <div className="row" style={{ gap: 6 }}>
                     <b style={{ fontWeight: 500 }}>{a.name}</b>
                     <Chip d={a.status} />
+                    {a.onSite && <span className="chip chip-info">on website</span>}
                   </div>
                   <div className="muted" style={{ fontSize: 11.5 }}>
                     {a.purpose} · owner {a.owner}

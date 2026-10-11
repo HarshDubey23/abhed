@@ -242,6 +242,7 @@ export const ago = (ts: number, now: number) => {
 
 function DemoDock() {
   const { view, run, busy, toast } = useWorld();
+  const pathname = usePathname();
   const router = useRouter();
   const [hidden, setHidden] = useState(false);
 
@@ -316,7 +317,8 @@ function DemoDock() {
     return () => window.removeEventListener('keydown', onKey);
   }, [steps]);
 
-  if (hidden || (view && view.sector !== 'banking')) return null;
+  const scripted = ['/command', '/twin', '/incidents', '/ledger'].some((x) => pathname?.startsWith(x));
+  if (hidden || !scripted || (view && view.sector !== 'banking')) return null;
   const s = steps() as Record<string, () => Promise<void>>;
   const items: [string, string][] = [
     ['1', 'Rex asks ₹40,000'],

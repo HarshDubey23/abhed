@@ -7,6 +7,9 @@ import { getLive, getWorld, TENANTS } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
+/** The agents that serve customers on each company's own website (the others are internal agents). */
+const ON_SITE: Record<string, string[]> = { banking: ['rex', 'aria'], healthcare: ['rxa', 'claimy'], ecommerce: ['shoppy', 'pricer'] };
+
 const SITES: Record<string, string> = {
   banking: process.env.SITE_URL_BANKING ?? 'https://novabank-agents.onrender.com',
   healthcare: process.env.SITE_URL_HEALTHCARE ?? 'https://sanjeevani-agents.onrender.com',
@@ -26,7 +29,10 @@ export async function GET() {
       company: pack.company,
       label: pack.label,
       site: SITES[w.sector],
-      agents: ins.agents.filter((a) => siteAgents.has(a.id)).map((a) => ({ ...a, purpose: w.agents.find((x) => x.id === a.id)?.purpose, statusReason: w.agents.find((x) => x.id === a.id)?.statusReason })),
+      agents: ins.agents
+        .filter((a) => siteAgents.has(a.id))
+        .map((a) => ({ ...a, onSite: (ON_SITE[w.sector] ?? []).includes(a.id), purpose: w.agents.find((x) => x.id === a.id)?.purpose, statusReason: w.agents.find((x) => x.id === a.id)?.statusReason }))
+        .sort((a, b) => Number(b.onSite) - Number(a.onSite)),
       mix: ins.mix,
       speed: ins.speed,
       human: ins.human,
