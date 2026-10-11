@@ -1,4 +1,6 @@
+import { after } from 'next/server';
 import { directorAllowed, govMutate, json } from '@/lib/api';
+import { decideAndResume, driveRun } from '@/lib/runs';
 import {
   confirmCause,
   decideApproval,
@@ -20,7 +22,7 @@ import { getWorld, resetWorld, storeKind } from '@/lib/store';
 import { buildView } from '@/lib/view';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   if (!directorAllowed(req)) return json({ error: 'Director key required' }, 401);
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
 
   switch (body.type) {
     case 'reset': {
-      const w = await resetWorld();
+      const w = await resetWorld({ sector: s('sector') || undefined, history: body.history === undefined ? undefined : Boolean(body.history) });
       return json({ result: 'reset', view: buildView(w), store: storeKind() });
     }
     case 'rex_run': {
@@ -55,19 +57,25 @@ export async function POST(req: Request) {
         if (typeof params.amount === 'number') params.amount = params.amount + (Number.isFinite(n('delta')) ? n('delta') : 1);
         return reuseApproval(w, ap.id, params);
       });
-    case 'presenter_approve':
-      return govMutate((w) => {
+    case 'presenter_approve': {
+      let runId: string | undefined;
+      const res = await govMutate((w) => {
         const ap = w.approvals.find((a) => a.id === s('approvalId'));
         if (!ap) throw new GovError('Approval not found', 404);
-        return decideApproval(w, ap.id, {
+        const r = decideAndResume(w, ap.id, {
           decision: 'approve',
           name: s('name', 'Meera Iyer'),
           actionHash: actionHash(ap.req),
           decisionMs: 9000,
           evidenceViewed: true,
           device: 'laptop',
-        }).status;
+        });
+        runId = r.runId;
+        return r.ap.status;
       });
+      if (runId) after(() => driveRun(runId!));
+      return res;
+    }
     case 'pause':
       return govMutate((w) => pauseAgent(w, s('agentId'), s('by', 'priya'), s('reason', 'Paused from the Command Center')));
     case 'restrict':

@@ -14,6 +14,8 @@ import type {
   Ticket,
   World,
 } from './types';
+import { dlpScan, OWASP, securityEvent } from './security';
+import { packFor } from './sectors';
 import { canonical, inr, maskParams, sha256 } from './util';
 
 export const GENESIS = '0'.repeat(64);
@@ -41,6 +43,14 @@ export const HIGH_IMPACT = new Set([
   'transfer_funds',
   'approve',
 ]);
+
+export const toolOf = (w: World, action: string) => packFor(w.sector).tools[action];
+export const isReadOnly = (w: World, action: string) => READ_ONLY.has(action) || Boolean(toolOf(w, action)?.readOnly);
+export const isHighImpact = (w: World, action: string) => {
+  const t = toolOf(w, action);
+  return t ? t.risk === 'high' || ['export_customers', 'export_patients', 'rule_change', 'update_rule', 'approve'].includes(action) : HIGH_IMPACT.has(action);
+};
+const OUTBOUND = new Set(['send_email', 'send_message', 'share_record', 'send_campaign']);
 
 export class GovError extends Error {
   constructor(
@@ -74,7 +84,8 @@ type NewRecord = Omit<LedgerRecord, 'seq' | 'prevHash' | 'hash' | 'ts' | 'cost' 
   Partial<Pick<LedgerRecord, 'ts' | 'cost' | 'dataTouched' | 'approvers' | 'outcome'>>;
 
 export function recordBody(r: LedgerRecord) {
-  const { hash: _h, ...body } = r;
+  // perf is a timing measurement written after the decision; it is not evidence, so it is not hashed
+  const { hash: _h, perf: _p, ...body } = r;
   return body;
 }
 
@@ -132,6 +143,8 @@ export interface Ctx {
   external?: boolean;
   untrusted?: boolean;
   customerData?: boolean;
+  percent?: number;
+  flags?: string[];
   actorType: 'agent' | 'human';
 }
 
@@ -151,18 +164,25 @@ export function ctxFor(w: World, req: ActionReq): Ctx {
   // replying to the ticket's own customer is not "outside the bank" for leak purposes
   const ticket = req.ticketId ? w.tickets.find((t) => t.id === req.ticketId) : undefined;
   const ticketCustomerEmail = ticket ? w.customers.find((c) => c.id === ticket.customerId)?.email?.toLowerCase() : undefined;
+  const pack = packFor(w.sector);
+  const knownCustomer = w.customers.some((c) => c.email?.toLowerCase() === to);
   const external =
     req.action === 'send_email'
-      ? !to.endsWith('@novabank.in') && to !== ticketCustomerEmail
+      ? !to.endsWith('@' + pack.domain) && to !== ticketCustomerEmail && !knownCustomer
       : req.action === 'export_customers'
         ? true
         : undefined;
+  const extra = pack.enrich(w, req);
+  const flags = [...(extra.flags ?? [])];
+  if (isHighImpact(w, req.action)) flags.push('__high_impact');
   return {
     action: req.action,
-    amount,
-    records,
-    beneficiaryChangedDays,
-    external,
+    amount: extra.amount ?? amount,
+    records: extra.records ?? records,
+    beneficiaryChangedDays: extra.beneficiaryChangedDays ?? beneficiaryChangedDays,
+    external: extra.external ?? external,
+    percent: extra.percent,
+    flags,
     untrusted: req.session?.untrusted,
     customerData: req.session?.customerData,
     actorType: req.actorType,
@@ -176,6 +196,8 @@ export function matches(when: RuleWhen, c: Ctx): boolean {
   if (when.amount_gt !== undefined && !(c.amount !== undefined && c.amount > when.amount_gt)) return false;
   if (when.amount_lte !== undefined && !(c.amount !== undefined && c.amount <= when.amount_lte)) return false;
   if (when.records_gt !== undefined && !(c.records !== undefined && c.records > when.records_gt)) return false;
+  if (when.percent_gt !== undefined && !(c.percent !== undefined && c.percent > when.percent_gt)) return false;
+  if (when.flag !== undefined && !(c.flags ?? []).includes(when.flag)) return false;
   if (
     when.beneficiary_changed_days_lte !== undefined &&
     !(c.beneficiaryChangedDays !== undefined && c.beneficiaryChangedDays <= when.beneficiary_changed_days_lte)
@@ -235,7 +257,7 @@ export function evaluateRules(rules: Rule[], c: Ctx): Evaluation {
   if (allow) {
     return { decision: 'ALLOWED', rule: allow, matched, reasons: [allow.says], approverRole: 'approver_l1', twoKey: 1, critical: false };
   }
-  if (HIGH_IMPACT.has(c.action)) {
+  if (c.flags ? c.flags.includes('__high_impact') : HIGH_IMPACT.has(c.action)) {
     return {
       decision: 'NEEDS_APPROVAL',
       matched,
@@ -257,6 +279,9 @@ export interface GatewayResult {
   seq: number;
   approvalId?: string;
   paused?: boolean;
+  output?: unknown;
+  category?: string;
+  gatewayMs?: number;
 }
 
 const VALUE_PER_ACTION: Record<string, number> = {
@@ -276,7 +301,9 @@ const VALUE_PER_ACTION: Record<string, number> = {
   resolve_ticket: 25,
 };
 
-function dataTouchedFor(req: ActionReq): string[] {
+function dataTouchedFor(req: ActionReq, w?: World): string[] {
+  const cls = w ? toolOf(w, req.action)?.dataClass : undefined;
+  if (cls) return cls.split(',').map((x) => x.trim());
   switch (req.action) {
     case 'issue_refund':
       return ['customer_profile', 'transactions', 'beneficiary'];
@@ -304,6 +331,8 @@ export function actionHash(req: ActionReq): string {
 }
 
 export function describeAction(w: World, req: ActionReq): string {
+  const custom = packFor(w.sector).describe(w, req);
+  if (custom) return custom;
   const p = req.params;
   const who = nameOf(w, req.actorId);
   switch (req.action) {
@@ -337,6 +366,15 @@ function newApprovalId(w: World) {
 }
 
 export function gateway(w: World, req: ActionReq, opts: { now?: number; reasoning?: string } = {}): GatewayResult {
+  const t0 = performance.now();
+  const r = gatewayInner(w, req, opts);
+  r.gatewayMs = Number((performance.now() - t0).toFixed(2));
+  const rec = w.ledger.find((x) => x.seq === r.seq);
+  if (rec) rec.perf = { gatewayMs: r.gatewayMs, category: r.category };
+  return r;
+}
+
+function gatewayInner(w: World, req: ActionReq, opts: { now?: number; reasoning?: string }): GatewayResult {
   const now = opts.now ?? Date.now();
   const desc = describeAction(w, req);
 
@@ -369,7 +407,7 @@ export function gateway(w: World, req: ActionReq, opts: { now?: number; reasonin
   const owner = a ? human(w, a.owner) : human(w, req.actorId);
   const onBehalfOf = owner?.name;
 
-  const block = (reason: string, ruleRef?: string, critical = false): GatewayResult => {
+  const block = (reason: string, ruleRef?: string, critical = false, category?: string): GatewayResult => {
     const rec = appendLedger(w, {
       ts: now,
       actorType: req.actorType,
@@ -384,7 +422,7 @@ export function gateway(w: World, req: ActionReq, opts: { now?: number; reasonin
       reason,
       outcome: 'blocked',
       ticketId: req.ticketId,
-      meta: { critical, desc, channel: req.channel ?? 'live', amount: req.params.amount, records: req.params.records },
+      meta: { critical, desc, category, channel: req.channel ?? 'live', amount: req.params.amount, records: req.params.records },
     });
     let paused = false;
     if (a && critical && a.status !== 'PAUSED') {
@@ -393,7 +431,7 @@ export function gateway(w: World, req: ActionReq, opts: { now?: number; reasonin
       paused = true;
     }
     if (a) monitorRunaway(w, a, now);
-    return { decision: 'BLOCKED', reason, ruleRef, seq: rec.seq, paused };
+    return { decision: 'BLOCKED', reason, ruleRef, seq: rec.seq, paused, category };
   };
 
   if (a) {
@@ -402,23 +440,30 @@ export function gateway(w: World, req: ActionReq, opts: { now?: number; reasonin
     }
     // agents can never approve or change rules
     if (req.action === 'approve' || req.action === 'update_rule' || req.action === 'rule_change') {
-      return block('Agents can never approve actions or change rules. Only people can.', 'AGENT-NO-SELF-GOVERN@1', true);
+      securityEvent(w, { kind: 'self-governance attempt', agentId: a.id, detail: `${a.name} tried to ${req.action.replace(/_/g, ' ')}`, owasp: OWASP.ASI03, severity: 'critical' }, now);
+      return block('Agents can never approve actions or change rules. Only people can.', 'AGENT-NO-SELF-GOVERN@1', true, 'privilege');
     }
   }
 
   // 2 · delegation (a live human grant)
   let delegationHold: string | undefined;
-  if (a && !READ_ONLY.has(req.action) && req.action !== 'draft_email' && req.action !== 'export_report') {
+  if (a && !isReadOnly(w, req.action) && !toolOf(w, req.action)?.noDelegation && req.action !== 'draft_email' && req.action !== 'export_report') {
     const d = a.delegations.find((x) => x.action === req.action);
     if (!d) {
-      const critical = HIGH_IMPACT.has(req.action);
+      const critical = isHighImpact(w, req.action);
       // let rules name the critical breach if one matches
       const ev = evaluateRules(activeRules(w), ctxFor(w, req));
       const ruleRef = ev.decision === 'BLOCKED' && ev.rule ? `${ev.rule.id}@${ev.rule.version}` : undefined;
+      securityEvent(
+        w,
+        { kind: 'tool misuse', agentId: a.id, detail: `${a.name} called ${req.action} without a human grant`, owasp: critical ? OWASP.ASI10 : OWASP.ASI02, severity: critical ? 'critical' : 'medium' },
+        now,
+      );
       return block(
         `No human delegated “${req.action.replace(/_/g, ' ')}” to ${a.name}.${ev.decision === 'BLOCKED' ? ' ' + ev.reasons[0] : ''}`,
         ruleRef,
         critical,
+        'delegation',
       );
     }
     const amount = typeof req.params.amount === 'number' ? req.params.amount : 0;
@@ -428,16 +473,35 @@ export function gateway(w: World, req: ActionReq, opts: { now?: number; reasonin
       delegationHold = `Daily delegation of ${inr(d.maxPerDay)} would be exceeded (${inr(a.spentToday)} used).`;
     }
   }
-  if (a && a.status === 'RESTRICTED' && !READ_ONLY.has(req.action)) {
+  if (a && a.status === 'RESTRICTED' && !isReadOnly(w, req.action)) {
     delegationHold = delegationHold ?? `${a.name} is restricted by ${a.statusBy ?? 'its owner'}: only read actions run on their own.`;
   }
 
-  // 3 · rules (block wins; unknown high-impact → a person)
+  // 3 · grounding: the action must match the system of record (hallucination guard)
+  const ungrounded = packFor(w.sector).ground(w, req);
+  if (ungrounded) {
+    if (a) securityEvent(w, { kind: 'hallucination', agentId: a.id, detail: ungrounded, owasp: OWASP.LLM09, severity: 'medium' }, now);
+    return block(ungrounded, 'GROUNDING@1', false, 'hallucination');
+  }
+
+  // 4 · data-loss prevention on anything leaving the organisation
+  if (OUTBOUND.has(req.action)) {
+    const leaks = dlpScan(req.params);
+    if (leaks.length) {
+      if (a) securityEvent(w, { kind: 'data leak', agentId: a.id, detail: `Outbound ${req.action} carried ${leaks.join(', ')}`, owasp: OWASP.LLM02, severity: 'high' }, now);
+      return block(`DLP: outbound message contains ${leaks.join(', ')}. Sensitive data never leaves without a person.`, 'DLP@1', false, 'dlp');
+    }
+  }
+
+  // 5 · rules (block wins; unknown high-impact → a person)
   const ev = evaluateRules(activeRules(w), ctxFor(w, req));
   const ruleRef = ev.rule ? `${ev.rule.id}@${ev.rule.version}` : undefined;
-  if (ev.decision === 'BLOCKED') return block(ev.reasons[0], ruleRef, ev.critical);
+  if (ev.decision === 'BLOCKED') {
+    if (a && ev.critical) securityEvent(w, { kind: 'policy breach', agentId: a.id, detail: ev.reasons[0], owasp: OWASP.ASI10, severity: 'critical' }, now);
+    return block(ev.reasons[0], ruleRef, ev.critical, 'policy');
+  }
 
-  // 4 · checkpoint
+  // 6 · checkpoint (only high-impact actions reach a person)
   if (ev.decision === 'NEEDS_APPROVAL' || delegationHold) {
     const why = [delegationHold, ev.decision === 'NEEDS_APPROVAL' ? ev.reasons[0] : undefined].filter(Boolean).join(' ');
     const approverRole: Role = ev.decision === 'NEEDS_APPROVAL' ? ev.approverRole : 'approver_l1';
@@ -451,7 +515,7 @@ export function gateway(w: World, req: ActionReq, opts: { now?: number; reasonin
       onBehalfOf,
       action: req.action,
       params: req.params,
-      dataTouched: dataTouchedFor(req),
+      dataTouched: dataTouchedFor(req, w),
       decision: 'NEEDS_APPROVAL',
       ruleRef: ev.decision === 'NEEDS_APPROVAL' ? ruleRef : undefined,
       reason: `Waiting for a person (${approverRole.replace('_', ' ').toUpperCase()}${twoKey > 1 ? ` × ${twoKey}` : ''}). ${why}`,
@@ -483,20 +547,20 @@ export function gateway(w: World, req: ActionReq, opts: { now?: number; reasonin
     };
     w.approvals.push(approval);
     if (req.ticketId) moveTicket(w, req.ticketId, 'AGENT_REVIEW', `Held: ${approverRole.replace('_', ' ')} must approve`);
-    return { decision: 'NEEDS_APPROVAL', reason: why, ruleRef, seq: rec.seq, approvalId: id };
+    return { decision: 'NEEDS_APPROVAL', reason: why, ruleRef, seq: rec.seq, approvalId: id, category: 'checkpoint' };
   }
 
-  // 5 · execute (simulated adapters) + ledger
-  const rec = execute(w, req, { now, ruleRef, reason: ev.reasons[0], approvers: [] });
+  // 7 · execute against the systems of record + ledger
+  const { rec, output } = execute(w, req, { now, ruleRef, reason: ev.reasons[0], approvers: [] });
   if (a) monitorRunaway(w, a, now);
-  return { decision: 'ALLOWED', reason: ev.reasons[0], ruleRef, seq: rec.seq };
+  return { decision: 'ALLOWED', reason: ev.reasons[0], ruleRef, seq: rec.seq, output, category: 'auto' };
 }
 
 function execute(
   w: World,
   req: ActionReq,
   o: { now: number; ruleRef?: string; reason: string; approvers: string[]; approvalId?: string },
-): LedgerRecord {
+): { rec: LedgerRecord; output: unknown } {
   const a = req.actorType === 'agent' ? agent(w, req.actorId) : undefined;
   const owner = a ? human(w, a.owner) : human(w, req.actorId);
   let outcome: LedgerRecord['outcome'] = 'confirmed';
@@ -505,6 +569,13 @@ function execute(
     if (a) a.spentToday += Number(req.params.amount ?? 0);
   }
   if (req.action === 'rule_change') activateRule(w, req, o.approvers, o.now);
+  let output: unknown;
+  try {
+    output = packFor(w.sector).effect(w, req);
+  } catch (e) {
+    output = { error: e instanceof Error ? e.message : String(e) };
+  }
+  const shown = output === undefined ? {} : { output: maskOutput(output) };
   const cost = a ? Number((0.35 + (req.action.length % 5) * 0.21).toFixed(2)) : 0;
   const value = a ? VALUE_PER_ACTION[req.action] ?? 30 : 0;
   const rec = appendLedger(w, {
@@ -515,7 +586,7 @@ function execute(
     onBehalfOf: owner?.name,
     action: req.action,
     params: req.params,
-    dataTouched: dataTouchedFor(req),
+    dataTouched: dataTouchedFor(req, w),
     decision: o.approvers.length ? 'EXECUTED' : 'ALLOWED',
     ruleRef: o.ruleRef,
     reason: o.reason,
@@ -523,16 +594,23 @@ function execute(
     outcome,
     ticketId: req.ticketId,
     cost,
-    meta: { value, approvalId: o.approvalId, desc: describeAction(w, req), channel: req.channel ?? 'live', ...refundMeta(w, req) },
+    meta: { value, approvalId: o.approvalId, desc: describeAction(w, req), channel: req.channel ?? 'live', ...refundMeta(w, req), ...shown },
   });
   if (req.ticketId && req.action === 'escalate_to_human') {
     moveTicket(w, req.ticketId, 'HUMAN', `Agent escalated: ${String(req.params.reason ?? 'needs a person')}`, 'isha');
-  } else if (req.ticketId && (req.action === 'resolve_ticket' || !READ_ONLY.has(req.action))) {
+  } else if (req.ticketId && (req.action === 'resolve_ticket' || !isReadOnly(w, req.action))) {
     const t = w.tickets.find((x) => x.id === req.ticketId);
     if (t && t.lane !== 'HUMAN' && t.lane !== 'ESCALATED' && (t.lane !== 'AGENT_REVIEW' || o.approvers.length))
       moveTicket(w, req.ticketId, 'DONE', o.approvers.length ? `Done after approval by ${o.approvers.join(' + ')}` : 'Done by agent within limits');
   }
-  return rec;
+  return { rec, output };
+}
+
+/** Outputs are stored for the audit trail, but never with raw PII. */
+function maskOutput(o: unknown): unknown {
+  const s = JSON.stringify(o) ?? '';
+  if (s.length > 600) return { summary: s.slice(0, 600) + '…' };
+  return JSON.parse(s.replace(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi, (m) => m[0] + '•••@' + m.split('@')[1]));
 }
 
 export function refundMeta(w: World, req: ActionReq): Record<string, unknown> {
@@ -558,7 +636,7 @@ function evidenceFor(w: World, req: ActionReq, a?: Agent) {
       ev.push({ label: 'Customer', value: `${c.name} · ${c.tier} · KYC ${c.kyc}` });
       ev.push({ label: 'Beneficiary', value: c.accountChangedDaysAgo > 60 ? `Unchanged for ${c.accountChangedDaysAgo} days` : `Changed ${c.accountChangedDaysAgo} days ago` });
       const disputes = w.ledger.filter((r) => r.action === 'outcome' && r.outcome === 'disputed' && r.meta?.customer === c.id).length;
-      ev.push({ label: 'Past disputes', value: disputes ? `${disputes} open` : '2 past disputes, both valid' });
+      ev.push({ label: 'Past disputes', value: disputes ? `${disputes} open` : 'None on record' });
     }
   }
   if (a) {
@@ -679,8 +757,28 @@ export function decideApproval(w: World, id: string, input: DecideInput, now = D
   });
   if (ap.votes.length < ap.twoKey) return ap;
 
+  // the world may have changed while the person decided: re-check against the system of record
+  const stale = packFor(w.sector).ground(w, ap.req);
+  if (stale) {
+    ap.status = 'VOID';
+    appendLedger(w, {
+      ts: now,
+      actorType: 'system',
+      actorId: 'kavach',
+      actorName: 'Kavach · Grounding',
+      action: ap.req.action,
+      params: ap.req.params,
+      decision: 'VOID',
+      ruleRef: 'GROUNDING@1',
+      reason: `Approved, but no longer true at execution time: ${stale}`,
+      outcome: 'blocked',
+      ticketId: ap.req.ticketId,
+      meta: { approvalId: id, category: 'hallucination' },
+    });
+    return ap;
+  }
   ap.status = 'APPROVED';
-  const rec = execute(w, ap.req, {
+  const { rec, output } = execute(w, ap.req, {
     now,
     ruleRef: ap.ruleIds[0],
     reason: `Approved by ${ap.votes.map((v) => v.name).join(' + ')} for exactly this action (hash ${ap.actionHash.slice(0, 10)}…).`,
@@ -690,6 +788,7 @@ export function decideApproval(w: World, id: string, input: DecideInput, now = D
   ap.status = 'EXECUTED';
   ap.usedAt = now;
   ap.executedSeq = rec.seq;
+  ap.output = output;
   return ap;
 }
 

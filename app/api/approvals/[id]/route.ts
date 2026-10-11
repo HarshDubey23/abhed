@@ -1,8 +1,11 @@
+import { after } from 'next/server';
 import { govMutate, json } from '@/lib/api';
-import { actionHash, agent, decideApproval, human, nameOf } from '@/lib/engine';
+import { actionHash, agent, human, nameOf } from '@/lib/engine';
+import { decideAndResume, driveRun } from '@/lib/runs';
 import { getWorld } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -23,8 +26,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const decision = body.decision === 'reject' ? 'reject' : 'approve';
-  return govMutate((w) => {
-    const ap = decideApproval(w, id, {
+  let runId: string | undefined;
+  const res = await govMutate((w) => {
+    const r = decideAndResume(w, id, {
       decision,
       name: String(body.name ?? 'Guest Judge'),
       actionHash: String(body.actionHash ?? ''),
@@ -32,6 +36,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       evidenceViewed: Boolean(body.evidenceViewed),
       device: String(body.device ?? 'phone').slice(0, 40),
     });
-    return { status: ap.status, votes: ap.votes.length, twoKey: ap.twoKey, executedSeq: ap.executedSeq ?? null };
+    runId = r.runId;
+    const ap = r.ap;
+    return { status: ap.status, votes: ap.votes.length, twoKey: ap.twoKey, executedSeq: ap.executedSeq ?? null, runId: ap.runId ?? null };
   });
+  if (runId) after(() => driveRun(runId!));
+  return res;
 }

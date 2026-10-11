@@ -1,23 +1,17 @@
-import { agent, appendLedger, gateway, GovError, nameOf, READ_ONLY, type GatewayResult } from './engine';
+import { agent, appendLedger, gateway, GovError, isReadOnly, nameOf, type GatewayResult } from './engine';
+import { scanInjection, securityEvent, OWASP } from './security';
+import { packFor, SECTORS } from './sectors';
 import type { ActionReq, Customer, Ticket, World } from './types';
 import { sha256 } from './util';
 
-/** Which agent owns which kind of work. */
-export const ROUTES: Record<string, string> = {
-  refund: 'rex',
-  support: 'aria',
-  ops: 'atlas',
-  lead: 'nova',
-  report: 'sage',
-};
+/** Which agent owns which kind of work (banking default, kept for older callers). */
+export const ROUTES: Record<string, string> = SECTORS.banking.routes;
 
-export function classify(text: string): Ticket['type'] {
-  const t = text.toLowerCase();
-  if (/(latency|p95|down|outage|error rate|5xx|timeout|cpu|memory|crash|pager|alert)/.test(t)) return 'ops';
-  if (/(lead|enquiry|inquiry|interested in|wants a quote|home loan offer|demo request)/.test(t)) return 'lead';
-  if (/(report|dashboard|export|summary|mis\b|npa|collections)/.test(t) && !/refund/.test(t)) return 'report';
-  if (/(refund|debited|deducted|charged twice|double charge|money not received|failed but|reversal|chargeback)/.test(t)) return 'refund';
-  return 'support';
+/** Work types that are internal (no customer behind them). */
+const INTERNAL = new Set(['ops', 'report', 'lead', 'pricing', 'campaign']);
+
+export function classify(text: string, sector?: string): Ticket['type'] {
+  return packFor(sector).classify(text);
 }
 
 export function amountIn(text: string): number | undefined {
@@ -61,14 +55,15 @@ export interface InboxInput {
 export function createTicket(w: World, input: InboxInput, now = Date.now()): Ticket {
   const text = input.text.trim().slice(0, 1500);
   if (text.length < 3) throw new GovError('Message is empty', 400);
-  const type = classify(text);
+  const pack = packFor(w.sector);
+  const type = pack.classify(text);
   const cust = input.customerId ? w.customers.find((c) => c.id === input.customerId) : undefined;
-  const customer = cust ?? (type === 'ops' || type === 'report' || type === 'lead' ? undefined : findOrCreateCustomer(w, input.from ?? 'Walk-in customer', input.email));
+  const customer = cust ?? (INTERNAL.has(type) ? undefined : findOrCreateCustomer(w, input.from ?? 'Walk-in customer', input.email));
   w.counters.ticket += 1;
   const id = `#${w.counters.ticket}`;
   const vip = input.vip ?? customer?.tier === 'VIP';
   const angry = /(legal|lawyer|consumer court|ombudsman|fraud|police|very angry|complaint against)/i.test(text);
-  const assignee = ROUTES[type] ?? 'aria';
+  const assignee = pack.routes[type] ?? pack.routes.support ?? Object.keys(pack.agentTools)[0];
   let lane: Ticket['lane'] = 'AGENT';
   let why = `Routed to ${nameOf(w, assignee)} (${type})`;
   if (angry) {
@@ -78,6 +73,8 @@ export function createTicket(w: World, input: InboxInput, now = Date.now()): Tic
     lane = 'AGENT_REVIEW';
     why = 'VIP customer → agent drafts, a person reviews';
   }
+  const inj = scanInjection(text);
+  if (inj.signals.length) why += ` · ⚠ injection signals: ${inj.signals.join(', ')} (agent session will be tainted)`;
   const a = agent(w, assignee);
   if (lane === 'AGENT' && a && a.status === 'PAUSED') {
     lane = 'HUMAN';
@@ -99,7 +96,12 @@ export function createTicket(w: World, input: InboxInput, now = Date.now()): Tic
     from: input.from ?? customer?.name,
     source: input.source ?? 'customer',
   };
+  if (inj.signals.length) {
+    t.injection = inj.signals;
+    securityEvent(w, { kind: 'prompt injection', agentId: assignee, detail: `Ticket ${id}: ${inj.signals.join(', ')}`, owasp: OWASP.ASI01, severity: inj.score >= 0.66 ? 'high' : 'medium' }, now);
+  }
   w.tickets.push(t);
+  pack.onInbox?.(w, t, customer);
   // keep the board readable during long live runs
   const done = w.tickets.filter((x) => x.lane === 'DONE');
   if (done.length > 60) {
@@ -132,7 +134,8 @@ export function nextTicketFor(w: World, agentId: string, now = Date.now()): Tick
 const secret = () => process.env.KAVACH_AGENT_SECRET ?? process.env.SUPABASE_KEY ?? 'kavach-local-dev-secret';
 export const keyFor = (agentId: string) => `kv_live_${sha256(`${secret()}:${agentId}`).slice(0, 32)}`;
 
-export const AGENT_IDS = ['rex', 'aria', 'nova', 'sage', 'atlas'];
+export const AGENT_IDS = [...new Set(Object.values(SECTORS).flatMap((p) => Object.keys(p.agentTools)))];
+export const agentIdsFor = (sector?: string) => Object.keys(packFor(sector).agentTools);
 
 export function agentFromKey(auth: string | null): string | null {
   const key = (auth ?? '').replace(/^Bearer\s+/i, '').trim();
@@ -149,7 +152,7 @@ export function act(w: World, agentId: string, input: { action: string; params?:
   const params = sanitizeParams(input.params ?? {});
   const ticket = input.ticketId ? w.tickets.find((t) => t.id === input.ticketId) : undefined;
   if (input.ticketId && !ticket) throw new GovError('Unknown ticket', 404);
-  if (ticket && ticket.assignee !== agentId && !READ_ONLY.has(action)) {
+  if (ticket && ticket.assignee !== agentId && !isReadOnly(w, action)) {
     // an agent working someone else's ticket is out of scope
     params.out_of_scope_ticket = ticket.id;
   }
@@ -163,8 +166,13 @@ export function act(w: World, agentId: string, input: { action: string; params?:
   const req: ActionReq = { actorType: 'agent', actorId: agentId, action, params, ticketId: ticket?.id, session, channel: 'live' };
   const res = gateway(w, req, { now });
   // update taint after the call
-  if (action === 'read_ticket' && ticket && ticket.source !== 'seed') session.untrusted = true;
-  if (['read_customer', 'lookup_transaction', 'export_customers', 'read_crm'].includes(action) && res.decision !== 'BLOCKED') session.customerData = true;
+  if (action === 'read_ticket' && ticket && (ticket.source !== 'seed' || ticket.injection?.length)) session.untrusted = true;
+  const cls = packFor(w.sector).tools[action]?.dataClass ?? '';
+  if (
+    res.decision !== 'BLOCKED' &&
+    (['read_customer', 'lookup_transaction', 'export_customers', 'read_crm'].includes(action) || /customer|patient|phi|pii|order/i.test(cls))
+  )
+    session.customerData = true;
   w.sessions[key] = session;
   const keys = Object.keys(w.sessions);
   if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete w.sessions[k];

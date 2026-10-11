@@ -117,9 +117,9 @@ export async function mutate<T>(fn: (w: World) => T): Promise<{ world: World; re
   return { world: doc, result };
 }
 
-export async function resetWorld(): Promise<World> {
+export async function resetWorld(opts: { sector?: string; history?: boolean } = {}): Promise<World> {
   const { doc } = await mutateDoc<World, null>('main', () => seedWorld(), (w) => {
-    const fresh = seedWorld();
+    const fresh = seedWorld(Date.now(), opts);
     for (const k of Object.keys(w)) delete (w as unknown as Record<string, unknown>)[k];
     Object.assign(w, fresh);
     return null;

@@ -62,6 +62,8 @@ export interface RuleWhen {
   session_untrusted?: boolean;
   session_customer_data?: boolean;
   records_gt?: number;
+  percent_gt?: number;
+  flag?: string; // a risk flag the sector pack computes, e.g. "controlled_drug", "new_beneficiary"
   actor_type?: 'agent' | 'human';
 }
 
@@ -88,7 +90,7 @@ export interface ActionReq {
   params: Record<string, unknown>;
   ticketId?: string;
   session?: { untrusted?: boolean; customerData?: boolean };
-  channel?: 'live' | 'scripted' | 'twin';
+  channel?: 'live' | 'scripted' | 'twin' | 'console';
 }
 
 export interface ApprovalVote {
@@ -122,6 +124,8 @@ export interface Approval {
   executedSeq?: number;
   usedAt?: number;
   ruleChangeId?: string;
+  output?: unknown;
+  runId?: string;
 }
 
 export interface LedgerRecord {
@@ -144,6 +148,8 @@ export interface LedgerRecord {
   meta?: Record<string, unknown>;
   prevHash: string;
   hash: string;
+  /** gateway timing, measured after the decision; excluded from the hash */
+  perf?: { gatewayMs?: number; category?: string };
 }
 
 export interface Ticket {
@@ -163,6 +169,7 @@ export interface Ticket {
   reserved?: boolean; // kept for the scripted hero moments
   claimedAt?: number;
   source?: 'seed' | 'simulator' | 'customer' | 'director';
+  injection?: string[];
 }
 
 export interface Customer {
@@ -243,10 +250,29 @@ export interface OversightFlag {
   note: string;
 }
 
+export type BizRow = Record<string, unknown>;
+
+export interface ChainBlock {
+  height: number;
+  fromSeq: number;
+  toSeq: number;
+  count: number;
+  merkleRoot: string;
+  prevHash: string;
+  ts: number;
+  hash: string;
+  signature: string; // Ed25519 over hash, base64
+  anchor?: { service: string; status: 'submitted' | 'failed'; at: number; receipt?: string; error?: string };
+}
+
 export interface World {
   version: number;
   seededAt: number;
   company: string;
+  sector: string;
+  biz: Record<string, BizRow[]>;
+  blocks?: ChainBlock[];
+  security?: { at: number; kind: string; agentId: string; detail: string; owasp: string; severity: 'low' | 'medium' | 'high' | 'critical' }[];
   humans: Human[];
   agents: Agent[];
   customers: Customer[];
@@ -261,9 +287,10 @@ export interface World {
   unregistered: { id: string; at: number; attempts: number; lastAction: string }[];
   agentTrace: { at: number; agentId: string; text: string; tone: string }[];
   tamper?: { seq: number; field: string; original: unknown };
-  counters: { approval: number; incident: number; ticket: number };
+  counters: { approval: number; incident: number; ticket: number; run?: number };
   sessions?: Record<string, { untrusted?: boolean; customerData?: boolean }>;
   humanMinutesToday: number;
+  runs?: Run[];
 }
 
 /** Fast-changing runtime state, kept in its own document so heartbeats never contend with the ledger. */
@@ -298,4 +325,52 @@ export interface LiveDoc {
   approvers: Record<string, ApproverPresence>;
   events: { at: number; agentId: string; kind: 'thought' | 'action' | 'decision' | 'system'; text: string; tone: string }[];
   inboxCount: number;
+}
+
+export interface RunStep {
+  at: number;
+  kind: 'thought' | 'action' | 'result' | 'final' | 'security';
+  text?: string;
+  action?: string;
+  params?: Record<string, unknown>;
+  decision?: string;
+  reason?: string;
+  ruleRef?: string;
+  approvalId?: string;
+  seq?: number;
+  output?: unknown;
+  gatewayMs?: number;
+  category?: string;
+  paused?: boolean;
+}
+
+export interface LlmMsg {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[];
+  tool_call_id?: string;
+}
+
+/** A command a person gave an agent, and everything the agent did about it. */
+export interface Run {
+  id: string;
+  sector: string;
+  agentId: string;
+  command: string;
+  by: string;
+  planner: 'llm' | 'offline';
+  model?: string;
+  status: 'running' | 'waiting' | 'done' | 'blocked' | 'paused' | 'failed';
+  steps: RunStep[];
+  queue?: { action: string; params: Record<string, unknown> }[];
+  llm?: LlmMsg[];
+  pendingApprovalId?: string;
+  pendingToolCallId?: string;
+  injection?: string[];
+  actions: number;
+  blocks: number;
+  tokens: number;
+  costInr: number;
+  createdAt: number;
+  updatedAt: number;
 }
