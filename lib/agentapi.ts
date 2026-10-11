@@ -7,6 +7,7 @@ import { packFor, SECTORS } from './sectors';
 import { getWorld, mutate, type Tenant } from './store';
 import { appendLedger, gateway, GovError } from './engine';
 import type { Run, RunStep, World } from './types';
+import { sha256 } from './util';
 
 /**
  * Kavach Agent API v1: how any company's agent plugs in.
@@ -237,3 +238,13 @@ function clean(p: Record<string, unknown>) {
 }
 
 export { onApprovalDecided };
+
+// ───────── company admin key (for the company's own admin panel) ─────────
+const adminSecret = () => process.env.KAVACH_AGENT_SECRET ?? process.env.SUPABASE_KEY ?? 'kavach-local-dev-secret';
+export const adminKeyFor = (tenant: string) => `kv_admin_${sha256(`${adminSecret()}:admin:${tenant}`).slice(0, 32)}`;
+export function resolveAdmin(auth: string | null): Tenant | null {
+  const key = (auth ?? '').replace(/^Bearer\s+/i, '').trim();
+  if (!key.startsWith('kv_admin_')) return null;
+  for (const t of Object.keys(SECTORS)) if (adminKeyFor(t) === key) return t as Tenant;
+  return null;
+}

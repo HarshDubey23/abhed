@@ -69,7 +69,8 @@ export default function FleetPage() {
     p95: Math.max(0, ...f.companies.map((c) => c.series.points[i]?.p95ms ?? 0)),
   })) ?? [];
   const act = async (tenant: string, type: string, agentId: string) => {
-    const r = await run(type, { tenant, agentId, by: 'judge', reason: type === 'pause' ? 'Paused from the fleet dashboard' : 'Reviewed and resumed from the fleet dashboard' });
+    // pausing is anyone's right; resuming belongs to the agent's owner (the command route defaults to them)
+    const r = await run(type, type === 'pause' ? { tenant, agentId, by: 'judge', reason: 'Paused from the fleet dashboard' } : { tenant, agentId, reason: 'Reviewed and resumed from the fleet dashboard' });
     if (r.ok) toast(`${agentId} ${type === 'pause' ? 'paused: key revoked' : 'resumed'}`, type === 'pause' ? 'block' : 'allow');
     load();
   };

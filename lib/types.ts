@@ -373,6 +373,8 @@ export interface Run {
   by: string;
   planner: 'llm' | 'offline' | 'external';
   site?: string;
+  /** set when the run came from an uploaded test batch */
+  batch?: string;
   model?: string;
   status: 'running' | 'waiting' | 'done' | 'blocked' | 'paused' | 'failed';
   steps: RunStep[];

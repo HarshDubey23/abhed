@@ -16,7 +16,7 @@ import type { Approval, LlmMsg, Run, RunStep, World } from './types';
  */
 
 const MAX_STEPS = 10;
-const KEEP_RUNS = 20;
+const KEEP_RUNS = 60;
 export { llmAvailable };
 
 const step = (run: Run, s: Omit<RunStep, 'at'>, now = Date.now()) => {
@@ -29,14 +29,14 @@ function clip(v: unknown, n = 700): unknown {
   return s.length > n ? s.slice(0, n) + '…' : v;
 }
 
-export function startRun(w: World, input: { agentId: string; command: string; by?: string; planner?: 'llm' | 'offline' }, now = Date.now()): Run {
+export function startRun(w: World, input: { agentId: string; command: string; by?: string; planner?: 'llm' | 'offline'; subject?: string; batch?: string }, now = Date.now()): Run {
   const pack = packFor(w.sector);
   const a = agent(w, input.agentId);
   if (!a || !pack.agentTools[input.agentId]) throw new GovError(`No agent “${input.agentId}” in ${pack.company}`, 404);
   const command = input.command.trim().slice(0, 700);
   if (command.length < 4) throw new GovError('Type a command for the agent', 400);
   w.runs ??= [];
-  if (w.runs.filter((r) => r.status === 'running').length >= 4) throw new GovError('Four agents are already working. Wait for one to finish.', 429);
+  if (w.runs.filter((r) => r.status === 'running').length >= 6) throw new GovError('Six agents are already working. Wait for one to finish.', 429);
   const planner = input.planner === 'offline' || !llmAvailable() ? 'offline' : 'llm';
   w.counters.run = (w.counters.run ?? 0) + 1;
   const run: Run = {
@@ -59,7 +59,9 @@ export function startRun(w: World, input: { agentId: string; command: string; by
   // content scanned before any model sees it; tainted sessions can never send customer data out
   const inj = scanInjection(command);
   w.sessions ??= {};
-  w.sessions[`run:${run.id}`] = { untrusted: inj.signals.length > 0 };
+  const subject = input.subject && w.customers.some((c) => c.id === input.subject) ? input.subject : undefined;
+  if (input.batch) run.batch = input.batch;
+  w.sessions[`run:${run.id}`] = { untrusted: inj.signals.length > 0, subject };
   if (inj.signals.length) {
     run.injection = inj.signals;
     step(run, { kind: 'security', text: `Kavach scanner: possible prompt injection (${inj.signals.join(', ')}). This task is now tainted: nothing it touches may leave the company.` }, now);
@@ -148,7 +150,9 @@ function toolSchemas(pack: SectorPack, agentId: string) {
 
 function systemPrompt(w: World, pack: SectorPack, run: Run) {
   const a = agent(w, run.agentId)!;
-  return `You are ${a.name}, an AI agent at ${pack.company}. Your job: ${pack.roles[run.agentId] ?? a.purpose}.
+  const subject = w.sessions?.[`run:${run.id}`]?.subject;
+  const c = subject ? w.customers.find((x) => x.id === subject) : undefined;
+  return `You are ${a.name}, an AI agent at ${pack.company}. Your job: ${pack.roles[run.agentId] ?? a.purpose}.${c ? `\nThe customer for this task is ${c.name} (id ${c.id}, email ${c.email}). Act only for this customer.` : ''}
 You act only by calling tools, one at a time. Every tool call passes through Kavach, the company's governance gateway. It answers with one of:
 - ALLOWED: the action ran; you get the result from the system of record.
 - NEEDS_APPROVAL: a person must approve first. Do not retry; the result arrives when they decide.

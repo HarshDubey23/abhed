@@ -17,6 +17,7 @@ import type {
 import { canDecide } from './people';
 import { dlpScan, OWASP, securityEvent } from './security';
 import { packFor } from './sectors';
+import { searchPolicies } from './sectors/policies';
 import { canonical, inr, maskParams, sha256 } from './util';
 
 export const GENESIS = '0'.repeat(64);
@@ -587,7 +588,7 @@ function execute(
   if (req.action === 'rule_change') activateRule(w, req, o.approvers, o.now);
   let output: unknown;
   try {
-    output = packFor(w.sector).effect(w, req);
+    output = req.action === 'search_policy' ? searchPolicies(w.sector, String(req.params.query ?? '')) : packFor(w.sector).effect(w, req);
   } catch (e) {
     output = { error: e instanceof Error ? e.message : String(e) };
   }
