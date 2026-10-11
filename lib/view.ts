@@ -18,8 +18,8 @@ export interface AgentRow extends Agent {
 export function buildView(w: World, now = Date.now()) {
   const today = w.ledger.filter((r) => now - r.ts < DAY);
   const outcomes = effectiveOutcomes(w);
-  const work = today.filter((r) => r.actorType === 'agent' || (r.actorType === 'human' && !['approve', 'reject', 'outcome'].includes(r.action)));
-  const agentActs = today.filter((r) => r.actorType === 'agent');
+  const work = today.filter((r) => r.action !== 'llm_call' && (r.actorType === 'agent' || (r.actorType === 'human' && !['approve', 'reject', 'outcome'].includes(r.action))));
+  const agentActs = today.filter((r) => r.actorType === 'agent' && r.action !== 'llm_call');
   const auto = agentActs.filter((r) => r.decision === 'ALLOWED');
   const pending = w.approvals.filter((a) => a.status === 'PENDING');
   const openIncidents = w.incidents.filter((i) => i.status !== 'RESOLVED');
@@ -39,8 +39,9 @@ export function buildView(w: World, now = Date.now()) {
   })();
 
   const agents: AgentRow[] = w.agents.map((a) => {
-    const mine = today.filter((r) => r.actorId === a.id);
+    const mine = today.filter((r) => r.actorId === a.id && r.action !== 'llm_call');
     const mineAuto = mine.filter((r) => r.decision === 'ALLOWED');
+    const llm = today.filter((r) => r.actorId === a.id && r.action === 'llm_call');
     return {
       ...a,
       ownerName: nameOf(w, a.owner),
@@ -48,7 +49,7 @@ export function buildView(w: World, now = Date.now()) {
       autoPct: mine.length ? Math.round((mineAuto.length / mine.length) * 100) : 0,
       waiting: pending.filter((p) => p.req.actorId === a.id).length,
       incidents: openIncidents.filter((i) => w.ledger.find((r) => r.seq === i.sourceSeq)?.actorId === a.id).length,
-      cost: Math.round(mine.reduce((s, r) => s + (r.cost ?? 0), 0)),
+      cost: Math.round([...mine, ...llm].reduce((s, r) => s + (r.cost ?? 0), 0)),
       value: Math.round(mine.filter((r) => r.decision === 'ALLOWED' || r.decision === 'EXECUTED').reduce((s, r) => s + Number(r.meta?.value ?? 0), 0)),
       blocked: mine.filter((r) => r.decision === 'BLOCKED').length,
       openTickets: w.tickets.filter((t) => t.assignee === a.id && t.lane !== 'DONE').length,

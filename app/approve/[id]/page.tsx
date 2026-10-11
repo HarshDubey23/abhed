@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { KavachMark } from '@/components/mark';
 import type { Approval } from '@/lib/types';
@@ -52,10 +53,13 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
   const [evViewed, setEvViewed] = useState(false);
   const [sending, setSending] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const router = useRouter();
+  const [fromApprover, setFromApprover] = useState(false);
   const openedAt = useRef<number | null>(null);
   const shownHash = useRef<string | null>(null);
 
   useEffect(() => {
+    setFromApprover(new URLSearchParams(window.location.search).get('from') === 'approver');
     try {
       setName(localStorage.getItem('kavach-approver') ?? '');
     } catch {
@@ -139,6 +143,13 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
   const myVote = ap?.votes.find((v) => v.name.toLowerCase() === name.trim().toLowerCase());
   const pending = ap?.status === 'PENDING' && !myVote;
   const done = ap && !pending;
+
+  // back to duty after a decision when this card was opened from the approver phone
+  useEffect(() => {
+    if (!done || !fromApprover) return;
+    const t = setTimeout(() => router.push('/approver'), 4500);
+    return () => clearTimeout(t);
+  }, [done, fromApprover, router]);
 
   const title = !ap ? (
     err ? (
@@ -307,6 +318,11 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
           </>
         )}
         {err && <p className="ap-err">{err}</p>}
+        {fromApprover && (
+          <div className="ap-contact-links">
+            <button onClick={() => router.push('/approver')}>{done ? 'back to duty →' : '← all requests'}</button>
+          </div>
+        )}
         <div className="ap-socials">
           <span aria-label="Kavach">
             <Icon kind="shield" />

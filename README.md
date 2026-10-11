@@ -30,7 +30,7 @@ NovaBank and everyone in it are fictional.
 
 ## Demo (3 minutes)
 
-Open `/command`. The demo dock at the bottom has keys `1`–`7` and `R` to reset (press `.` to hide the dock).
+Open `/command`. The demo dock at the bottom has keys `1`–`8` and `R` to reset (press `.` to hide the dock). Start the live agents first (see Live mode).
 
 1. **`1`**: Rex (refunds agent) reads VIP ticket #8811 and asks to refund ₹40,000. It's held because Priya delegated only ₹10,000. A **QR code** appears. The judge scans it, types their name and approves. Their name lands in the ledger.
 2. **`2`**: Rex tries to reuse the approval for ₹40,001. Refused: different fingerprint, and the approval is single-use.
@@ -40,6 +40,20 @@ Open `/command`. The demo dock at the bottom has keys `1`–`7` and `R` to reset
 6. Close: "Want to try to hack it?" → Twin Universe → *Write your own attack*.
 
 Fallbacks: every step also has an on-screen button. "Approve here (fallback)" approves on the laptop if the phone or network fails.
+
+## Live mode: real agents, real phones (the part that proves it isn't a slideshow)
+
+```bash
+npm run agents -- --url https://kavach-os.vercel.app      # add --rogue for a shadow agent
+```
+
+- **Five agents run as real processes** on any laptop (`agents/run.mjs`). Each holds **only a Kavach key**. They ask Kavach for work (`/api/agent/next`), think through the **Kavach LLM gateway** (`/api/agent/think`, metered in ₹ and tokens, budget-capped), and act only through the **tool gateway** (`/api/agent/act`). They have no bank credentials and no LLM provider key.
+- **A customer simulator** sends realistic NovaBank traffic: failed UPI refunds, duplicate EMI debits, card blocks, PagerDuty alerts, CRM leads, report requests. Kavach classifies and routes each message (legal/fraud language → a person; VIP → agent + review; paused agent → a person).
+- **Judges become customers:** scan the "be a customer" QR (`/support`), type any complaint, and watch an agent handle it step by step on their phone.
+- **Judges become approvers:** scan the "go on duty" QR (`/approver`). From then on, every high-risk action (a refund over ₹10,000, a production restart, a rule change) **opens on their phone by itself**, with a vibration and sound. On Android/desktop Chrome it also arrives as a **push notification** (on iPhone: Add to Home Screen first). Over ₹50,000 needs **two different phones** (two-key).
+- **Kill switch is real:** press Pause on the live floor and the agent's terminal prints "⛔ Kavach revoked my key". Its next call is refused at the gateway and its open tickets move to people.
+- **Prompt injection, live:** press `8` (or send a message with hidden instructions from `/support`). The real Aria follows them, Kavach blocks the export, auto-pauses Aria, and opens an incident.
+- Without `GROQ_API_KEY`/`GEMINI_API_KEY` the agents use a transparent offline planner, and the UI says so. With a key, they plan with a real LLM.
 
 ## Architecture
 

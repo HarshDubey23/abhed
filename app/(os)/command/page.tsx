@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
 import { Chip, Qr, ago, hhmm, inr, useWorld } from '@/components/app';
+import { LiveFloor, LiveWire, PhonesPanel } from '@/components/live';
 import type { Approval } from '@/lib/types';
 
 function Countdown({ until }: { until: number }) {
@@ -464,12 +465,19 @@ export default function CommandCenter() {
         ))}
         {!view && <div className="muted">Loading NovaBank…</div>}
       </div>
+      <LiveFloor />
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 380px', marginBottom: 14 }}>
         <AgentTable />
-        <WaitingPanel />
+        <div className="stack" style={{ gap: 14 }}>
+          <WaitingPanel />
+          <PhonesPanel />
+        </div>
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1.4fr) minmax(0,0.9fr)', marginBottom: 14 }}>
-        <LiveFeed />
+        <div className="stack" style={{ gap: 14 }}>
+          <LiveWire />
+          <LiveFeed />
+        </div>
         <div className="stack" style={{ gap: 14 }}>
           <WorkBoard />
           <Heatmap />

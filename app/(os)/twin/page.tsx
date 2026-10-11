@@ -104,7 +104,7 @@ function TwinInner() {
         <div className="panel" style={{ marginBottom: 14 }}>
           <div className="panel-title">
             <span>
-              <b>Ticket #8812</b> · arrives on WhatsApp · goes to Aria (Google ADK support agent)
+              <b>Ticket #8812</b> · arrives on WhatsApp · goes to Aria, the support agent
             </span>
             <button className="btn btn-ghost btn-sm" onClick={() => setText(POISONED_TICKET)}>
               Restore default

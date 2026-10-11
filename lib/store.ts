@@ -1,29 +1,36 @@
 import { tick } from './engine';
 import { seedWorld } from './seed';
-import type { World } from './types';
+import type { LiveDoc, World } from './types';
 
 /**
- * State lives in one place so the laptop and the judge's phone always see the same world.
- * - SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY set → a single row in Postgres (works on serverless).
+ * State lives in one place so the laptop, the agents and the judge's phone always see the same world.
+ * - SUPABASE_URL + SUPABASE_KEY (or SUPABASE_SERVICE_ROLE_KEY) set → rows in Postgres (works on serverless).
  * - otherwise → process memory (local dev, tests, single-instance hosts).
+ * Two documents: "main" (governance: registry, rules, approvals, ledger) and "live" (heartbeats, approver
+ * phones, agent thoughts), so fast-changing runtime data never contends with ledger writes.
  * Writes use optimistic concurrency on `version`.
  */
 
+type Doc = { version: number };
+
 interface Backend {
-  load(): Promise<World | null>;
-  save(world: World, expectedVersion: number): Promise<boolean>;
+  load<T extends Doc>(id: string): Promise<T | null>;
+  save<T extends Doc>(id: string, doc: T, expectedVersion: number): Promise<boolean>;
 }
 
-const g = globalThis as unknown as { __kavachWorld?: World };
+const g = globalThis as unknown as { __kavachDocs?: Map<string, Doc> };
+g.__kavachDocs ??= new Map();
 
 const memory: Backend = {
-  async load() {
-    return g.__kavachWorld ? structuredClone(g.__kavachWorld) : null;
+  async load<T extends Doc>(id: string): Promise<T | null> {
+    const d = g.__kavachDocs!.get(id);
+    return d ? (structuredClone(d) as unknown as T) : null;
   },
-  async save(world, expected) {
-    const cur = g.__kavachWorld;
+  async save(id, doc, expected) {
+    const cur = g.__kavachDocs!.get(id);
     if (cur && cur.version !== expected) return false;
-    g.__kavachWorld = structuredClone(world);
+    if (!cur && expected >= 0) return false;
+    g.__kavachDocs!.set(id, structuredClone(doc));
     return true;
   },
 };
@@ -31,25 +38,25 @@ const memory: Backend = {
 function supabase(url: string, key: string, table: string): Backend {
   const headers = { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' };
   return {
-    async load() {
-      const res = await fetch(`${url}/rest/v1/${table}?id=eq.main&select=world`, { headers, cache: 'no-store' });
+    async load<T extends Doc>(id: string): Promise<T | null> {
+      const res = await fetch(`${url}/rest/v1/${table}?id=eq.${id}&select=world`, { headers, cache: 'no-store' });
       if (!res.ok) throw new Error(`state load ${res.status}`);
-      const rows = (await res.json()) as { world: World }[];
+      const rows = (await res.json()) as { world: T }[];
       return rows[0]?.world ?? null;
     },
-    async save(world, expected) {
+    async save(id, doc, expected) {
       if (expected < 0) {
         const res = await fetch(`${url}/rest/v1/${table}`, {
           method: 'POST',
           headers: { ...headers, prefer: 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify({ id: 'main', version: world.version, world }),
+          body: JSON.stringify({ id, version: doc.version, world: doc, updated_at: new Date().toISOString() }),
         });
         return res.ok;
       }
-      const res = await fetch(`${url}/rest/v1/${table}?id=eq.main&version=eq.${expected}`, {
+      const res = await fetch(`${url}/rest/v1/${table}?id=eq.${id}&version=eq.${expected}&select=id`, {
         method: 'PATCH',
         headers: { ...headers, prefer: 'return=representation' },
-        body: JSON.stringify({ version: world.version, world }),
+        body: JSON.stringify({ version: doc.version, world: doc, updated_at: new Date().toISOString() }),
       });
       if (!res.ok) throw new Error(`state save ${res.status}`);
       const rows = (await res.json()) as unknown[];
@@ -68,12 +75,31 @@ function backend(): Backend {
 export const storeKind = () =>
   process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY) ? 'postgres' : 'memory';
 
+async function mutateDoc<D extends Doc, T>(id: string, init: () => D, fn: (d: D) => T, attempts = 8): Promise<{ doc: D; result: T }> {
+  const b = backend();
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    let d = await b.load<D>(id);
+    let expected = d ? d.version : -1;
+    if (!d) {
+      d = init();
+      expected = -1;
+    }
+    const result = fn(d);
+    d.version = (expected < 0 ? 0 : expected) + 1;
+    if (await b.save(id, d, expected)) return { doc: d, result };
+    await new Promise((r) => setTimeout(r, 30 + Math.random() * (60 + attempt * 60)));
+  }
+  throw new Error('Busy: too many concurrent writes, try again');
+}
+
+// ───────── main: the governed world ─────────
+
 export async function getWorld(): Promise<World> {
   const b = backend();
-  let w = await b.load();
+  let w = await b.load<World>('main');
   if (!w) {
     w = seedWorld();
-    await b.save(w, -1);
+    await b.save('main', w, -1);
   }
   // lazy clock for escalations / expiry
   const probe = structuredClone(w);
@@ -87,30 +113,45 @@ export async function getWorld(): Promise<World> {
 }
 
 export async function mutate<T>(fn: (w: World) => T): Promise<{ world: World; result: T }> {
-  const b = backend();
-  for (let attempt = 0; attempt < 5; attempt++) {
-    let w = await b.load();
-    let expected = w ? w.version : -1;
-    if (!w) {
-      w = seedWorld();
-      expected = -1;
-    }
-    const result = fn(w);
-    w.version = (expected < 0 ? 0 : expected) + 1;
-    if (await b.save(w, expected)) return { world: w, result };
-    await new Promise((r) => setTimeout(r, 40 + Math.random() * 80));
-  }
-  throw new Error('Busy: too many concurrent writes, try again');
+  const { doc, result } = await mutateDoc<World, T>('main', () => seedWorld(), fn);
+  return { world: doc, result };
 }
 
 export async function resetWorld(): Promise<World> {
-  const b = backend();
-  const cur = await b.load();
-  const w = seedWorld();
-  w.version = (cur?.version ?? 0) + 1;
-  if (cur) {
-    const ok = await b.save(w, cur.version);
-    if (!ok) return resetWorld();
-  } else await b.save(w, -1);
-  return w;
+  const { doc } = await mutateDoc<World, null>('main', () => seedWorld(), (w) => {
+    const fresh = seedWorld();
+    for (const k of Object.keys(w)) delete (w as unknown as Record<string, unknown>)[k];
+    Object.assign(w, fresh);
+    return null;
+  });
+  await mutateLive((l) => {
+    l.events = [];
+    for (const r of Object.values(l.runtimes)) {
+      r.tokensToday = 0;
+      r.llmCostToday = 0;
+      r.calls = 0;
+      r.task = undefined;
+      r.lastDecision = undefined;
+      r.lastThought = undefined;
+    }
+    return null;
+  });
+  return doc;
+}
+
+// ───────── live: heartbeats, approver phones, agent thoughts ─────────
+
+export const emptyLive = (): LiveDoc => ({ version: 0, runtimes: {}, approvers: {}, events: [], inboxCount: 0 });
+
+export async function getLive(): Promise<LiveDoc> {
+  return (await backend().load<LiveDoc>('live')) ?? emptyLive();
+}
+
+export async function mutateLive<T>(fn: (l: LiveDoc) => T) {
+  return mutateDoc<LiveDoc, T>('live', emptyLive, fn);
+}
+
+export function liveEvent(l: LiveDoc, e: Omit<LiveDoc['events'][number], 'at'> & { at?: number }) {
+  l.events.unshift({ at: e.at ?? Date.now(), agentId: e.agentId, kind: e.kind, text: e.text.slice(0, 220), tone: e.tone });
+  if (l.events.length > 80) l.events.length = 80;
 }

@@ -29,15 +29,16 @@ function agents(): Agent[] {
       name: 'Rex',
       owner: 'priya',
       purpose: 'Refunds and disputes',
-      framework: 'LangGraph',
-      model: 'llama-3.3-70b',
+      framework: 'Kavach SDK · Node tool-loop',
+      model: 'llama-3.3-70b (via Kavach LLM gateway)',
       modelVersion: 'v2026-09',
       risk: 'HIGH',
       autonomy: 'L3',
       status: 'ACTIVE',
       delegations: [
-        { action: 'issue_refund', maxPerAction: 10000, maxPerDay: 100000, grantedBy: 'priya', expiresDays: 30 },
+        { action: 'issue_refund', maxPerAction: 10000, maxPerDay: 500000, grantedBy: 'priya', expiresDays: 30 },
         { action: 'read_customer', grantedBy: 'priya', expiresDays: 30 },
+        { action: 'send_email', grantedBy: 'priya', expiresDays: 30 },
       ],
       dataScopes: ['customer_profile (masked)', 'transactions', 'beneficiary'],
       budgetInr: 600,
@@ -48,8 +49,8 @@ function agents(): Agent[] {
       name: 'Aria',
       owner: 'priya',
       purpose: 'Customer support (WhatsApp, app)',
-      framework: 'Google ADK',
-      model: 'gemini-2.5-flash',
+      framework: 'Kavach SDK · Node tool-loop',
+      model: 'llama-3.1-8b (via Kavach LLM gateway)',
       modelVersion: 'v2026-08',
       risk: 'HIGH',
       autonomy: 'L3',
@@ -67,8 +68,8 @@ function agents(): Agent[] {
       name: 'Nova',
       owner: 'karan',
       purpose: 'Sales outreach drafts',
-      framework: 'CrewAI',
-      model: 'llama-3.1-8b',
+      framework: 'Kavach SDK · Node tool-loop',
+      model: 'llama-3.1-8b (via Kavach LLM gateway)',
       modelVersion: 'v2026-07',
       risk: 'MEDIUM',
       autonomy: 'L2',
@@ -83,8 +84,8 @@ function agents(): Agent[] {
       name: 'Sage',
       owner: 'meera',
       purpose: 'Risk analytics reports',
-      framework: 'smolagents',
-      model: 'qwen-2.5-72b',
+      framework: 'Kavach SDK · Node tool-loop',
+      model: 'llama-3.3-70b (via Kavach LLM gateway)',
       modelVersion: 'v2026-06',
       risk: 'HIGH',
       autonomy: 'L2',
@@ -99,8 +100,8 @@ function agents(): Agent[] {
       name: 'Atlas',
       owner: 'dev',
       purpose: 'IT operations',
-      framework: 'OpenAI Agents SDK',
-      model: 'gpt-oss-120b',
+      framework: 'Kavach SDK · Node tool-loop',
+      model: 'llama-3.1-8b (via Kavach LLM gateway)',
       modelVersion: 'v2026-09',
       risk: 'CRITICAL',
       autonomy: 'L2',
@@ -114,12 +115,12 @@ function agents(): Agent[] {
 
 function customers(): Customer[] {
   return [
-    { id: 'C-2210', name: 'Mrs. Sunita Sharma', tier: 'standard', kyc: 'verified', accountChangedDaysAgo: 2, upi: 'sunita.s@okaxis', pan: 'ABCPS1234F', phone: '9810012345' },
-    { id: 'C-1029', name: 'Mr. Rohit Kapoor', tier: 'VIP', kyc: 'verified', accountChangedDaysAgo: 412, upi: 'rohitk@oksbi', pan: 'BXKPK7781L', phone: '9899001122' },
-    { id: 'C-3341', name: 'Ananya Iyer', tier: 'standard', kyc: 'verified', accountChangedDaysAgo: 290, upi: 'ananya.i@okicici', pan: 'CQRPI4410A', phone: '9820033311' },
-    { id: 'C-4410', name: 'Farhan Qureshi', tier: 'standard', kyc: 'verified', accountChangedDaysAgo: 180, upi: 'farhanq@ybl', pan: 'DFHPQ9921K', phone: '9811022233' },
-    { id: 'C-5012', name: 'Kavya Nair', tier: 'VIP', kyc: 'verified', accountChangedDaysAgo: 760, upi: 'kavya.n@okhdfc', pan: 'EKNPN2201M', phone: '9840055566' },
-    { id: 'C-6120', name: 'Vikram Singh', tier: 'standard', kyc: 'pending', accountChangedDaysAgo: 95, upi: 'vikram.s@paytm', pan: 'FVSPS6612Q', phone: '9873399001' },
+    { id: 'C-2210', name: 'Mrs. Sunita Sharma', tier: 'standard', kyc: 'verified', accountChangedDaysAgo: 2, upi: 'sunita.s@okaxis', pan: 'ABCPS1234F', phone: '9810012345', email: 'sunita.sharma@gmail.com' },
+    { id: 'C-1029', name: 'Mr. Rohit Kapoor', tier: 'VIP', kyc: 'verified', accountChangedDaysAgo: 412, upi: 'rohitk@oksbi', pan: 'BXKPK7781L', phone: '9899001122', email: 'rohit.kapoor@outlook.com' },
+    { id: 'C-3341', name: 'Ananya Iyer', tier: 'standard', kyc: 'verified', accountChangedDaysAgo: 290, upi: 'ananya.i@okicici', pan: 'CQRPI4410A', phone: '9820033311', email: 'ananya.iyer@gmail.com' },
+    { id: 'C-4410', name: 'Farhan Qureshi', tier: 'standard', kyc: 'verified', accountChangedDaysAgo: 180, upi: 'farhanq@ybl', pan: 'DFHPQ9921K', phone: '9811022233', email: 'farhan.q@yahoo.in' },
+    { id: 'C-5012', name: 'Kavya Nair', tier: 'VIP', kyc: 'verified', accountChangedDaysAgo: 760, upi: 'kavya.n@okhdfc', pan: 'EKNPN2201M', phone: '9840055566', email: 'kavya.nair@gmail.com' },
+    { id: 'C-6120', name: 'Vikram Singh', tier: 'standard', kyc: 'pending', accountChangedDaysAgo: 95, upi: 'vikram.s@paytm', pan: 'FVSPS6612Q', phone: '9873399001', email: 'vikram.singh@rediffmail.com' },
   ];
 }
 
@@ -137,6 +138,8 @@ function rules(now: number): Rule[] {
     r({ id: 'NO-DATA-LEAK', version: 1, says: 'If a task has read outside content and touched customer data, nothing may be sent outside the bank.', when: { action: 'send_email', external: true, session_untrusted: true, session_customer_data: true }, decision: 'BLOCKED', severity: 'critical', author: 'meera', approvedBy: 'arjun' }),
     r({ id: 'BULK-EXPORT', version: 1, says: 'No agent may export more than 100 customer records.', when: { action: 'export_customers', records_gt: 100, actor_type: 'agent' }, decision: 'BLOCKED', severity: 'critical', author: 'meera', approvedBy: 'arjun' }),
     r({ id: 'DESTRUCTIVE-OPS', version: 1, says: 'Agents can never delete production data.', when: { actionIn: ['delete_records', 'drop_table'], actor_type: 'agent' }, decision: 'BLOCKED', severity: 'critical', author: 'dev', approvedBy: 'meera' }),
+    r({ id: 'EMAIL-REPLY', version: 1, says: 'An agent may email the customer who raised the ticket.', when: { action: 'send_email', external: false }, decision: 'ALLOWED', author: 'arjun', approvedBy: 'meera' }),
+    r({ id: 'EMAIL-OUTREACH', version: 1, says: 'Outbound email is allowed only if the task has not read outside content.', when: { action: 'send_email', external: true, session_untrusted: false }, decision: 'ALLOWED', author: 'karan', approvedBy: 'meera' }),
     r({ id: 'PROD-CHANGE', version: 1, says: 'Restarting a production service needs a Level-1 approver.', when: { action: 'restart_service' }, decision: 'NEEDS_APPROVAL', approverRole: 'approver_l1', author: 'dev', approvedBy: 'meera' }),
     r({ id: 'RULE-CHANGE-TWO-PERSON', version: 1, says: 'Changing or adding a rule needs a second person. The author can’t approve it, and agents can never change rules.', when: { action: 'rule_change' }, decision: 'NEEDS_APPROVAL', approverRole: 'rule_approver', ownerCannotApprove: true, author: 'meera', approvedBy: 'arjun' }),
   ];
@@ -144,16 +147,16 @@ function rules(now: number): Rule[] {
 
 function tickets(now: number): Ticket[] {
   const t = (id: string, subject: string, customerId: string, channel: Ticket['channel'], type: string, lane: Ticket['lane'], assignee: string, why: string, extra: Partial<Ticket> = {}): Ticket => ({
-    id, subject, customerId, channel, type, lane, assignee, why, vip: false, slaMins: 240, createdAt: now - 40 * 60_000, ...extra,
+    id, subject, customerId, channel, type, lane, assignee, why, vip: false, slaMins: 240, createdAt: now - 40 * 60_000, text: subject, source: 'seed', ...extra,
   });
   const ariaSubjects = [
     'Password reset', 'Statement copy', 'Address change', 'Card not received', 'UPI limit query', 'Cheque book request',
     'Debit card block', 'Interest certificate', 'Nominee update', 'Email update', 'KYC re-upload', 'FD maturity query', 'Mini statement',
   ];
   const list: Ticket[] = [
-    t('#8811', 'Charged twice for home-loan EMI', 'C-1029', 'App', 'refund', 'AGENT', 'rex', 'Routine refund · confidence 0.92', { vip: true, text: REX_TICKET, slaMins: 60 }),
+    t('#8811', 'Charged twice for home-loan EMI', 'C-1029', 'App', 'refund', 'AGENT', 'rex', 'Routine refund · confidence 0.92', { vip: true, text: REX_TICKET, slaMins: 60, reserved: true }),
     t('#8820', 'Refund ₹2,000 failed UPI', 'C-3341', 'WhatsApp', 'refund', 'AGENT', 'rex', 'Within delegation · confidence 0.95'),
-    t('#8812', 'Address change request', 'C-6120', 'WhatsApp', 'address', 'AGENT', 'aria', 'Routine · confidence 0.88', { text: POISONED_TICKET }),
+    t('#8812', 'Address change request', 'C-6120', 'WhatsApp', 'address', 'AGENT', 'aria', 'Routine · confidence 0.88', { text: POISONED_TICKET, reserved: true }),
     ...ariaSubjects.map((s, i) =>
       t(`#88${21 + i}`, s, ['C-3341', 'C-4410', 'C-5012', 'C-6120'][i % 4], (['WhatsApp', 'App', 'Email'] as const)[i % 3], 'support', i % 4 === 0 ? 'AGENT_REVIEW' : 'AGENT', 'aria', i % 4 === 0 ? 'Aria drafts · Isha reviews (customer data change)' : 'Routine · confidence 0.9'),
     ),

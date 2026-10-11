@@ -159,6 +159,10 @@ export interface Ticket {
   slaMins: number;
   text?: string;
   createdAt: number;
+  from?: string;
+  reserved?: boolean; // kept for the scripted hero moments
+  claimedAt?: number;
+  source?: 'seed' | 'simulator' | 'customer' | 'director';
 }
 
 export interface Customer {
@@ -170,6 +174,7 @@ export interface Customer {
   upi: string;
   pan: string;
   phone: string;
+  email: string;
 }
 
 export interface ChainNode {
@@ -257,5 +262,40 @@ export interface World {
   agentTrace: { at: number; agentId: string; text: string; tone: string }[];
   tamper?: { seq: number; field: string; original: unknown };
   counters: { approval: number; incident: number; ticket: number };
+  sessions?: Record<string, { untrusted?: boolean; customerData?: boolean }>;
   humanMinutesToday: number;
+}
+
+/** Fast-changing runtime state, kept in its own document so heartbeats never contend with the ledger. */
+export interface AgentRuntime {
+  agentId: string;
+  host: string;
+  pid: number;
+  runtime: string;
+  startedAt: number;
+  lastSeen: number;
+  task?: string;
+  ticketId?: string;
+  lastThought?: string;
+  lastDecision?: string;
+  model?: string;
+  tokensToday: number;
+  llmCostToday: number;
+  calls: number;
+}
+
+export interface ApproverPresence {
+  name: string;
+  lastSeen: number;
+  push: boolean;
+  device: string;
+  subscription?: { endpoint: string; keys: { p256dh: string; auth: string } };
+}
+
+export interface LiveDoc {
+  version: number;
+  runtimes: Record<string, AgentRuntime>;
+  approvers: Record<string, ApproverPresence>;
+  events: { at: number; agentId: string; kind: 'thought' | 'action' | 'decision' | 'system'; text: string; tone: string }[];
+  inboxCount: number;
 }

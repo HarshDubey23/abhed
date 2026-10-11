@@ -1,25 +1,35 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { GovError } from './engine';
+import { pushApprovals } from './push';
 import { mutate } from './store';
-import type { World } from './types';
+import type { Approval, World } from './types';
 import { buildView } from './view';
 
 export const json = (data: unknown, status = 200) =>
   NextResponse.json(data, { status, headers: { 'cache-control': 'no-store' } });
 
-/** Run a governed mutation. Gov errors still persist side effects (e.g. a VOID record) and return 4xx. */
-export async function govMutate<T>(fn: (w: World) => T) {
+/**
+ * Run a governed mutation. Gov errors still persist side effects (e.g. a VOID record) and return 4xx.
+ * Any approval created by the mutation buzzes the approvers' phones after the response is sent.
+ */
+export async function govMutate<T>(fn: (w: World) => T, opts: { view?: boolean } = {}) {
   try {
+    let created: Approval[] = [];
     const { world, result } = await mutate((w) => {
+      const before = new Set(w.approvals.map((a) => a.id));
       try {
-        return { ok: true as const, value: fn(w) };
+        const value = fn(w);
+        created = w.approvals.filter((a) => !before.has(a.id) && a.status === 'PENDING');
+        return { ok: true as const, value };
       } catch (e) {
         if (e instanceof GovError) return { ok: false as const, error: e.message, status: e.status };
         throw e;
       }
     });
-    if (!result.ok) return json({ error: result.error, view: buildView(world) }, result.status);
-    return json({ result: result.value, view: buildView(world) });
+    if (created.length) after(() => pushApprovals(created));
+    const view = opts.view === false ? undefined : buildView(world);
+    if (!result.ok) return json({ error: result.error, view }, result.status);
+    return json({ result: result.value, view });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unexpected error' }, 500);
   }

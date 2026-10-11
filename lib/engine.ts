@@ -19,7 +19,17 @@ import { canonical, inr, maskParams, sha256 } from './util';
 export const GENESIS = '0'.repeat(64);
 export const APPROVAL_TTL_MS = 15 * 60_000;
 export const ESCALATE_AFTER_MS = 120_000; // demo clock: L1 → L2 after 2 minutes
-export const READ_ONLY = new Set(['read_ticket', 'read_customer', 'draft_reply', 'read_crm', 'health_check', 'read_logs']);
+export const READ_ONLY = new Set([
+  'read_ticket',
+  'read_customer',
+  'draft_reply',
+  'read_crm',
+  'health_check',
+  'read_logs',
+  'lookup_transaction',
+  'escalate_to_human',
+  'resolve_ticket',
+]);
 export const HIGH_IMPACT = new Set([
   'issue_refund',
   'export_customers',
@@ -137,8 +147,16 @@ export function ctxFor(w: World, req: ActionReq): Ctx {
   if (beneficiaryChangedDays === undefined && typeof p.to_account === 'string' && p.to_account !== 'own') {
     beneficiaryChangedDays = 0; // never-seen beneficiary
   }
-  const to = typeof p.to === 'string' ? p.to : '';
-  const external = req.action === 'send_email' ? !to.endsWith('@novabank.in') : req.action === 'export_customers' ? true : undefined;
+  const to = typeof p.to === 'string' ? p.to.toLowerCase() : '';
+  // replying to the ticket's own customer is not "outside the bank" for leak purposes
+  const ticket = req.ticketId ? w.tickets.find((t) => t.id === req.ticketId) : undefined;
+  const ticketCustomerEmail = ticket ? w.customers.find((c) => c.id === ticket.customerId)?.email?.toLowerCase() : undefined;
+  const external =
+    req.action === 'send_email'
+      ? !to.endsWith('@novabank.in') && to !== ticketCustomerEmail
+      : req.action === 'export_customers'
+        ? true
+        : undefined;
   return {
     action: req.action,
     amount,
@@ -253,6 +271,9 @@ const VALUE_PER_ACTION: Record<string, number> = {
   read_logs: 25,
   restart_service: 400,
   send_email: 40,
+  lookup_transaction: 15,
+  escalate_to_human: 10,
+  resolve_ticket: 25,
 };
 
 function dataTouchedFor(req: ActionReq): string[] {
@@ -269,6 +290,10 @@ function dataTouchedFor(req: ActionReq): string[] {
       return ['ticket text'];
     case 'export_report':
       return ['aggregates only'];
+    case 'lookup_transaction':
+      return ['transactions (masked)'];
+    case 'read_crm':
+      return ['CRM lead'];
     default:
       return [];
   }
@@ -500,7 +525,13 @@ function execute(
     cost,
     meta: { value, approvalId: o.approvalId, desc: describeAction(w, req), channel: req.channel ?? 'live', ...refundMeta(w, req) },
   });
-  if (req.ticketId && !READ_ONLY.has(req.action)) moveTicket(w, req.ticketId, 'DONE', o.approvers.length ? `Done after approval by ${o.approvers.join(' + ')}` : 'Done by agent within limits');
+  if (req.ticketId && req.action === 'escalate_to_human') {
+    moveTicket(w, req.ticketId, 'HUMAN', `Agent escalated: ${String(req.params.reason ?? 'needs a person')}`, 'isha');
+  } else if (req.ticketId && (req.action === 'resolve_ticket' || !READ_ONLY.has(req.action))) {
+    const t = w.tickets.find((x) => x.id === req.ticketId);
+    if (t && t.lane !== 'HUMAN' && t.lane !== 'ESCALATED' && (t.lane !== 'AGENT_REVIEW' || o.approvers.length))
+      moveTicket(w, req.ticketId, 'DONE', o.approvers.length ? `Done after approval by ${o.approvers.join(' + ')}` : 'Done by agent within limits');
+  }
   return rec;
 }
 
@@ -797,7 +828,7 @@ function monitorRunaway(w: World, a: Agent, now: number) {
   const recent = w.ledger.filter((r) => r.actorId === a.id && now - r.ts < 120_000);
   const last = recent[recent.length - 1];
   if (!last) return;
-  const sig = (r: LedgerRecord) => r.action + canonical(r.params);
+  const sig = (r: LedgerRecord) => `${r.action}|${r.ticketId ?? ''}|${canonical(r.params)}`;
   const same = recent.filter((r) => sig(r) === sig(last)).length;
   if (same >= 5) {
     pauseAgent(w, a.id, 'system', `Circuit breaker: the same “${last.action.replace(/_/g, ' ')}” call ${same}× in 2 min (runaway loop)`, now);
