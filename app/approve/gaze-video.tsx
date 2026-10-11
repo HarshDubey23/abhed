@@ -26,7 +26,7 @@ function timeForAngle(angle: number) {
 }
 
 /** Lavender character whose recorded eyes follow the cursor on desktop; loops on phones. */
-export default function GazeVideo({ className = 'ap-video' }: { className?: string }) {
+export default function GazeVideo({ className = 'ap-background' }: { className?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
