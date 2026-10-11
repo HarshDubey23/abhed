@@ -48,7 +48,8 @@ export function profile(w: World, agentId: string) {
     sector: pack.id,
     role: pack.roles[agentId] ?? a.purpose,
     delegations: a.delegations.map((d) => ({ action: d.action, maxPerAction: d.maxPerAction, maxPerDay: d.maxPerDay, grantedBy: nameOf(w, d.grantedBy) })),
-    tools: (pack.agentTools[agentId] ?? []).map((n) => pack.tools[n]).filter(Boolean).map((t) => ({
+    // the task arrives with the session, so ticket plumbing tools are not offered to external agents
+    tools: (pack.agentTools[agentId] ?? []).filter((n) => n !== 'read_ticket' && n !== 'resolve_ticket').map((n) => pack.tools[n]).filter(Boolean).map((t) => ({
       type: 'function',
       function: {
         name: t.name,
