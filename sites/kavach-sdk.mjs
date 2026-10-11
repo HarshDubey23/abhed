@@ -38,8 +38,9 @@ export class Kavach {
   profile() {
     return this.req('/api/v1/agent');
   }
-  async session(task, { from } = {}) {
-    return this.req('/api/v1/sessions', { task, from, site: this.site });
+  /** subject = the customer this task is for; Kavach refuses any action on anyone else. */
+  async session(task, { from, subject } = {}) {
+    return this.req('/api/v1/sessions', { task, from, subject, site: this.site });
   }
   think(session, messages, tools) {
     return this.req('/api/v1/llm', { sessionId: session.sessionId, messages, tools });

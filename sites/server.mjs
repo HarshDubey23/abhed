@@ -77,7 +77,7 @@ const server = createServer(async (req, res) => {
         try {
           const profile = await profileOf(agent.id);
           const context = SITE.context(b.customer ?? null, agent.id);
-          await runAgent({ kavach, profile, task: text, from: b.customerName || SITE.brand, context, emit });
+          await runAgent({ kavach, profile, task: text, from: b.customerName || SITE.brand, subject: b.customer?.id, context, emit });
         } catch (e) {
           emit({ type: 'error', text: e.message });
         } finally {

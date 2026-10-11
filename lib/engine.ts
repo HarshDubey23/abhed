@@ -448,6 +448,18 @@ function gatewayInner(w: World, req: ActionReq, opts: { now?: number; reasoning?
     }
   }
 
+  // 1b · scope: a session opened for one customer can only touch that customer (no confused deputy)
+  const subject = req.session?.subject;
+  if (a && subject) {
+    const p = req.params;
+    const order = typeof p.order === 'string' ? (w.biz.orders ?? []).find((o) => o.id === p.order) : undefined;
+    const target = (typeof p.customer === 'string' && p.customer) || (typeof p.patient === 'string' && p.patient) || (order ? String(order.customer) : undefined);
+    if (target && target !== subject) {
+      securityEvent(w, { kind: 'scope violation', agentId: a.id, detail: `${a.name} tried ${req.action} on ${target} inside a session for ${subject}`, owasp: OWASP.ASI03, severity: 'high' }, now);
+      return block(`Out of scope: this session is for ${subject}, but the agent tried to act on ${target}.`, 'SCOPE@1', false, 'scope');
+    }
+  }
+
   // 2 · delegation (a live human grant)
   let delegationHold: string | undefined;
   if (a && !isReadOnly(w, req.action) && !toolOf(w, req.action)?.noDelegation && req.action !== 'draft_email' && req.action !== 'export_report') {

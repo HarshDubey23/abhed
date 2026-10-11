@@ -126,3 +126,17 @@ describe('chain, rules, insights, audit', () => {
     expect(bytes.length).toBeGreaterThan(3000);
   });
 });
+
+describe('security: session scope', () => {
+  it('an agent serving one customer cannot act on another (confused deputy)', async () => {
+    const { gateway } = await import('../lib/engine');
+    const { seedWorld } = await import('../lib/seed');
+    const w = seedWorld(Date.now(), { sector: 'banking', history: false });
+    const r = gateway(w, { actorType: 'agent', actorId: 'rex', action: 'issue_refund', params: { customer: 'C-1029', amount: 40000 }, session: { subject: 'C-3341' } });
+    expect(r.decision).toBe('BLOCKED');
+    expect(r.ruleRef).toBe('SCOPE@1');
+    expect(w.security?.[0].kind).toBe('scope violation');
+    const ok = gateway(w, { actorType: 'agent', actorId: 'rex', action: 'issue_refund', params: { customer: 'C-3341', amount: 2000 }, session: { subject: 'C-3341' } });
+    expect(ok.decision).toBe('ALLOWED');
+  });
+});

@@ -65,7 +65,7 @@ export function profile(w: World, agentId: string) {
 }
 
 /** Open a session. The task text is scanned (patterns + Llama Prompt Guard) before any model sees it. */
-export async function openSession(tenant: Tenant, agentId: string, input: { task: string; from?: string; site?: string }) {
+export async function openSession(tenant: Tenant, agentId: string, input: { task: string; from?: string; site?: string; subject?: string }) {
   const task = String(input.task ?? '').trim().slice(0, 1500);
   if (task.length < 3) throw new GovError('Empty task', 400);
   const patterns = scanInjection(task);
@@ -97,7 +97,8 @@ export async function openSession(tenant: Tenant, agentId: string, input: { task
     };
     const signals = [...patterns.signals, ...(guard?.malicious ? [`Prompt Guard: ${guard.label}`] : [])];
     w.sessions ??= {};
-    w.sessions[`run:${run.id}`] = { untrusted: signals.length > 0 };
+    const subject = typeof input.subject === 'string' && w.customers.some((c) => c.id === input.subject) ? input.subject : undefined;
+    w.sessions[`run:${run.id}`] = { untrusted: signals.length > 0, subject };
     if (signals.length) {
       run.injection = signals;
       step(run, { kind: 'security', text: `Kavach scanner flagged this task (${signals.join(', ')}). The session is tainted: nothing it reads may leave the company.` }, now);

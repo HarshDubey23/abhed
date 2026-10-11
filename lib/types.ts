@@ -89,7 +89,7 @@ export interface ActionReq {
   action: string;
   params: Record<string, unknown>;
   ticketId?: string;
-  session?: { untrusted?: boolean; customerData?: boolean };
+  session?: { untrusted?: boolean; customerData?: boolean; subject?: string };
   channel?: 'live' | 'scripted' | 'twin' | 'console';
 }
 
@@ -288,7 +288,7 @@ export interface World {
   agentTrace: { at: number; agentId: string; text: string; tone: string }[];
   tamper?: { seq: number; field: string; original: unknown };
   counters: { approval: number; incident: number; ticket: number; run?: number };
-  sessions?: Record<string, { untrusted?: boolean; customerData?: boolean }>;
+  sessions?: Record<string, { untrusted?: boolean; customerData?: boolean; subject?: string }>;
   humanMinutesToday: number;
   runs?: Run[];
 }

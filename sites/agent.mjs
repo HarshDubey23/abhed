@@ -4,10 +4,10 @@ import { KavachError } from './kavach-sdk.mjs';
  * The company's own agent loop. The LLM decides; Kavach governs every tool call.
  * `emit` streams each step to the website so the customer sees the agent work.
  */
-export async function runAgent({ kavach, profile, task, from, context, emit, maxTurns = 10 }) {
+export async function runAgent({ kavach, profile, task, from, subject, context, emit, maxTurns = 10 }) {
   let session;
   try {
-    session = await kavach.session(task, { from });
+    session = await kavach.session(task, { from, subject });
   } catch (e) {
     emit({ type: e.status === 423 ? 'paused' : 'error', text: e.message });
     return;
