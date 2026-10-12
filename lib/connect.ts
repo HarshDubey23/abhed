@@ -2,6 +2,7 @@ import { adminKeyFor } from './agentapi';
 import { appendLedger } from './engine';
 import { keyFor } from './live';
 import { packFor } from './sectors';
+import { resetGateway } from './gateway';
 import { getDoc, getWorld, isTenant, mutate, mutateLive, mutateShared, resetWorld, TENANTS, type Tenant } from './store';
 import type { Connection, World } from './types';
 
@@ -113,6 +114,7 @@ export async function removeCompany(t: Tenant, by = 'the Abhed operator') {
 /** Back to the opening state: only NovaBank, no pending code. */
 export async function resetDemo() {
   for (const t of TENANTS) await resetWorld({ tenant: t });
+  await resetGateway();
   await mutateShared<Registry, void>(REGISTRY, emptyRegistry, (r) => {
     r.code = null;
     r.exp = null;

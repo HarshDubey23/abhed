@@ -48,10 +48,12 @@ export default function FleetPage() {
   const [origin, setOrigin] = useState('');
   const [openAgent, setOpenAgent] = useState<string | null>(null);
   const [openRun, setOpenRun] = useState<string | null>(null);
+  const [gw, setGw] = useState<{ id: string; name: string; site?: string; agents: { id: string; name: string; calls: number; toolCalls: number; blocked: number; held: number; online: boolean }[]; holds: unknown[]; events: { id: number; agent: string; kind: string; text: string; tool?: string; decision?: string }[] }[]>([]);
   const load = useCallback(async () => {
     try {
-      const r = await fetch('/api/fleet', { cache: 'no-store' });
+      const [r, g] = await Promise.all([fetch('/api/fleet', { cache: 'no-store' }), fetch('/api/gateway', { cache: 'no-store' })]);
       if (r.ok) setF(await r.json());
+      if (g.ok) setGw(((await g.json()) as { companies: typeof gw }).companies);
     } catch {
       /* keep last */
     }
@@ -144,7 +146,7 @@ export default function FleetPage() {
           </div>
           <div className="fl-big">
             <b>
-              {f.pulse.online}
+              {f.pulse.online + gw.reduce((n, c) => n + c.agents.filter((a) => a.online).length, 0)}
               <small> online</small>
             </b>
             <span>agent processes sending heartbeats</span>
@@ -165,7 +167,7 @@ export default function FleetPage() {
           </div>
           <Link href="/connect" className="fl-conn">
             <span>
-              <b>{f.companies.length}</b> {f.companies.length === 1 ? 'company' : 'companies'} in Abhed
+              <b>{f.companies.length + gw.length}</b> {f.companies.length + gw.length === 1 ? 'company' : 'companies'} in Abhed
             </span>
             <span>Add a company →</span>
           </Link>
@@ -254,6 +256,51 @@ export default function FleetPage() {
                 </div>
               );
             })}
+          </div>
+        ))}
+        {gw.map((c) => (
+          <div key={c.id} className="panel fl-co">
+            <div className="fl-co-h">
+              <div>
+                <div className="fl-co-name">{c.name}</div>
+                <div className="dim fl-co-sub">No code · AI gateway</div>
+              </div>
+              {c.site && (
+                <a className="btn btn-ghost btn-sm" href={c.site} target="_blank" rel="noopener">
+                  Site ↗
+                </a>
+              )}
+            </div>
+            <div className="fl-co-stats">
+              <span>
+                <b>{c.agents.reduce((n, a) => n + a.toolCalls, 0)}</b> actions
+              </span>
+              <span>
+                <b style={{ color: 'var(--human)' }}>{c.agents.reduce((n, a) => n + a.held, 0)}</b> to a person
+              </span>
+              <span>
+                <b style={{ color: 'var(--block)' }}>{c.agents.reduce((n, a) => n + a.blocked, 0)}</b> stopped
+              </span>
+            </div>
+            {c.agents.length === 0 && <div className="dim" style={{ padding: '12px 0' }}>Waiting for the first model call…</div>}
+            {c.agents.map((a) => (
+              <div key={a.id} className="fl-agent">
+                <Link className="fl-agent-row" href="/connect">
+                  <span className={`fl-dot ${a.online ? 'ok' : 'idle'}`} />
+                  <b>{a.name}</b>
+                  <span className="dim fl-agent-job">
+                    {a.calls} calls · {a.blocked} stopped
+                  </span>
+                  <span className="dim fl-agent-n">{a.toolCalls}</span>
+                  <span className="fl-chev">›</span>
+                </Link>
+              </div>
+            ))}
+            {c.holds.length > 0 && (
+              <Link href="/connect" className="cn-pend" style={{ marginTop: 10 }}>
+                <span className="chip chip-human">Waiting for a person</span> {c.holds.length} action{c.holds.length === 1 ? '' : 's'}
+              </Link>
+            )}
           </div>
         ))}
         <Link href="/connect" className="panel fl-add">
