@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async rewrites() {
     // the cinematic landing is a single self-contained HTML file
-    return { beforeFiles: [{ source: '/', destination: '/landing.html' }], afterFiles: [], fallback: [] };
+    return { beforeFiles: [{ source: '/', destination: '/landing.html' }, { source: '/story', destination: '/story.html' }], afterFiles: [], fallback: [] };
   },
 };
 

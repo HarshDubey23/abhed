@@ -26,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400;500&family=Manrope:wght@200..800&family=Inter:ital,opsz,wght@0,14..32,100..900&family=JetBrains+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500&family=Epilogue:wght@900&family=Tiro+Devanagari+Hindi&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Geist:wght@300..800&family=Geist+Mono:wght@400;500&family=Manrope:wght@200..800&family=Inter:ital,opsz,wght@0,14..32,100..900&family=JetBrains+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500&family=Epilogue:wght@900&family=Tiro+Devanagari+Hindi&display=swap"
         />
       </head>
       <body>{children}</body>

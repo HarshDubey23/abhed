@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ago, Chip, hhmm, Qr, useWorld } from '@/components/app';
+import { Band } from '@/components/ambient';
 import { BigSpeedChart, Donut, HBars, PALETTE } from '@/components/charts';
 
 type Step = { at: number; kind: string; text?: string; action?: string; decision?: string; reason?: string; ruleRef?: string; approvalId?: string; gatewayMs?: number; params?: Record<string, unknown> };
@@ -109,6 +110,7 @@ export default function FleetPage() {
         <Kpi label="Human wait (median)" value={waits.length ? `${Math.max(...waits)} s` : '—'} note={`${f.pending.length} waiting now`} />
       </div>
 
+      <Band>
       <section className="fl-mon">
         <div className="panel fl-speed">
           <div className="panel-title">
@@ -173,6 +175,7 @@ export default function FleetPage() {
           </Link>
         </div>
       </section>
+      </Band>
 
       <div className="fl-cos">
         {f.companies.map((c) => (

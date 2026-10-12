@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How Abhed works — one gate for every AI action</title>
+<meta name="description" content="Scroll through how Abhed governs every action an AI agent takes: the rulebook decides in milliseconds, big moves wait for a person, everything lands on a ledger.">
+<meta name="theme-color" content="#f2f0ec">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-8 -1 48 50'%3E%3Crect x='-8' y='-1' width='48' height='50' rx='10' fill='%230a0a0a'/%3E%3Cpath d='M21.5 0L21.5 19.5L31.5 19.5L31.5 29L10 48.5L10 28.5L0.5 28.5L0.5 18.5Z' fill='%23d4d4d4'/%3E%3C/svg%3E">
+<style>
+:root{
+  --fg:#0d0c0b;
+  --fg-soft:rgba(13,12,11,.64);
+  --fg-faint:rgba(13,12,11,.42);
+  --shade:#f2f0ec;
+  --rule:rgba(13,12,11,.16);
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --pill-bg:#0a0908;
+  --pill-fg:#ffffff;
+  --allow:#1f8a52; --human:#c27a12; --block:#c8372d; --cyan:#38c6ec;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--shade);color:var(--fg);font-family:'Inter Tight','Helvetica Neue',Helvetica,Arial,sans-serif;font-weight:400;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden}
+
+/* fixed stage: the scene is drawn here frame by frame from scroll position */
+.stage{position:fixed;inset:0;z-index:0;overflow:hidden;background:var(--shade)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%}
+.veil{position:absolute;inset:0;pointer-events:none;background:
+  linear-gradient(to bottom, rgba(242,240,236,.62) 0%, rgba(242,240,236,.12) 22%, rgba(242,240,236,.12) 78%, rgba(242,240,236,.66) 100%),
+  radial-gradient(100% 80% at 50% 48%, rgba(242,240,236,0) 0%, rgba(242,240,236,.34) 100%),
+  rgba(242,240,236,.20)}
+.grain{position:absolute;inset:-50%;opacity:.13;mix-blend-mode:multiply;pointer-events:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.5'/></svg>")}
+
+/* chrome */
+.chrome{position:fixed;left:0;right:0;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:max(14px, calc(env(safe-area-inset-top, 0px) + 12px)) clamp(16px, 3.4vw, 44px) 14px;
+  background:linear-gradient(to bottom, rgba(242,240,236,.94) 0%, rgba(242,240,236,.78) 72%, rgba(242,240,236,0) 100%)}
+.mark{display:flex;align-items:center;gap:9px;font-size:15px;letter-spacing:-.012em;color:var(--fg);min-width:0;flex-shrink:1;text-decoration:none}
+.mark svg{width:15px;height:23px;flex:none;opacity:.9}
+.nav{display:flex;align-items:center;gap:clamp(14px, 2.4vw, 32px);flex-shrink:0}
+.nav a:not(.pill){color:var(--fg);text-decoration:none;font-size:14.5px;letter-spacing:-.008em;opacity:.88;transition:opacity .3s var(--ease)}
+.nav a:not(.pill):hover{opacity:1}
+.pill{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 21px;border-radius:999px;background:var(--pill-bg);color:var(--pill-fg);
+  font-size:14.5px;font-weight:500;letter-spacing:-.008em;text-decoration:none;white-space:nowrap;opacity:1;border:1px solid rgba(10,9,8,.12);
+  box-shadow:0 1px 0 rgba(255,255,255,.10) inset;-webkit-text-fill-color:var(--pill-fg);
+  transition:transform .4s var(--ease), background .3s var(--ease), color .3s var(--ease)}
+.nav .pill{color:#fff;-webkit-text-fill-color:#fff}
+.pill:hover,.pill:focus-visible{transform:translateY(-2px);background:#000;color:#fff;-webkit-text-fill-color:#fff}
+.pill:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+
+.foot{position:fixed;bottom:0;left:0;right:0;z-index:40;display:flex;justify-content:center;align-items:center;gap:8px;
+  padding:14px clamp(16px, 4vw, 24px) max(16px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  font-size:12px;line-height:1.45;letter-spacing:.02em;color:var(--fg-faint);text-align:center;pointer-events:none;
+  background:linear-gradient(to top, rgba(242,240,236,.92) 0%, rgba(242,240,236,.72) 72%, rgba(242,240,236,0) 100%)}
+.foot i{width:6px;height:6px;border-radius:50%;background:var(--allow);flex:none;animation:beat 2s infinite}
+.foot b{font-weight:500;color:var(--fg-soft)}
+@keyframes beat{50%{opacity:.3}}
+
+.meter{position:fixed;top:0;left:0;z-index:50;height:2px;width:100%;transform:scaleX(0);transform-origin:0 50%;background:var(--fg);opacity:.55}
+
+/* panels: fixed, cross-faded by the scroll loop */
+.panels{position:fixed;inset:0;z-index:20;pointer-events:none}
+.panel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;
+  padding:max(12vh, calc(env(safe-area-inset-top, 0px) + 88px)) clamp(20px, 5vw, 60px) max(96px, calc(env(safe-area-inset-bottom, 0px) + 80px));
+  opacity:0;will-change:opacity,transform}
+.eyebrow{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;letter-spacing:.045em;color:var(--fg-soft);margin-bottom:clamp(16px,2vw,22px);max-width:min(46ch, 100%);text-align:center}
+h1{font-weight:400;font-size:clamp(34px, 5vw, 76px);line-height:.98;letter-spacing:-.036em;max-width:15ch;text-wrap:balance}
+.sub{margin-top:clamp(18px,2.2vw,28px);font-size:clamp(15px,1.28vw,19px);line-height:1.5;letter-spacing:-.008em;color:var(--fg-soft);max-width:min(46ch, 100%);text-wrap:pretty}
+.cta{margin-top:clamp(22px,2.6vw,34px);pointer-events:auto;width:100%;display:flex;justify-content:center}
+.cta .pill{height:48px;padding:0 27px;font-size:15px;max-width:min(100%, 320px)}
+
+/* preloader */
+.boot{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--shade);transition:opacity .7s var(--ease), visibility .7s}
+.boot.done{opacity:0;visibility:hidden}
+.boot p{font-size:12.5px;letter-spacing:.05em;color:var(--fg-faint)}
+.bar{width:150px;height:1px;background:var(--rule);overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:var(--fg);transform:scaleX(0);transform-origin:0 50%}
+
+.track{position:relative;z-index:1;height:560vh;min-height:3200px}
+
+@media (max-width:900px){
+  .veil{background:
+    linear-gradient(to bottom, rgba(242,240,236,.72) 0%, rgba(242,240,236,.18) 24%, rgba(242,240,236,.18) 76%, rgba(242,240,236,.74) 100%),
+    radial-gradient(100% 80% at 50% 48%, rgba(242,240,236,0) 0%, rgba(242,240,236,.40) 100%),
+    rgba(242,240,236,.24)}
+}
+@media (max-width:720px){
+  .nav a:not(.pill){display:none}
+  .mark{font-size:14px}
+  .nav .pill{height:38px;padding:0 16px;font-size:13.5px}
+  h1{max-width:12ch;font-size:clamp(30px, 9.8vw, 52px)}
+  .sub{font-size:15px;max-width:34ch}
+  .panel{padding:max(92px, calc(env(safe-area-inset-top, 0px) + 76px)) 18px max(88px, calc(env(safe-area-inset-bottom, 0px) + 72px))}
+  .foot{font-size:11px}
+}
+@media (max-width:420px){
+  .nav .pill{height:36px;padding:0 14px;font-size:13px}
+  h1{max-width:11ch;font-size:clamp(28px, 10.5vw, 40px)}
+  .eyebrow{font-size:11px;letter-spacing:.04em;max-width:28ch}
+  .cta .pill{width:100%;max-width:280px;height:44px;padding:0 20px;font-size:14px}
+}
+@media (max-height:520px) and (orientation:landscape){
+  .panel{padding:max(72px, calc(env(safe-area-inset-top, 0px) + 56px)) 24px max(64px, calc(env(safe-area-inset-bottom, 0px) + 48px))}
+  h1{font-size:clamp(28px, 8vh, 44px)}
+  .sub{margin-top:12px;font-size:14px}
+  .cta{margin-top:16px}
+}
+@media (prefers-reduced-motion:reduce){.foot i{animation:none}}
+</style>
+</head>
+<body>
+<div class="boot" id="boot"><div class="bar"><i id="bootBar"></i></div><p id="bootPct">LOADING 0%</p></div>
+
+<div class="stage"><canvas id="scene"></canvas><div class="veil"></div><div class="grain"></div></div>
+
+<i class="meter" id="meter"></i>
+
+<header class="chrome">
+  <a class="mark" href="/" aria-label="Abhed home"><svg viewBox="0 0 31.5 48.5" aria-hidden="true"><path d="M21.5 0 L21.5 19.5 L31.5 19.5 L31.5 29 L10 48.5 L10 28.5 L0.5 28.5 L0.5 18.5 Z" fill="#0d0c0b"/><rect x="0.5" y="18.5" width="9" height="10" fill="#f2f0ec"/><rect x="22" y="19.5" width="9.5" height="9.5" fill="#f2f0ec"/></svg>Abhed</a>
+  <nav class="nav"><a href="/fleet">Fleet</a><a href="/demo">Live Demo</a><a class="pill" href="/connect">Connect a company</a></nav>
+</header>
+
+<main class="panels">
+  <section class="panel" data-panel>
+    <p class="eyebrow">How Abhed works <span>&middot;</span> 1 of 3</p>
+    <h1>Agents act<br />in milliseconds.</h1>
+    <p class="sub">Refunds, emails, exports, record changes. Your AI agents do real work on their own, faster than anyone can watch.</p>
+    <div class="cta"><a class="pill" href="/demo">Start the live demo</a></div>
+  </section>
+  <section class="panel" data-panel>
+    <p class="eyebrow">The gate</p>
+    <h1>Every action meets the rulebook first.</h1>
+    <p class="sub">Deterministic rules, not another model. Same input, same decision, decided before the agent's code can act.</p>
+    <div class="cta"><a class="pill" href="/rules">Read the rulebook</a></div>
+  </section>
+  <section class="panel" data-panel>
+    <p class="eyebrow">The person and the proof</p>
+    <h1>Big moves wait<br />for a person.</h1>
+    <p class="sub">The right officer approves on their phone. Every decision lands on a ledger no one can edit.</p>
+    <div class="cta"><a class="pill" href="/fleet">Watch it live</a></div>
+  </section>
+</main>
+
+<footer class="foot" id="foot"><i></i><span id="live">Abhed &nbsp;&middot;&nbsp; the accountability layer for AI agents</span></footer>
+
+<div class="track"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /*
+   * The scene is drawn in code instead of decoded from a video. It is a pure function of scroll progress,
+   * so scrubbing lands on an exact frame instantly in both directions (the property an all-intra video gives
+   * a scrubbed clip), with nothing to download and nothing to seek.
+   */
+  var cv = document.getElementById("scene"), ctx = cv.getContext("2d");
+  var boot = document.getElementById("boot"), bootBar = document.getElementById("bootBar"), bootPct = document.getElementById("bootPct");
+  var meter = document.getElementById("meter"), live = document.getElementById("live");
+  var panels = [].slice.call(document.querySelectorAll("[data-panel]"));
+
+  /* Each panel owns [fadeInStart, fadeInEnd, fadeOutStart, fadeOutEnd] of page progress. The gaps between one
+     panel's fadeOutEnd and the next one's fadeInStart are deliberate dead zones (scene only), so two panels
+     are never readable at once. */
+  var CUES = [
+    [0.00, 0.00, 0.15, 0.23],
+    [0.35, 0.43, 0.57, 0.65],
+    [0.77, 0.85, 1.10, 1.20]
+  ];
+  var DRIFT = 22;
+
+  function clamp(v,a,b){ return v < a ? a : v > b ? b : v; }
+  function smooth(t){ return t*t*(3-2*t); }
+  function ramp(p,a,b){ if (b <= a) return p >= b ? 1 : 0; return smooth(clamp((p-a)/(b-a),0,1)); }
+  function lerp(a,b,t){ return a + (b-a)*t; }
+
+  var progress = 0, seekTo = 0, seekAt = 0, ready = false;
+  var W = 0, H = 0, textBottom = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  // the scene always starts below the tallest panel's text, so copy and drawing never overlap
+  function size(){
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    textBottom = 0;
+    panels.forEach(function(el){ var c = el.querySelector(".cta"); if (c) textBottom = Math.max(textBottom, c.getBoundingClientRect().bottom + DRIFT); });
+  }
+
+  function readScroll(){
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    progress = max > 0 ? clamp(window.pageYOffset / max, 0, 1) : 0;
+    seekTo = progress;
+  }
+
+  function paint(){
+    meter.style.transform = "scaleX(" + progress + ")";
+    for (var i = 0; i < panels.length; i++){
+      var c = CUES[i], el = panels[i];
+      var enter = ramp(progress, c[0], c[1]), leave = ramp(progress, c[2], c[3]);
+      var o = enter * (1 - leave), y = (1 - enter) * DRIFT - leave * DRIFT;
+      el.style.opacity = o;
+      el.style.transform = "translate3d(0," + y + "px,0)";
+      el.style.pointerEvents = o > 0.6 ? "auto" : "none";
+    }
+  }
+
+  /* ───────── the scene: agents → the gate → three outcomes → the ledger ───────── */
+  var INK = "13,12,11", ALLOW = "31,138,82", HUMAN = "194,122,18", BLOCK = "200,55,45", CYAN = "56,198,236";
+  var AGENTS = ["Rex", "Aria", "Atlas"];
+  var N = 30;
+  // kind of each action: mostly allowed, a few held for a person, a few refused at the gate
+  var KIND = []; for (var k = 0; k < N; k++) KIND.push(k % 7 === 3 ? "held" : k % 5 === 4 ? "block" : "allow");
+
+  function geo(){
+    var mobile = W < 720;
+    var bottom = H - (mobile ? 130 : 134);
+    var top = Math.min(Math.max(textBottom + (mobile ? 40 : 56), H*0.42), bottom - 150);
+    var midY = (top + bottom) / 2;
+    return {
+      mobile: mobile, top: top, bottom: bottom, midY: midY,
+      ax: mobile ? W*0.12 : W*0.16,               // agents column
+      gx: W*0.5,                                    // the gate
+      ox: mobile ? W*0.88 : W*0.82,                // outcomes column
+      lane: { allow: top + (bottom-top)*0.12, held: midY, block: bottom - (bottom-top)*0.12 },
+      ay: function(i){ return top + (bottom-top) * (0.2 + i*0.3); }
+    };
+  }
+
+  function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  function scene(p){
+    var g = geo();
+    ctx.clearRect(0,0,W,H);
+    var show = ramp(p, 0.0, 0.08);          // scene fades up as the page starts
+    var gateOn = ramp(p, 0.22, 0.4);         // the gate draws in during panel 2's approach
+    var personOn = ramp(p, 0.62, 0.8);       // the phone and the ledger arrive for panel 3
+    ctx.globalAlpha = 0.25 + 0.75*show;
+
+    // faint guide lanes
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,6]);
+    ctx.strokeStyle = "rgba(" + INK + ",.13)";
+    for (var i = 0; i < 3; i++){ ctx.beginPath(); ctx.moveTo(g.ax, g.ay(i)); ctx.lineTo(g.gx, g.midY); ctx.stroke(); }
+    ["allow","held","block"].forEach(function(l){ ctx.beginPath(); ctx.moveTo(g.gx, g.midY); ctx.lineTo(g.ox, g.lane[l]); ctx.stroke(); });
+    ctx.setLineDash([]);
+
+    // agents
+    ctx.font = "500 " + (g.mobile ? 11 : 13) + "px 'Inter Tight', Helvetica, Arial, sans-serif";
+    ctx.textAlign = "center";
+    for (var a = 0; a < 3; a++){
+      var y = g.ay(a), r = g.mobile ? 13 : 17, breathe = 1 + 0.06*Math.sin(p*40 + a);
+      ctx.fillStyle = "rgba(" + INK + ",.92)";
+      ctx.beginPath(); ctx.arc(g.ax, y, r*breathe, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#f2f0ec";
+      ctx.fillText(AGENTS[a][0], g.ax, y + 4.5);
+      ctx.fillStyle = "rgba(" + INK + ",.55)";
+      if (g.mobile) ctx.fillText(AGENTS[a], g.ax, y + r + 16);
+      else { ctx.textAlign = "right"; ctx.fillText(AGENTS[a], g.ax - r - 12, y + 4.5); ctx.textAlign = "center"; }
+    }
+
+    // the gate: a vertical bar that grows in, with the Abhed label
+    var gh = (g.bottom - g.top) * 0.86 * (0.15 + 0.85*gateOn);
+    ctx.fillStyle = "rgba(" + INK + "," + (0.25 + 0.7*gateOn) + ")";
+    rr(g.gx - 5, g.midY - gh/2, 10, gh, 5); ctx.fill();
+    if (gateOn > 0.01){
+      ctx.globalAlpha = (0.25 + 0.75*show) * gateOn;
+      ctx.fillStyle = "rgba(" + INK + ",.8)";
+      ctx.font = "500 " + (g.mobile ? 11 : 12.5) + "px 'Inter Tight', Helvetica, Arial, sans-serif";
+      ctx.fillText("ABHED · RULEBOOK", g.gx, g.midY - gh/2 - 14);
+      ctx.globalAlpha = 0.25 + 0.75*show;
+    }
+
+    // outcome labels + live tallies
+    var tally = { allow: 0, held: 0, block: 0 };
+    ctx.textAlign = g.mobile ? "right" : "left";
+
+    // actions in flight: a pure function of p
+    for (var n = 0; n < N; n++){
+      var start = 0.02 + (n / N) * 0.86, dur = 0.13;
+      var u = (p - start) / dur;
+      if (u <= 0) continue;
+      var kind = KIND[n], ai = n % 3, color = kind === "allow" ? ALLOW : kind === "held" ? HUMAN : BLOCK;
+      var sx = g.ax, sy = g.ay(ai), x, yy, alpha = 1;
+      if (u < 0.5){                      // agent → gate
+        var t = smooth(u / 0.5); x = lerp(sx, g.gx - 8, t); yy = lerp(sy, g.midY, t); color = INK;
+      } else if (kind === "block"){       // refused at the gate: a short burst, then nothing
+        var b = clamp((u - 0.5) / 0.25, 0, 1);
+        if (b >= 1){ tally.block++; continue; }
+        ctx.strokeStyle = "rgba(" + BLOCK + "," + (1-b) + ")"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(g.gx - 8, g.midY, 4 + b*18, 0, Math.PI*2); ctx.stroke();
+        continue;
+      } else {                            // gate → outcome lane
+        var t2 = smooth(clamp((u - 0.5) / 0.5, 0, 1));
+        x = lerp(g.gx + 8, g.ox, t2); yy = lerp(g.midY, g.lane[kind], t2);
+        if (u >= 1){ tally[kind]++; continue; }
+      }
+      ctx.fillStyle = "rgba(" + color + "," + alpha + ")";
+      ctx.beginPath(); ctx.arc(x, yy, g.mobile ? 4 : 5, 0, Math.PI*2); ctx.fill();
+    }
+
+    var labels = { allow: ["ran on its own", ALLOW], held: ["asked a person", HUMAN], block: ["refused at the gate", BLOCK] };
+    ["allow","held","block"].forEach(function(l){
+      var ly = g.lane[l], lx = g.mobile ? g.ox : g.ox + 16;
+      ctx.fillStyle = "rgba(" + labels[l][1] + ",1)";
+      ctx.beginPath(); ctx.arc(g.ox, ly, 4, 0, Math.PI*2); ctx.fill();
+      if (!g.mobile){
+        ctx.font = "500 15px 'Inter Tight', Helvetica, Arial, sans-serif";
+        ctx.fillStyle = "rgba(" + INK + ",.9)";
+        ctx.fillText(String(tally[l]), lx, ly + 5);
+        ctx.font = "400 12.5px 'Inter Tight', Helvetica, Arial, sans-serif";
+        ctx.fillStyle = "rgba(" + INK + ",.55)";
+        ctx.fillText(labels[l][0], lx + 26, ly + 4.5);
+      }
+    });
+
+    // panel 3: the phone that approves and the ledger that records
+    if (personOn > 0.01){
+      ctx.globalAlpha = personOn;
+      var px = g.ox + 150, py = g.lane.held - 34;
+      if (g.mobile){ px = g.ox - 20; py = g.lane.held - 72; }
+      ctx.save(); if (g.mobile){ ctx.translate(px + 20, py + 34); ctx.scale(0.55, 0.55); ctx.translate(-px - 20, -py - 34); }
+      ctx.fillStyle = "rgba(" + INK + ",.92)"; rr(px, py, 40, 68, 9); ctx.fill();
+      ctx.fillStyle = "#f2f0ec"; rr(px + 4, py + 7, 32, 52, 5); ctx.fill();
+      var ok = ramp(p, 0.8, 0.88);
+      ctx.strokeStyle = "rgba(" + ALLOW + "," + ok + ")"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(px + 13, py + 33); ctx.lineTo(px + 18, py + 38); ctx.lineTo(px + 27, py + 27); ctx.stroke();
+      ctx.restore();
+      if (!g.mobile){
+        ctx.setLineDash([2,5]); ctx.strokeStyle = "rgba(" + HUMAN + ",.6)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(g.ox + 4, g.lane.held); ctx.lineTo(px - 6, g.lane.held); ctx.stroke(); ctx.setLineDash([]);
+      }
+      // ledger: a chain of blocks that grows with every decision
+      var blocks = Math.min(14, Math.floor(ramp(p, 0.66, 0.98) * 14));
+      var bw = g.mobile ? 14 : 22, gap = g.mobile ? 6 : 10, total = blocks * (bw + gap) - gap;
+      var bx = W*0.5 - total/2, by = g.bottom + (g.mobile ? 26 : 34);
+      for (var q = 0; q < blocks; q++){
+        var x0 = bx + q*(bw + gap);
+        ctx.fillStyle = q === blocks - 1 ? "rgba(" + CYAN + ",1)" : "rgba(" + INK + ",.82)";
+        rr(x0, by, bw, bw, 4); ctx.fill();
+        if (q < blocks - 1){ ctx.strokeStyle = "rgba(" + INK + ",.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0 + bw, by + bw/2); ctx.lineTo(x0 + bw + gap, by + bw/2); ctx.stroke(); }
+      }
+      if (!g.mobile && blocks){
+        ctx.textAlign = "center"; ctx.font = "400 12px 'Inter Tight', Helvetica, Arial, sans-serif"; ctx.fillStyle = "rgba(" + INK + ",.5)";
+        ctx.fillText("ledger · each record sealed to the one before it", W*0.5, by + bw + 20);
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* rAF loop, never cancelled. The drawn position eases toward the scroll target instead of snapping:
+     that is what turns a jumpy scrub into a smooth one. */
+  function frame(){
+    if (ready){
+      var gap = seekTo - seekAt;
+      if (Math.abs(gap) > 0.0004) seekAt += gap * 0.115;
+    }
+    scene(seekAt);
+    paint();
+    requestAnimationFrame(frame);
+  }
+
+  /* ───────── boot: wait for the font and the first live numbers, never longer than 2.5 s ───────── */
+  function setProgress(f){ bootBar.style.transform = "scaleX(" + f + ")"; bootPct.textContent = "LOADING " + Math.round(f*100) + "%"; }
+  var started = false;
+  function start(){ if (started) return; started = true; setProgress(1); ready = true; boot.classList.add("done"); readScroll(); seekAt = seekTo; }
+  var steps = 0;
+  function step(){ steps++; setProgress(Math.min(1, steps / 2)); if (steps >= 2) setTimeout(start, 180); }
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(step, step);
+  setTimeout(start, 2500);
+
+  /* ───────── the real system, live: what Abhed decided in the last few minutes ───────── */
+  function ago(ms){ var s = Math.max(1, Math.round(ms/1000)); return s < 60 ? s + "s ago" : Math.round(s/60) + " min ago"; }
+  var WORD = { ALLOWED: "allowed", EXECUTED: "executed", NEEDS_APPROVAL: "sent to a person", BLOCKED: "refused" };
+  var firstLive = true;
+  function pull(){
+    fetch("/api/fleet", { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(f){
+      if (f && f.pulse){
+        var last = (f.feed || []).filter(function(x){ return WORD[x.decision]; })[0];
+        var txt = "<b>live</b> &nbsp;&middot;&nbsp; " + f.pulse.last5 + " agent decisions in 5 min &nbsp;&middot;&nbsp; " + f.pulse.connected + " " + (f.pulse.connected === 1 ? "company" : "companies") + " connected";
+        if (last && window.innerWidth > 720) txt += " &nbsp;&middot;&nbsp; last: " + last.actor + " " + String(last.action).replace(/_/g, " ") + " " + WORD[last.decision] + ", " + ago(f.now - last.ts);
+        live.innerHTML = txt;
+      }
+    }).catch(function(){}).then(function(){ if (firstLive){ firstLive = false; step(); } });
+  }
+  pull(); setInterval(pull, 8000);
+
+  window.addEventListener("scroll", readScroll, { passive:true });
+  window.addEventListener("resize", function(){ size(); readScroll(); });
+
+  size();
+  readScroll();
+  paint();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
