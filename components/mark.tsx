@@ -3,7 +3,7 @@
 import { useId } from 'react';
 
 /** The Abhed mark: an angular bolt with two notches. `ink` for light pages, `silver` for dark ones. */
-export function AbhedMark({ size = 22, variant = 'ink' }: { size?: number; variant?: 'ink' | 'silver' }) {
+export function AbhedMark({ size = 22, variant = 'silver' }: { size?: number; variant?: 'ink' | 'silver' }) {
   const id = useId().replace(/:/g, '');
   const silver = variant === 'silver';
   return (

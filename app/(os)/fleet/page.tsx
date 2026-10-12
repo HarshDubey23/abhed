@@ -36,7 +36,7 @@ interface Fleet {
   approvers: { name: string; online: boolean; push: boolean; device: string }[];
 }
 
-const TONE: Record<string, string> = { banking: '#f5c451', healthcare: '#3ee0a1', ecommerce: '#ff8a2a' };
+const TONE: Record<string, string> = { banking: '#ededed', healthcare: '#a1a1a1', ecommerce: '#6e6e6e' };
 const short = (c: string) => c.replace(' (fictional)', '');
 
 export default function FleetPage() {

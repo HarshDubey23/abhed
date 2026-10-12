@@ -150,7 +150,7 @@ function TenantSwitch({ current }: { current?: string }) {
       }}
     >
       {COMPANIES.map(([id, name]) => (
-        <option key={id} value={id} style={{ background: '#fff', color: '#0c0e12' }}>
+        <option key={id} value={id} style={{ background: '#111', color: '#ededed' }}>
           {name}
         </option>
       ))}
@@ -166,9 +166,26 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Cards light up softly under the cursor: one listener, CSS does the rest. */
+function useSpotlight() {
+  useEffect(() => {
+    const SEL = '.panel, .kpi, .wr-s, .agent-card, .act, .wr-card, .r-card';
+    const move = (e: PointerEvent) => {
+      const el = (e.target as Element | null)?.closest?.(SEL) as HTMLElement | null;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', `${e.clientX - r.left}px`);
+      el.style.setProperty('--my', `${e.clientY - r.top}px`);
+    };
+    document.addEventListener('pointermove', move, { passive: true });
+    return () => document.removeEventListener('pointermove', move);
+  }, []);
+}
+
 function ShellInner({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { view } = useWorld();
+  useSpotlight();
   return (
     <div className="shell">
       <header className="topbar">

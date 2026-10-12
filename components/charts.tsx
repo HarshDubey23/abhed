@@ -117,4 +117,4 @@ export function HBars({ items, color = 'var(--info)' }: { items: { label: string
   );
 }
 
-export const PALETTE = ['#C2261C', '#B25E00', '#1E44D6', '#5B6270', '#0F7B45', '#8A6A00'];
+export const PALETTE = ['#FF6B6B', '#E5A84B', '#EDEDED', '#7A7A7A', '#5CC98B', '#D6B85A'];

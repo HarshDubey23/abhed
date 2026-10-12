@@ -386,7 +386,7 @@ function SidePanels() {
 function Heatmap() {
   const { view } = useWorld();
   if (!view) return null;
-  const colors = ['var(--line-2)', 'rgba(15,123,69,0.35)', 'rgba(178,94,0,0.5)', 'rgba(194,38,28,0.65)'];
+  const colors = ['var(--line-2)', 'rgba(92,201,139,0.35)', 'rgba(229,168,75,0.5)', 'rgba(255,107,107,0.6)'];
   return (
     <div className="panel">
       <div className="panel-title">
