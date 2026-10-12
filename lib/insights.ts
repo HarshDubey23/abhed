@@ -1,6 +1,7 @@
 import { verifyChain } from './chain';
 import { agent, effectiveOutcomes, nameOf, verifyLedger } from './engine';
 import { packFor } from './sectors';
+import { trustScore } from './trust';
 import type { LedgerRecord, World } from './types';
 
 const pct = (xs: number[], p: number) => {
@@ -83,6 +84,7 @@ export function buildInsights(w: World, now = Date.now()) {
       costInr: Math.round([...work, ...llm].reduce((s, r) => s + (r.cost ?? 0), 0) * 100) / 100,
       valueInr: ok.reduce((s, r) => s + Number(r.meta?.value ?? 0), 0),
       riskScore: Math.min(100, crit * 40 + blockedN * 8 + (a.risk === 'HIGH' ? 20 : a.risk === 'MEDIUM' ? 10 : 0)),
+      trust: (({ score, band, recommendation }) => ({ score, band, recommendation }))(trustScore(w, a.id)),
     };
   });
 

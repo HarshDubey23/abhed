@@ -1,6 +1,8 @@
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib';
 import { activeRules, nameOf } from './engine';
+import { complianceEvidence } from './compliance';
 import { buildInsights } from './insights';
+import { trustScore } from './trust';
 import { packFor } from './sectors';
 import type { World } from './types';
 
@@ -147,6 +149,19 @@ export async function auditPdf(w: World, opts: { requestedBy: string }) {
       { t: String(a.valueInr), w: 50 },
       { t: String(a.riskScore), w: 40, color: a.riskScore >= 60 ? red : ink },
     ]);
+
+  h1('3b. Abhed Trust Score (earned autonomy)');
+  for (const a of w.agents) {
+    const t = trustScore(w, a.id);
+    text(`${a.name}: ${t.score} · ${t.band} · ${t.recommendation}`, { size: 8.5, color: t.band === 'High risk' ? red : t.band === 'Trusted' ? green : ink });
+  }
+
+  h1('3c. Compliance evidence (live counts)');
+  for (const c of complianceEvidence(w)) {
+    text(`${c.framework}: ${c.control}`, { f: bold, size: 8.5 });
+    text(c.evidence, { size: 8.5, color: grey, x: M + 10 });
+  }
+  text('Mapping is Abhed\'s reading of each framework, not legal advice.', { size: 7.5, color: grey });
 
   h1('4. Accountability chain (high-impact actions that ran)');
   if (!ins.chains.length) text('No high-impact action has been approved and executed yet.', { color: grey });

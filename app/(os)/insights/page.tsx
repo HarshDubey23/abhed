@@ -159,6 +159,8 @@ export default function InsightsPage() {
               <th className="r">Cost ₹</th>
               <th className="r">Value ₹</th>
               <th>Risk</th>
+              <th>Trust score</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -184,6 +186,14 @@ export default function InsightsPage() {
                   <div className="bar">
                     <span style={{ width: `${a.riskScore}%`, background: a.riskScore >= 60 ? 'var(--block)' : a.riskScore >= 30 ? 'var(--warn)' : 'var(--allow)' }} />
                   </div>
+                </td>
+                <td title={a.trust.recommendation}>
+                  <b style={{ color: a.trust.band === 'Trusted' ? 'var(--allow)' : a.trust.band === 'Standard' ? 'var(--info)' : a.trust.band === 'Watch' ? 'var(--warn)' : 'var(--block)' }}>{a.trust.score}</b> <span className="muted">{a.trust.band}</span>
+                </td>
+                <td>
+                  <a className="muted" href={`/api/audit?agent=${a.id}&by=Judge`} download>
+                    report ⤓
+                  </a>
                 </td>
               </tr>
             ))}

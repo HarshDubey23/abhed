@@ -6,7 +6,7 @@ import { ago, Chip, hhmm, Qr, useWorld } from '@/components/app';
 import { Donut, HBars, PALETTE, SpeedChart } from '@/components/charts';
 
 type Step = { at: number; kind: string; text?: string; action?: string; decision?: string; reason?: string; ruleRef?: string; approvalId?: string; gatewayMs?: number; params?: Record<string, unknown> };
-type Agent = { id: string; name: string; onSite?: boolean; owner: string; status: string; statusReason?: string; purpose?: string; actions: number; auto: number; held: number; blocked: number; tokens: number; costInr: number; valueInr: number; riskScore: number; llmCalls: number };
+type Agent = { id: string; name: string; onSite?: boolean; trust?: { score: number; band: string; recommendation: string }; owner: string; status: string; statusReason?: string; purpose?: string; actions: number; auto: number; held: number; blocked: number; tokens: number; costInr: number; valueInr: number; riskScore: number; llmCalls: number };
 type Series = { bucketMs: number; points: { t: number; auto: number; held: number; blocked: number; p95ms: number | null }[] };
 interface Fleet {
   now: number;
@@ -140,6 +140,11 @@ export default function FleetPage() {
                     <b style={{ fontWeight: 500 }}>{a.name}</b>
                     <Chip d={a.status} />
                     {a.onSite && <span className="chip chip-info">on website</span>}
+                    {a.trust && (
+                      <span className={`chip ${a.trust.band === 'Trusted' ? 'chip-allow' : a.trust.band === 'Standard' ? 'chip-info' : a.trust.band === 'Watch' ? 'chip-warn' : 'chip-block'}`} title={`Abhed Trust Score · ${a.trust.recommendation}`}>
+                        trust {a.trust.score}
+                      </span>
+                    )}
                   </div>
                   <div className="muted" style={{ fontSize: 11.5 }}>
                     {a.purpose} · owner {a.owner}
@@ -149,6 +154,9 @@ export default function FleetPage() {
                   </div>
                   {a.status === 'PAUSED' && <div style={{ fontSize: 11, color: 'var(--block)' }}>{a.statusReason}</div>}
                 </div>
+                <a className="btn btn-ghost btn-sm" href={`/api/audit?tenant=${c.tenant}&agent=${a.id}&by=Judge`} download title={`Download ${a.name}'s report (PDF)`}>
+                  ⤓
+                </a>
                 {a.status === 'PAUSED' ? (
                   <button className="btn btn-ghost btn-sm" onClick={() => act(c.tenant, 'resume', a.id)}>
                     Resume

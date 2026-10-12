@@ -1,4 +1,5 @@
 import { json } from '@/lib/api';
+import { complianceEvidence } from '@/lib/compliance';
 import { dlpScan, OWASP, scanInjection } from '@/lib/security';
 import { packFor } from '@/lib/sectors';
 import { getWorld } from '@/lib/store';
@@ -34,6 +35,7 @@ export async function GET() {
     owasp: Object.values(OWASP).map((k) => ({ category: k, count: byOwasp.get(k) ?? 0 })),
     posture,
     unregistered: w.unregistered,
+    compliance: complianceEvidence(w),
   });
 }
 

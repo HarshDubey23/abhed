@@ -76,3 +76,23 @@ describe('red-team mode', () => {
       expect(w.runs![0].model).toMatch(/red-team/);
     }));
 });
+
+describe('trust score, agent report, compliance', () => {
+  it('scores agents from their real record and produces a per-agent PDF', async () => {
+    const { seedWorld } = await import('../lib/seed');
+    const { gateway } = await import('../lib/engine');
+    const { trustScore } = await import('../lib/trust');
+    const { agentPdf } = await import('../lib/agent-pdf');
+    const { complianceEvidence } = await import('../lib/compliance');
+    const w = seedWorld(Date.now(), { sector: 'banking', history: false });
+    const fresh = trustScore(w, 'rex').score;
+    for (const c of ['C-1029', 'C-3341', 'C-5012', 'C-2210', 'C-4410']) gateway(w, { actorType: 'agent', actorId: 'rex', action: 'lookup_transaction', params: { customer: c } });
+    expect(trustScore(w, 'rex').score).toBeGreaterThan(fresh);
+    gateway(w, { actorType: 'agent', actorId: 'sage', action: 'export_customers', params: { records: 1206 } });
+    const sage = trustScore(w, 'sage');
+    expect(sage.band).toBe('High risk');
+    const pdf = await agentPdf(w, 'sage', { requestedBy: 'Test' });
+    expect(Buffer.from(pdf).subarray(0, 4).toString()).toBe('%PDF');
+    expect(complianceEvidence(w).length).toBe(8);
+  });
+});

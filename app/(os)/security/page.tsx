@@ -8,6 +8,7 @@ interface Sec {
   owasp: { category: string; count: number }[];
   posture: { id: string; name: string; status: string; delegations: number; findings: string[] }[];
   unregistered: { id: string; attempts: number; lastAction: string }[];
+  compliance: { framework: string; control: string; evidence: string }[];
 }
 interface Chain {
   publicKey: string;
@@ -179,6 +180,38 @@ export default function SecurityPage() {
               ))}
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginBottom: 14, overflowX: 'auto' }}>
+        <div className="panel-title">
+          <span>
+            <b>Compliance evidence pack</b> · live counts from this company’s ledger
+          </span>
+          <a className="muted" href="/api/audit?by=Compliance%20reviewer" download>
+            in the audit PDF ⤓
+          </a>
+        </div>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Framework</th>
+              <th>Control Abhed enforces</th>
+              <th>Evidence right now</th>
+            </tr>
+          </thead>
+          <tbody>
+            {s?.compliance.map((c) => (
+              <tr key={c.framework}>
+                <td style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{c.framework}</td>
+                <td className="muted">{c.control}</td>
+                <td>{c.evidence}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="dim" style={{ fontSize: 11, marginTop: 6 }}>
+          Mapping is Abhed’s reading of each framework, not legal advice.
         </div>
       </div>
 
