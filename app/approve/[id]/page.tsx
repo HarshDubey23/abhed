@@ -5,8 +5,7 @@ import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { AbhedMark } from '@/components/mark';
 import type { Approval } from '@/lib/types';
 import { authHeader, saveToken } from '@/lib/approver-client';
-import GazeVideo from '../gaze-video';
-import '../approve.css';
+import '../ax.css';
 
 interface Payload {
   approval: Approval & { currentHash: string; assigneeNames?: string[] };
@@ -22,27 +21,6 @@ interface Payload {
 type Tab = 'why' | 'evidence' | 'reasoning' | 'fingerprint';
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
-
-function Icon({ kind }: { kind: 'shield' | 'clock' | 'print' }) {
-  if (kind === 'clock')
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </svg>
-    );
-  if (kind === 'print')
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-        <path d="M12 3a8 8 0 0 0-8 8v2M20 11a8 8 0 0 0-5-7.4M8 20.5A12 12 0 0 1 7 11a5 5 0 0 1 10 0c0 2 0 4-.6 6M12 11v3a14 14 0 0 1-1.5 7M16.3 20a20 20 0 0 0 .7-3" />
-      </svg>
-    );
-  return (
-    <svg viewBox="-8 -1 48 50" fill="currentColor" aria-hidden="true">
-      <path d="M21.5 0 L21.5 19.5 L31.5 19.5 L31.5 29 L10 48.5 L10 28.5 L0.5 28.5 L0.5 18.5 Z" />
-    </svg>
-  );
-}
 
 export default function ApprovePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -168,103 +146,114 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
     return () => clearTimeout(t);
   }, [done, fromApprover, router]);
 
-  const title = !ap ? (
-    err ? (
-      <>
-        this card
-        <br />
-        isn’t here
-      </>
-    ) : (
-      <>
-        opening
-        <br />
-        the card…
-      </>
-    )
-  ) : ap.status === 'EXECUTED' || ap.status === 'APPROVED' ? (
-    <>
-      approved.
-      <br />
-      your name is on it.
-    </>
-  ) : ap.status === 'PENDING' && myVote ? (
-    <>
-      key {ap.votes.length} of {ap.twoKey} turned.
-      <br />
-      one more person.
-    </>
-  ) : ap.status !== 'PENDING' ? (
-    <>
-      {ap.status.toLowerCase()}.
-      <br />
-      nothing moved.
-    </>
-  ) : isRule ? (
-    <>
-      a new rule wants
-      <br />
-      to go live
-    </>
-  ) : amount !== null ? (
-    <>
-      {actor.toLowerCase()} wants to refund
-      <br />
-      {inr(amount)}
-    </>
-  ) : (
-    <>
-      {actor.toLowerCase()} wants to
-      <br />
-      {ap.req.action.replace(/_/g, ' ')}
-    </>
-  );
-
+  const company = data?.company.replace(' (fictional)', '') ?? '';
+  const target = ap ? (ap.summary.split('→')[1] ?? '').replace(/refund ₹[\d,]+/i, '').trim() : '';
+  const role = ap ? ap.approverRole.replace('approver_', '').replace(/_/g, ' ') : '';
+  const executed = ap?.status === 'EXECUTED' || ap?.status === 'APPROVED';
   const tabs: [Tab, string][] = [
-    ['why', 'why you'],
-    ['evidence', 'evidence'],
-    ['reasoning', 'agent’s reasoning'],
-    ['fingerprint', 'fingerprint'],
+    ['why', 'Why you'],
+    ['evidence', 'Evidence'],
+    ['reasoning', 'Agent’s reasoning'],
+    ['fingerprint', 'Fingerprint'],
   ];
 
   return (
-    <footer className="ap" aria-label="Approval">
-      <GazeVideo />
+    <main className="ax" aria-label="Approval">
+      <div className="ax-shell" style={{ paddingBottom: pending && me?.can.ok ? 180 : 60 }}>
+        <header className="ax-bar">
+          {fromApprover ? (
+            <button className="ax-back" onClick={() => router.push('/approver')}>
+              ← Requests
+            </button>
+          ) : (
+            <span className="ax-brand">
+              <AbhedMark size={22} /> Abhed <small>Approvals</small>
+            </span>
+          )}
+          <span className="ax-bar-r">
+            {ap && pending && (
+              <span className={`ax-pill ${secs < 120 ? 'warn' : 'on'}`}>
+                <i />
+                <span className="ax-timer">{clock}</span> left
+              </span>
+            )}
+            {ap && done && (
+              <span className={`ax-pill ${executed ? 'on' : ap.status === 'PENDING' ? 'warn' : 'bad'}`}>
+                <i />
+                {executed ? 'Approved' : ap.status === 'PENDING' ? 'Key 1 turned' : ap.status.charAt(0) + ap.status.slice(1).toLowerCase()}
+              </span>
+            )}
+          </span>
+        </header>
 
-      <div className="ap-jobs">
-        <span className="ap-tag">{!ap ? 'abhed approval' : done ? 'recorded in the ledger' : `waiting for you · ${clock}`}</span>
-        <span className="ap-headline ap-job-title">{title}</span>
+        {!ap && (
+          <div className="ax-empty" style={{ marginTop: 24 }}>
+            <b>{err ? 'This request isn’t here' : 'Opening the request…'}</b>
+            {err ? 'It may have expired or been decided already.' : 'One moment.'}
+          </div>
+        )}
 
-        {ap && !done && (
+        {ap && pending && (
           <>
-            <div className="ap-nav">
-              {tabs.map(([k, label]) => (
-                <button key={k} aria-pressed={tab === k} onClick={() => choose(k)}>
-                  {label}
+            <section className="ax-card" style={{ marginTop: 16 }}>
+              <div className="ax-card-t">
+                <span>{company}</span>
+                <span>
+                  needs {role}
+                  {ap.twoKey > 1 ? ` × ${ap.twoKey}` : ''}
+                </span>
+              </div>
+              <div className="ax-what">
+                {isRule ? (
+                  <>
+                    <b>{actor}</b> proposes a rule change
+                  </>
+                ) : amount !== null ? (
+                  <>
+                    <b>{actor}</b> wants to refund
+                  </>
+                ) : (
+                  <>
+                    <b>{actor}</b> wants to
+                  </>
+                )}
+              </div>
+              <div className="ax-amount">{isRule ? 'New rule' : amount !== null ? inr(amount) : ap.req.action.replace(/_/g, ' ')}</div>
+              {target && <div className="ax-what">{target}</div>}
+              <div className="ax-meta">
+                {(ap.ruleIds.length ? ap.ruleIds : ['no rule covers this']).map((r) => (
+                  <span key={r} className="ax-tag">
+                    {r}
+                  </span>
+                ))}
+                {ap.assigneeNames?.length ? <span className="ax-tag">routed to {ap.assigneeNames.join(', ')}</span> : null}
+                {ap.escalationLevel ? <span className="ax-tag">escalated</span> : null}
+              </div>
+              {ap.hold && (
+                <p className="ax-p" style={{ marginTop: 14, color: 'var(--hold)' }}>
+                  On hold by {ap.hold.by}
+                  {ap.hold.note ? `: “${ap.hold.note}”` : ''}
+                </p>
+              )}
+            </section>
+
+            <nav className="ax-tabs" style={{ marginTop: 16 }} aria-label="Details">
+              {tabs.map(([k, l]) => (
+                <button key={k} className="ax-tab" aria-pressed={tab === k} onClick={() => choose(k)}>
+                  {l}
                 </button>
               ))}
-            </div>
-            <div className="ap-detail">
+            </nav>
+            <section className="ax-card" key={tab}>
               {tab === 'why' && (
                 <>
-                  <div>{ap.summary}.</div>
-                  <div style={{ marginTop: '0.6em' }}>{ap.why}</div>
-                  <div style={{ marginTop: '0.6em', opacity: 0.6 }}>
-                    {data?.company.replace(' (fictional)', '')} · {ap.ruleIds.join(' · ') || 'no rule covers this high-impact action'} · needs {ap.approverRole.replace('_', ' ')}
-                    {ap.twoKey > 1 ? ` × ${ap.twoKey}` : ''}
-                    {ap.assigneeNames?.length ? ` · routed to ${ap.assigneeNames.join(', ')}` : ''}
-                  </div>
-                  {ap.hold && (
-                    <div style={{ marginTop: '0.6em' }}>
-                      on hold by {ap.hold.by}
-                      {ap.hold.note ? `: “${ap.hold.note}”` : ''}
-                    </div>
-                  )}
+                  <p className="ax-p">{ap.why}</p>
                   {ap.history?.length ? (
-                    <div style={{ marginTop: '0.6em', opacity: 0.6 }}>
+                    <div style={{ marginTop: 14 }}>
                       {ap.history.slice(-3).map((h) => (
-                        <div key={h.at}>
-                          {h.by} {h.what}
+                        <div className="ax-kv" key={h.at}>
+                          <span>{h.by}</span>
+                          <span>{h.what}</span>
                         </div>
                       ))}
                     </div>
@@ -273,138 +262,149 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
               )}
               {tab === 'evidence' &&
                 ap.evidence.map((e) => (
-                  <div className="ap-detail-row" key={e.label}>
+                  <div className="ax-kv" key={e.label}>
                     <span>{e.label}</span>
                     <span>{e.value}</span>
                   </div>
                 ))}
               {tab === 'reasoning' && (
-                <div>
-                  <span style={{ opacity: 0.6 }}>untrusted, shown after the facts: </span>“{ap.agentReasoning ?? (isRule ? 'a person proposed this, not an agent.' : 'no reasoning given.')}”
-                </div>
+                <>
+                  <p className="ax-p dim">Untrusted. Shown after the facts, never instead of them.</p>
+                  <p className="ax-p" style={{ marginTop: 10 }}>
+                    “{ap.agentReasoning ?? (isRule ? 'A person proposed this, not an agent.' : 'No reasoning given.')}”
+                  </p>
+                </>
               )}
               {tab === 'fingerprint' && (
-                <div>
-                  this approval is bound to the exact action. change one rupee and it’s void.
-                  <div className="ap-mono" style={{ marginTop: '0.6em', opacity: 0.7 }}>
-                    {ap.actionHash}
-                  </div>
-                </div>
+                <>
+                  <p className="ax-p">Your approval is bound to this exact action. Change one rupee, the customer or the account, and it is void.</p>
+                  <div className="ax-hash">{ap.actionHash}</div>
+                </>
               )}
-            </div>
+            </section>
+
+            {!me ? (
+              <section className="ax-card">
+                <div className="ax-card-t">Sign in to decide</div>
+                <label className="ax-field">
+                  <span>Who are you</span>
+                  <select className="ax-input" value={who} onChange={(e) => setWho(e.target.value)}>
+                    {people.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} · {p.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="ax-field">
+                  <span>PIN</span>
+                  <input className="ax-input ax-pin" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Your PIN" inputMode="numeric" type="password" />
+                </label>
+                <button className="ax-btn primary" disabled={sending || pin.length < 4 || !who} onClick={signIn}>
+                  Sign in
+                </button>
+                <p className="ax-foot" style={{ textAlign: 'left' }}>
+                  Your decision is signed with your identity as a {company} approver.
+                </p>
+              </section>
+            ) : (
+              <section className="ax-card">
+                <div className="ax-set" style={{ paddingTop: 0 }}>
+                  <span>
+                    {me.name}
+                    <small>{me.title}</small>
+                  </span>
+                  <button
+                    className="ax-link"
+                    onClick={() => {
+                      saveToken(data!.tenant, null);
+                      void load();
+                    }}
+                  >
+                    Switch
+                  </button>
+                </div>
+                {!me.can.ok && <p className="ax-err">{me.can.why}</p>}
+                <input className="ax-input ax-note" value={note} onChange={(e) => setNote(e.target.value.slice(0, 160))} placeholder="Note (optional)" />
+                <div className="ax-row" style={{ marginTop: 10 }}>
+                  {ap.hold ? (
+                    <button className="ax-btn ghost sm" disabled={sending} onClick={() => decide('release')}>
+                      Release hold
+                    </button>
+                  ) : (
+                    <button className="ax-btn ghost sm" disabled={sending || !me.can.ok} onClick={() => decide('hold')}>
+                      Hold
+                    </button>
+                  )}
+                  {ap.approverRole !== 'executive' && ap.kind !== 'rule_change' && (
+                    <button className="ax-btn ghost sm" disabled={sending} onClick={() => decide('escalate')}>
+                      Escalate
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+            {err && <p className="ax-err">{err}</p>}
+
+            {me?.can.ok && (
+              <div className="ax-dock">
+                <div className="ax-dock-in">
+                  <div className="ax-row">
+                    <button className="ax-btn danger" disabled={sending} onClick={() => decide('reject')}>
+                      Reject
+                    </button>
+                    <button className="ax-btn primary" disabled={sending} onClick={() => decide('approve')} style={{ flex: 1.6 }}>
+                      {sending ? 'Signing…' : 'Approve'}
+                    </button>
+                  </div>
+                  <p className="ax-foot" style={{ marginTop: 0 }}>
+                    Approves only this exact action, once, before the timer ends.
+                  </p>
+                </div>
+              </div>
+            )}
           </>
         )}
 
         {ap && done && (
-          <div className="ap-nav ap-facts">
-            {ap.status === 'EXECUTED' && ap.executedSeq && <span>record #{ap.executedSeq}</span>}
-            {ap.votes.map((v) => (
-              <span key={v.name + v.at}>
-                {v.name} · {(v.decisionMs / 1000).toFixed(1)} s · evidence {v.evidenceViewed ? 'opened' : 'not opened'}
-              </span>
-            ))}
-            <span>{ap.summary}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="ap-logo" role="img" aria-label="Abhed">
-        <span className="ap-wordmark">
-          <AbhedMark size={34} /> Abhed
-        </span>
-      </div>
-
-      <div className="ap-contact">
-        <span className="ap-tag">{done ? 'ledger' : 'your call'}</span>
-        {ap && pending && !me ? (
           <>
-            <p className="ap-note" style={{ marginTop: 0 }}>
-              sign in as a {data?.company.replace(' (fictional)', '').toLowerCase()} approver. your decision is signed with your identity.
-            </p>
-            <select className="ap-name" value={who} onChange={(e) => setWho(e.target.value)} aria-label="Who are you">
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.title}
-                </option>
-              ))}
-            </select>
-            <input className="ap-name" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="your PIN" inputMode="numeric" type="password" aria-label="PIN" />
-            <div className="ap-contact-links">
-              <button disabled={sending || pin.length < 4 || !who} onClick={signIn}>
-                sign in →
-              </button>
-            </div>
-          </>
-        ) : ap && pending && me ? (
-          <>
-            <p className="ap-note" style={{ marginTop: 0 }}>
-              signed in as {me.name.toLowerCase()} · {me.title.toLowerCase()}{' '}
-              <button style={{ textDecoration: 'underline', background: 'none', border: 0, color: 'inherit', cursor: 'pointer', font: 'inherit' }} onClick={() => { saveToken(data!.tenant, null); void load(); }}>
-                switch
-              </button>
-            </p>
-            {me.can.ok ? (
-              <div className="ap-contact-links">
-                <button className="ap-primary" disabled={sending} onClick={() => decide('approve')}>
-                  approve it →
-                </button>
-                <button disabled={sending} onClick={() => decide('reject')}>
-                  reject it*
-                </button>
+            <section className="ax-done">
+              <div className={`ax-check ${executed ? '' : ap.status === 'PENDING' ? 'wait' : 'no'}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d={executed ? 'M5 12.5l4.5 4.5L19 7.5' : ap.status === 'PENDING' ? 'M12 7v5l3 2' : 'M7 7l10 10M17 7L7 17'} />
+                </svg>
               </div>
-            ) : (
-              <p className="ap-err">{me.can.why?.toLowerCase()}</p>
+              <h1 className="ax-h1" style={{ marginTop: 0 }}>
+                {executed ? 'Approved.' : ap.status === 'PENDING' ? `Key ${ap.votes.length} of ${ap.twoKey} turned.` : `${ap.status.charAt(0) + ap.status.slice(1).toLowerCase()}.`}
+                <br />
+                <em>{executed ? 'Your name is on it.' : ap.status === 'PENDING' ? 'One more person must agree.' : 'Nothing moved.'}</em>
+              </h1>
+              <p className="ax-sub">{ap.summary}</p>
+            </section>
+            <section className="ax-card">
+              <div className="ax-card-t">
+                <span>On the ledger</span>
+                <span>{ap.status === 'EXECUTED' && ap.executedSeq ? `record #${ap.executedSeq}` : ''}</span>
+              </div>
+              {ap.votes.map((v) => (
+                <div className="ax-kv" key={v.name + v.at}>
+                  <span>{v.name}</span>
+                  <span>
+                    {(v.decisionMs / 1000).toFixed(1)} s · evidence {v.evidenceViewed ? 'opened' : 'not opened'}
+                  </span>
+                </div>
+              ))}
+              {ap.votes.some((v) => !v.evidenceViewed && v.decisionMs < 4000) && <p className="ax-p" style={{ marginTop: 12, color: 'var(--hold)' }}>A fast approval without opening the evidence was flagged. Abhed governs people too.</p>}
+            </section>
+            {fromApprover && (
+              <button className="ax-btn primary" style={{ marginTop: 16 }} onClick={() => router.push('/approver')}>
+                Back to requests
+              </button>
             )}
-            <input className="ap-name" value={note} onChange={(e) => setNote(e.target.value.slice(0, 160))} placeholder="note (optional, for hold or escalate)" aria-label="Note" />
-            <div className="ap-contact-links" style={{ fontSize: '0.8em' }}>
-              {ap.hold ? (
-                <button disabled={sending} onClick={() => decide('release')}>
-                  release hold
-                </button>
-              ) : (
-                <button disabled={sending || !me.can.ok} onClick={() => decide('hold')}>
-                  hold ⏸
-                </button>
-              )}
-              {ap.approverRole !== 'executive' && ap.kind !== 'rule_change' && (
-                <button disabled={sending} onClick={() => decide('escalate')}>
-                  escalate ↑
-                </button>
-              )}
-            </div>
-            <p className="ap-note">*approves only this exact action, once, before the timer ends.</p>
-          </>
-        ) : (
-          <>
-            <div className="ap-headline ap-contact-links">
-              <span>{ap?.status === 'EXECUTED' ? 'executed once ✓' : ap?.status === 'PENDING' ? 'waiting for key 2' : 'nothing executed'}</span>
-              <span>exact action only*</span>
-            </div>
-            <p className="ap-note">
-              {ap?.votes.some((v) => !v.evidenceViewed && v.decisionMs < 4000)
-                ? '*abhed noticed a fast approval without evidence. it governs humans too.'
-                : '*every action has a human name on it. yours is now one of them.'}
-            </p>
+            {err && <p className="ax-err">{err}</p>}
           </>
         )}
-        {err && <p className="ap-err">{err}</p>}
-        {fromApprover && (
-          <div className="ap-contact-links">
-            <button onClick={() => router.push('/approver')}>{done ? 'back to duty →' : '← all requests'}</button>
-          </div>
-        )}
-        <div className="ap-socials">
-          <span aria-label="Abhed">
-            <Icon kind="shield" />
-          </span>
-          <span aria-label="Expires">
-            <Icon kind="clock" />
-          </span>
-          <span aria-label="Fingerprint">
-            <Icon kind="print" />
-          </span>
-        </div>
       </div>
-    </footer>
+    </main>
   );
 }

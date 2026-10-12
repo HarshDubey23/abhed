@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AbhedMark } from '@/components/mark';
 import { authHeader, readTokens, saveToken } from '@/lib/approver-client';
-import GazeVideo from '../approve/gaze-video';
-import '../approve/approve.css';
+import '../approve/ax.css';
 
 interface Pending {
   id: string;
@@ -82,6 +81,11 @@ export default function ApproverPage() {
   const [autoOpen, setAutoOpen] = useState(true);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
   const seen = useRef<Set<string> | null>(null);
   const sub = useRef<PushSubscriptionJSON | null>(null);
   const names = profiles.map((p) => p.person.name);
@@ -240,162 +244,306 @@ export default function ApproverPage() {
   const held = pending.filter((p) => p.hold);
   const above = pending.filter((p) => p.canDecide === false);
   const people = companies.find((c) => c.tenant === tenant)?.people ?? [];
-  const row = (p: Pending) => (
-    <button key={p.id} onClick={() => router.push(`/approve/${p.id}?from=approver`)} style={{ textDecoration: 'underline', textUnderlineOffset: '0.25em' }}>
-      {p.assignedToMe ? '★ ' : ''}
-      {short(p.company)} · {p.actor.toLowerCase()} · {p.kind === 'rule_change' ? 'rule change' : (p.summary.split('→')[1]?.trim() ?? (p.amount ? inr(p.amount) : '')).slice(0, 40)}
-      {p.hold ? ` · held by ${p.hold.by.toLowerCase()}` : ''}
-      {p.escalationLevel ? ` · ↑${p.approverRole.replace('approver_', '').replace('_', ' ')}` : ''} →
+  const decidedToday = profiles.reduce((n, p) => n + p.stats.decisions, 0);
+  const first = profiles[0]?.person.name.split(' ')[0];
+  const hour = new Date(now).getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const what = (p: Pending) => {
+    if (p.kind === 'rule_change') return 'Rule change';
+    const t = (p.summary.split('→')[1] ?? p.summary).trim();
+    return (t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 44);
+  };
+  const left = (p: Pending) => Math.max(0, Math.round((p.expiresAt - now) / 1000));
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const card = (p: Pending, i: number) => (
+    <button key={p.id} className={`ax-req ${p.assignedToMe ? 'mine' : ''}`} style={{ animationDelay: `${i * 0.05}s` }} onClick={() => router.push(`/approve/${p.id}?from=approver`)}>
+      <span className="ax-av">{p.actor[0]?.toUpperCase()}</span>
+      <span>
+        <span className="ax-req-t" style={{ display: 'block' }}>
+          {what(p)}
+        </span>
+        <span className="ax-req-m" style={{ display: 'block' }}>
+          {p.actor} · {(p.company ?? '').replace(' (fictional)', '')}
+          {p.hold ? ` · held by ${p.hold.by}` : p.assignedToMe ? ' · routed to you' : ''}
+          {p.escalationLevel ? ` · escalated` : ''}
+        </span>
+      </span>
+      <span className={`ax-req-r ${left(p) < 120 ? 'late' : ''}`}>
+        <b>{mmss(left(p))}</b>
+        left
+      </span>
     </button>
   );
-  const views: [View, string][] = [
-    ['queue', `for you (${queue.length})`],
-    ['hold', `on hold (${held.length})`],
-    ['above', `above your level (${above.length})`],
-    ['history', 'decided'],
-    ['profile', 'profile'],
+  const views: [View, string, number | null][] = [
+    ['queue', 'For you', queue.length],
+    ['hold', 'On hold', held.length],
+    ['above', 'Above you', above.length],
+    ['history', 'Decided', null],
+    ['profile', 'Profile', null],
   ];
+  const empty = (title: string, body: string) => (
+    <div className="ax-empty">
+      <div className="ax-ic">
+        <Ic k="check" />
+      </div>
+      <b>{title}</b>
+      {body}
+    </div>
+  );
 
   return (
-    <footer className="ap" aria-label="Approver">
-      <GazeVideo />
-      <div className="ap-jobs">
-        <span className="ap-tag">{onDuty ? `on duty · ${queue.length} for you` : 'approver phone'}</span>
-        <span className="ap-headline ap-job-title">
-          {onDuty ? (
-            queue.length ? (
-              <>
-                {queue.length} {queue.length === 1 ? 'agent needs' : 'agents need'}
-                <br />
-                you
-              </>
-            ) : (
-              <>
-                you’re on duty.
-                <br />
-                agents will ask you.
-              </>
-            )
-          ) : (
-            <>
-              be the human
-              <br />
-              in the loop
-            </>
-          )}
-        </span>
-        {onDuty && (
+    <main className="ax" aria-label="Abhed approvals">
+      <div className="ax-shell">
+        <header className="ax-bar">
+          <span className="ax-brand">
+            <AbhedMark size={22} /> Abhed <small>Approvals</small>
+          </span>
+          <span className="ax-bar-r">
+            <span className={`ax-pill ${onDuty ? 'on' : ''}`}>
+              <i />
+              {onDuty ? 'On duty' : 'Signed out'}
+            </span>
+          </span>
+        </header>
+
+        {!onDuty ? (
           <>
-            <div className="ap-nav" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: '0.4vw 1.2vw' }}>
-              {views.map(([k, l]) => (
-                <button key={k} aria-pressed={view === k} onClick={() => setView(k)}>
+            <section className="ax-hero">
+              <div className="ax-kicker">Approver phone</div>
+              <h1 className="ax-h1">
+                Be the human <em>in the loop.</em>
+              </h1>
+              <p className="ax-sub">When an AI agent wants to do something big, it waits for you. Sign in once; requests arrive here and open by themselves.</p>
+            </section>
+            {signInCard()}
+            <div className="ax-trust">
+              <div>
+                <span className="ax-ic">
+                  <Ic k="id" />
+                </span>
+                <span>
+                  <b>Signed with your identity</b>Every decision carries your name, role and time on the ledger.
+                </span>
+              </div>
+              <div>
+                <span className="ax-ic">
+                  <Ic k="print" />
+                </span>
+                <span>
+                  <b>Exact action only</b>You approve one fingerprinted action. Change one rupee and it is void.
+                </span>
+              </div>
+              <div>
+                <span className="ax-ic">
+                  <Ic k="clock" />
+                </span>
+                <span>
+                  <b>Nothing waits forever</b>Unanswered requests escalate, then expire. Nothing runs by default.
+                </span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <section className="ax-hero" style={{ paddingBottom: 18 }}>
+              <div className="ax-kicker">{profiles.map((p) => p.company.replace(' (fictional)', '')).join(' · ')}</div>
+              <h1 className="ax-h1">
+                {greet}, {first}.
+                <br />
+                <em>{queue.length ? `${queue.length} ${queue.length === 1 ? 'agent needs' : 'agents need'} you.` : 'Nothing needs you.'}</em>
+              </h1>
+            </section>
+            <div className="ax-stats">
+              <div className={`ax-stat ${queue.length ? 'hot' : ''}`}>
+                <b>{queue.length}</b>
+                <span>for you</span>
+              </div>
+              <div className="ax-stat">
+                <b>{held.length}</b>
+                <span>on hold</span>
+              </div>
+              <div className="ax-stat">
+                <b>{decidedToday}</b>
+                <span>decided</span>
+              </div>
+            </div>
+            <nav className="ax-tabs" aria-label="Views">
+              {views.map(([k, l, n]) => (
+                <button key={k} className="ax-tab" aria-pressed={view === k} onClick={() => setView(k)}>
                   {l}
+                  {n !== null && <em>{n}</em>}
                 </button>
               ))}
-            </div>
-            <div className="ap-nav ap-facts" style={{ marginTop: '1.1vw' }}>
-              {view === 'queue' && (queue.length ? queue.map(row) : <span style={{ opacity: 0.6 }}>nothing waiting for you. agents are inside their limits.</span>)}
-              {view === 'hold' && (held.length ? held.map(row) : <span style={{ opacity: 0.6 }}>nothing parked.</span>)}
-              {view === 'above' &&
-                (above.length ? (
-                  above.map((p) => (
-                    <span key={p.id} style={{ opacity: 0.75 }}>
-                      {short(p.company)} · {p.summary.slice(0, 60)} · needs {p.approverRole.replace('_', ' ')}
-                      <button style={{ marginLeft: 8, textDecoration: 'underline' }} onClick={() => router.push(`/approve/${p.id}?from=approver`)}>
-                        view →
-                      </button>
-                    </span>
+            </nav>
+
+            {view === 'queue' && <div className="ax-list">{queue.length ? queue.map(card) : empty('All clear', 'Agents are working inside their limits. Keep this open; new requests open by themselves.')}</div>}
+            {view === 'hold' && <div className="ax-list">{held.length ? held.map(card) : empty('Nothing on hold', 'Requests you or a colleague park appear here.')}</div>}
+            {view === 'above' && <div className="ax-list">{above.length ? above.map(card) : empty('Nothing above your level', 'Requests that need a higher authority show here, read-only.')}</div>}
+            {view === 'history' && (
+              <div className="ax-card">
+                <div className="ax-card-t">Recently decided</div>
+                {recent.length ? (
+                  recent.map((r) => (
+                    <div className="ax-hist" key={r.id}>
+                      <span>
+                        {r.summary ? r.summary.slice(0, 38) : r.id}
+                        <br />
+                        <small>{r.company.replace(' (fictional)', '')}</small>
+                      </span>
+                      <span style={{ textAlign: 'right' }}>
+                        <b style={{ color: r.status === 'EXECUTED' || r.status === 'APPROVED' ? 'var(--ok)' : r.status === 'REJECTED' ? 'var(--no)' : 'var(--mut)', fontWeight: 500 }}>{r.status.charAt(0) + r.status.slice(1).toLowerCase()}</b>
+                        <br />
+                        <small>{r.by}</small>
+                      </span>
+                    </div>
                   ))
                 ) : (
-                  <span style={{ opacity: 0.6 }}>nothing above your authority.</span>
+                  <p className="ax-p dim">No decisions yet.</p>
+                )}
+              </div>
+            )}
+            {view === 'profile' && (
+              <>
+                {profiles.map((p) => (
+                  <div className="ax-card" key={p.tenant}>
+                    <div className="ax-card-t">
+                      <span>{p.company.replace(' (fictional)', '')}</span>
+                      <span>{p.person.roles.join(' · ').replace(/_/g, ' ')}</span>
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 500 }}>{p.person.name}</div>
+                    <div className="ax-p dim">{p.person.title}</div>
+                    <div className="ax-stats" style={{ marginTop: 16, marginBottom: 0 }}>
+                      <div className="ax-stat">
+                        <b>{p.stats.approved}</b>
+                        <span>approved</span>
+                      </div>
+                      <div className="ax-stat">
+                        <b>{p.stats.rejected}</b>
+                        <span>rejected</span>
+                      </div>
+                      <div className="ax-stat">
+                        <b>{p.stats.medianSeconds ?? '—'}</b>
+                        <span>median sec</span>
+                      </div>
+                    </div>
+                    {p.stats.rubberStamps > 0 && <p className="ax-err">{p.stats.rubberStamps} fast approvals without evidence were flagged.</p>}
+                    {p.stats.ownsAgents.length > 0 && <p className="ax-p dim" style={{ marginTop: 12 }}>Owns {p.stats.ownsAgents.join(', ')}, so cannot approve their riskiest actions.</p>}
+                  </div>
                 ))}
-              {view === 'history' &&
-                recent.map((r) => (
-                  <span key={r.id} style={{ opacity: 0.75 }}>
-                    {r.id} · {short(r.company)} · {r.status.toLowerCase()}
-                    {r.by ? ` by ${r.by.toLowerCase()}` : ''}
-                  </span>
-                ))}
-              {view === 'profile' &&
-                profiles.map((p) => (
-                  <span key={p.tenant} style={{ display: 'block', marginBottom: '0.6vw' }}>
-                    <b>{p.person.name}</b> · {p.person.title} · {short(p.company)}
-                    <br />
-                    <span style={{ opacity: 0.7 }}>
-                      authority: {p.person.roles.join(', ').replace(/_/g, ' ')}
-                      <br />
-                      {p.stats.approved} approved · {p.stats.rejected} rejected · {p.stats.held} held · {p.stats.escalated} escalated · median {p.stats.medianSeconds ?? '—'} s
-                      {p.stats.rubberStamps ? ` · ${p.stats.rubberStamps} fast approvals flagged` : ''}
-                      {p.stats.ownsAgents.length ? <><br />owns agents: {p.stats.ownsAgents.join(', ')}</> : null}
-                    </span>
-                  </span>
-                ))}
-            </div>
-          </>
-        )}
-      </div>
+                <div className="ax-card">
+                  <div className="ax-card-t">Add another company</div>
+                  {signInCard(true)}
+                </div>
+              </>
+            )}
 
-      <div className="ap-logo" role="img" aria-label="Abhed">
-        <span className="ap-wordmark">
-          <AbhedMark size={34} /> Abhed
-        </span>
+            <div className="ax-card" style={{ marginTop: 18 }}>
+              <div className="ax-card-t">This phone</div>
+              <div className="ax-set">
+                <span>
+                  Buzz on new requests
+                  <small>{push === 'on' ? 'Notifications on' : push === 'ios-install' ? 'iPhone: Share → Add to Home Screen first' : push === 'denied' ? 'Blocked in browser settings; buzzes while open' : 'Buzzes while this page is open'}</small>
+                </span>
+                {push === 'off' ? (
+                  <button className="ax-switch" role="switch" aria-checked="false" aria-label="Turn on notifications" onClick={enablePush} />
+                ) : (
+                  <span className={`ax-pill ${push === 'on' ? 'on' : ''}`}>
+                    <i />
+                    {push === 'on' ? 'On' : 'Open only'}
+                  </span>
+                )}
+              </div>
+              <div className="ax-set">
+                <span>
+                  Open new requests automatically
+                  <small>Jumps straight to the decision screen</small>
+                </span>
+                <button
+                  className="ax-switch"
+                  role="switch"
+                  aria-checked={autoOpen}
+                  aria-label="Auto-open"
+                  onClick={() => {
+                    setAutoOpen(!autoOpen);
+                    try {
+                      localStorage.setItem('kavach-auto-open', autoOpen ? '0' : '1');
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                />
+              </div>
+              <div className="ax-set">
+                <span>
+                  Signed in as {label}
+                  <small>{profiles.length} {profiles.length === 1 ? 'company' : 'companies'}</small>
+                </span>
+                <button className="ax-link" onClick={signOutAll}>
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+        {note && <p className="ax-err">{note}</p>}
+        <p className="ax-foot">Companies are fictional. Every decision is written to Abhed’s hash-chained ledger.</p>
       </div>
+    </main>
+  );
 
-      <div className="ap-contact">
-        <span className="ap-tag">{onDuty ? (push === 'on' ? 'buzz: on' : 'buzz: while open') : 'sign in'}</span>
-        {(!onDuty || view === 'profile') && (
-          <>
-            <select className="ap-name" value={tenant} onChange={(e) => { setTenant(e.target.value); setWho(companies.find((c) => c.tenant === e.target.value)?.people.find((p) => p.id === 'judge')?.id ?? ''); }} aria-label="Company">
-              {companies.map((c) => (
-                <option key={c.tenant} value={c.tenant}>
-                  {c.company.replace(' (fictional)', '')}
-                </option>
-              ))}
-            </select>
-            <select className="ap-name" value={who} onChange={(e) => setWho(e.target.value)} aria-label="Who are you">
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.title}
-                </option>
-              ))}
-            </select>
-            <input className="ap-name" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="PIN (from your company admin)" inputMode="numeric" type="password" aria-label="PIN" />
-            <div className="ap-contact-links">
-              <button className="ap-primary" disabled={busy || pin.length < 4 || !who} onClick={signIn}>
-                {onDuty ? 'add this company →' : 'go on duty →'}
-              </button>
-            </div>
-            <p className="ap-note">*one phone can cover several companies. each decision is signed with your identity.</p>
-          </>
-        )}
-        {onDuty && (
-          <>
-            <div className="ap-contact-links">
-              <span className="ap-headline">{label.toLowerCase()}</span>
-              {push === 'off' && <button onClick={enablePush}>turn on buzz →</button>}
-              <button
-                onClick={() => {
-                  setAutoOpen(!autoOpen);
-                  try {
-                    localStorage.setItem('kavach-auto-open', autoOpen ? '0' : '1');
-                  } catch {
-                    /* ignore */
-                  }
-                }}
-              >
-                auto-open: {autoOpen ? 'on' : 'off'}
-              </button>
-              <button onClick={signOutAll}>sign out</button>
-            </div>
-            <p className="ap-note">
-              {profiles.map((p) => short(p.company)).join(' · ')}
-              <br />
-              {push === 'ios-install' ? '*iphone: share → add to home screen, open from there for buzz.' : push === 'denied' ? '*notifications blocked; keep this page open.' : '*keep this open. new requests open by themselves.'}
-            </p>
-          </>
-        )}
-        {note && <p className="ap-err">{note}</p>}
-      </div>
-    </footer>
+  function signInCard(bare?: boolean) {
+    const body = (
+      <>
+        <label className="ax-field">
+          <span>Company</span>
+          <select
+            className="ax-input"
+            value={tenant}
+            onChange={(e) => {
+              setTenant(e.target.value);
+              setWho(companies.find((c) => c.tenant === e.target.value)?.people.find((p) => p.id === 'judge')?.id ?? '');
+            }}
+          >
+            {companies.map((c) => (
+              <option key={c.tenant} value={c.tenant}>
+                {c.company.replace(' (fictional)', '')}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="ax-field">
+          <span>Who are you</span>
+          <select className="ax-input" value={who} onChange={(e) => setWho(e.target.value)}>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} · {p.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="ax-field">
+          <span>PIN</span>
+          <input className="ax-input ax-pin" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="From your company admin" inputMode="numeric" type="password" autoComplete="one-time-code" />
+        </label>
+        <button className="ax-btn primary" disabled={busy || pin.length < 4 || !who} onClick={signIn}>
+          {busy ? 'Signing in…' : onDuty ? 'Add this company' : 'Go on duty'}
+        </button>
+      </>
+    );
+    return bare ? body : <div className="ax-card">{body}</div>;
+  }
+}
+
+function Ic({ k }: { k: 'id' | 'print' | 'clock' | 'check' }) {
+  const d = {
+    id: 'M4 6h16v12H4zM8 10h.01M12 10h4M8 14h8',
+    print: 'M12 3a8 8 0 0 0-8 8v2M20 11a8 8 0 0 0-5-7.4M8 20.5A12 12 0 0 1 7 11a5 5 0 0 1 10 0c0 2 0 4-.6 6M12 11v3a14 14 0 0 1-1.5 7',
+    clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
+    check: 'M5 12.5l4.5 4.5L19 7.5',
+  }[k];
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
   );
 }
