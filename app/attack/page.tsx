@@ -169,7 +169,7 @@ export default function AttackPage() {
 
 function StepRow({ s }: { s: Step }) {
   const tone = s.decision === 'BLOCKED' ? 'block' : s.decision === 'NEEDS_APPROVAL' ? 'human' : 'allow';
-  const label = s.decision === 'BLOCKED' ? `Stopped by ${CHECK[s.check] ?? s.check}` : s.decision === 'NEEDS_APPROVAL' ? 'Held for a person' : 'Allowed';
+  const label = s.decision === 'BLOCKED' ? `Stopped by ${CHECK[s.check] ?? s.check}` : s.decision === 'NEEDS_APPROVAL' ? 'Held for a person' : /^(REFUND-AUTO|DISCOUNT-OK)/.test(s.rule ?? '') ? 'Allowed by company policy' : 'Allowed';
   return (
     <div className={`atk-step ${tone}`}>
       <div className="atk-step-h">

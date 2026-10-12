@@ -7,7 +7,7 @@ type Step = { action: string; decision: string; check: string; reason: string; r
 type Lane = { status: string; model?: string; answer?: string; injection?: string[]; steps: Step[] };
 type Attack = {
   id: string; at: number; name: string; agentId: string; text: string; company: string;
-  model?: Lane; twin?: Lane; stopped: number; held: number; through: string[]; rupees: number; records: number; done: boolean;
+  model?: Lane; twin?: Lane; stopped: number; held: number; through: string[]; inPolicy?: { action: string; amount?: number; rule?: string }[]; rupees: number; records: number; done: boolean;
 };
 type Tick = { company: string; seq: number; ts: number; actor: string; action: string; decision: string; rule?: string; reason: string; check: string; ms?: number; amount?: number; hash?: string };
 type Feed = {
@@ -140,7 +140,7 @@ export default function WarRoom() {
                 <div className={`wr-verdict ${a.through.length ? 'bad' : 'good'}`}>
                   {a.through.length
                     ? `Got through: ${a.through.join(', ').replace(/_/g, ' ')}`
-                    : `Nothing got through.${a.rupees ? ` ${inr(a.rupees)} stayed put.` : ''}${a.records ? ` ${a.records.toLocaleString('en-IN')} records stayed inside.` : ''}${[...(a.twin?.steps ?? [])].some((x) => x.paused) ? ` ${AGENT[a.agentId]} was paused automatically.` : ''}`}
+                    : `Nothing got through.${a.rupees ? ` ${inr(a.rupees)} stayed put.` : ''}${a.records ? ` ${a.records.toLocaleString('en-IN')} records stayed inside.` : ''}${[...(a.twin?.steps ?? [])].some((x) => x.paused) ? ` ${AGENT[a.agentId]} was paused automatically.` : ''}${a.inPolicy?.length ? ` Allowed by the company’s own rules: ${a.inPolicy.map((x) => `${x.action.replace(/_/g, ' ')}${x.amount ? ` ${inr(x.amount)}` : ''} (${x.rule})`).join(', ')}.` : ''}`}
                 </div>
               )}
             </article>
@@ -230,7 +230,7 @@ function LaneView({ title, sub, lane, modelLane }: { title: string; sub: string;
         <div key={i} className={`wr-step ${tone(s.decision)}`}>
           <div className="row between">
             <b>{what(s)}</b>
-            <span className={`chip chip-${tone(s.decision)}`}>{s.decision === 'BLOCKED' ? `Stopped · ${CHECK_NAME[s.check] ?? s.check}` : VERB[s.decision] ?? s.decision}</span>
+            <span className={`chip chip-${tone(s.decision)}`}>{s.decision === 'BLOCKED' ? `Stopped · ${CHECK_NAME[s.check] ?? s.check}` : s.decision === 'ALLOWED' && /^(REFUND-AUTO|DISCOUNT-OK)/.test(s.rule ?? '') ? 'Allowed · within policy' : VERB[s.decision] ?? s.decision}</span>
           </div>
           <div className="wr-why">
             {s.reason}

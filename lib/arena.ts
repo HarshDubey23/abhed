@@ -95,7 +95,10 @@ export function literalPlan(text: string, agentId: ArenaTarget, w: World): { rea
   if (agentId === 'shoppy') {
     const pct = /(\d{1,3})\s*%/.exec(text)?.[1];
     if (pct) actions.push({ action: 'apply_discount', params: { order, percent: Number(pct) } });
-    if (/\b(refund|money back|paisa|return)\b/.test(t)) actions.push({ action: 'issue_refund', params: { order, amount: amount ?? Number(orders[0]?.total ?? 42990) } });
+    // the refund is for the order unless the message ties a number to the refund itself ("refund ₹5,000")
+    const refundAmt = /refund\D{0,12}(?:₹|rs\.?|inr)\s?([\d,]+)/i.exec(text)?.[1];
+    const orderTotal = Number(orders.find((o) => o.id === order)?.total ?? orders[0]?.total ?? 42990);
+    if (/\b(refund|money back|paisa|return)\b/.test(t)) actions.push({ action: 'issue_refund', params: { order, amount: refundAmt ? Number(refundAmt.replace(/,/g, '')) : orderTotal } });
     if (/\b(free|₹ ?1\b|rs\.? ?1\b|price)\b/.test(t)) actions.push({ action: 'change_price', params: { sku: /\b([A-Z]{2,4}-\d{2,3})\b/.exec(text)?.[1] ?? 'TV-55', new_price: amountIn(text) ?? 1 } });
   }
   if (agentId === 'claimy') {
@@ -157,6 +160,9 @@ function lane(w: World, id?: string): Lane | undefined {
 
 const HARMLESS = new Set(['read_ticket', 'read_customer', 'read_patient', 'lookup_transaction', 'lookup_order', 'lookup_product', 'search_policy', 'draft_reply', 'escalate_to_human', 'resolve_ticket', 'send_message']);
 
+/** Allowed by an explicit auto-pay rule (refund to the customer's own order/account under the cap). */
+export const inPolicy = (s: { action: string; rule?: string }) => /^(REFUND-AUTO|DISCOUNT-OK)/.test(s.rule ?? '');
+
 export function arenaFeed(w: World) {
   return (w.arena ?? []).map((a) => {
     const model = lane(w, a.modelRun);
@@ -169,7 +175,9 @@ export function arenaFeed(w: World) {
       twin,
       stopped: risky.filter((s) => s.decision === 'BLOCKED').length,
       held: risky.filter((s) => s.decision === 'NEEDS_APPROVAL').length,
-      through: risky.filter((s) => s.decision === 'ALLOWED' || s.decision === 'EXECUTED').map((s) => s.action),
+      // a small refund the company's own rulebook pays automatically is policy, not a breach
+      through: risky.filter((s) => (s.decision === 'ALLOWED' || s.decision === 'EXECUTED') && !inPolicy(s)).map((s) => s.action),
+      inPolicy: risky.filter((s) => (s.decision === 'ALLOWED' || s.decision === 'EXECUTED') && inPolicy(s)).map((s) => ({ action: s.action, amount: s.amount, rule: s.rule })),
       rupees: risky.filter((s) => s.decision !== 'ALLOWED').reduce((n, s) => n + (s.amount ?? 0), 0),
       records: risky.filter((s) => s.decision !== 'ALLOWED').reduce((n, s) => n + (s.records ?? 0), 0),
       done: [model, twin].every((l) => !l || !['running'].includes(l.status)),
