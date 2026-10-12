@@ -25,26 +25,27 @@ const COMPETITORS: [string, string, string, string, string, string, string][] = 
   ['Credo AI / Holistic AI', 'AI policy & compliance documentation', '—', '—', '—', 'assessments', '✓'],
 ];
 
+// Benchmarked Oct 2026: AWS AgentCore Policy ≈ $0.025 per 1,000 checks, Microsoft Agent 365 $15/user/month,
+// IBM watsonx.governance ≈ $3.5k–6.5k/month (third-party estimates), Langfuse free → $199 → $2,499/month.
+// Indian buyers pay 40–60% of US list prices and prefer flat yearly plans.
 const TIERS = {
-  starter: { name: 'Starter', fee: 15000, agents: 5, actions: 50000 },
-  growth: { name: 'Growth', fee: 75000, agents: 25, actions: 500000 },
-  enterprise: { name: 'Enterprise', fee: 250000, agents: 100, actions: 3000000 },
+  pilot: { name: 'Pilot', fee: 0, agents: 2, actions: 10000 },
+  starter: { name: 'Starter', fee: 9999, agents: 5, actions: 100000 },
+  growth: { name: 'Growth', fee: 49999, agents: 25, actions: 1000000 },
+  enterprise: { name: 'Enterprise', fee: 199999, agents: 100, actions: 5000000 },
 };
-const RISK = { low: 1, medium: 1.5, high: 2.5 };
-const A = 2000; // ₹ per extra agent per month, before risk multiplier
-const C_LOW = 0.02; // ₹ per low-impact action above quota
-const C_HIGH = 2; // ₹ per high-impact action checkpointed
-const C_APPR = 10; // ₹ per human approval routed to a phone
+const RISK = { low: 1, medium: 1.5, high: 2 };
+const A = 1000; // ₹ per extra agent per month, before risk multiplier
+const C_OVER = 0.005; // ₹ per governed action above the plan (₹5 per 1,000)
+// checkpoints and phone approvals are never metered: a company should never pay more for being careful
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
 export default function BusinessPage() {
   const [tier, setTier] = useState<keyof typeof TIERS>('growth');
-  const [agents, setAgents] = useState({ low: 10, medium: 12, high: 8 });
+  const [agents, setAgents] = useState({ low: 5, medium: 7, high: 8 });
   const [actions, setActions] = useState(800000);
-  const [highPct, setHighPct] = useState(4);
-  const [apprPct, setApprPct] = useState(40);
-  const [llm, setLlm] = useState(60000);
+  const [llm, setLlm] = useState(0);
 
   const T = TIERS[tier];
   const totalAgents = agents.low + agents.medium + agents.high;
@@ -56,14 +57,10 @@ export default function BusinessPage() {
     agentFee += n * A * RISK[k];
     extra -= n;
   }
-  const high = Math.round((actions * highPct) / 100);
-  const low = actions - high;
-  const lowFee = Math.max(0, low - T.actions) * C_LOW;
-  const highFee = high * C_HIGH;
-  const approvals = Math.round((high * apprPct) / 100);
-  const apprFee = approvals * C_APPR;
+  const over = Math.max(0, actions - T.actions);
+  const overFee = over * C_OVER;
   const llmFee = llm * 1.1;
-  const bill = T.fee + agentFee + lowFee + highFee + apprFee + llmFee;
+  const bill = T.fee + agentFee + overFee + llmFee;
 
   return (
     <main className="page">
@@ -72,7 +69,7 @@ export default function BusinessPage() {
           <h1 className="page-title">
             The problem, the price, <em>the field</em>
           </h1>
-          <p className="page-sub">Abhed is sold as a hybrid: a platform subscription for predictability, plus usage that grows with the number of agents, how risky they are, and how much high-impact work they do.</p>
+          <p className="page-sub">Abhed is sold as a flat plan for predictability, with a free Pilot to test on your own data. Usage grows only with the number of agents, how risky they are, and volume. Checkpoints and phone approvals are never charged.</p>
         </div>
       </div>
 
@@ -105,44 +102,38 @@ export default function BusinessPage() {
             </span>
           </div>
           <div className="price-eq">
-            Bill = P<sub>tier</sub>
+            Bill = P<sub>plan</sub>
             <br />
-            &nbsp;&nbsp;+ Σ<sub>extra agents i</sub> A × r<sub>i</sub>
+            &nbsp;&nbsp;+ Σ<sub>extra agents i</sub> ₹1,000 × r<sub>i</sub>
             <br />
-            &nbsp;&nbsp;+ c<sub>low</sub> × max(0, N<sub>low</sub> − Q<sub>tier</sub>)
+            &nbsp;&nbsp;+ ₹5 per 1,000 governed actions above the plan
             <br />
-            &nbsp;&nbsp;+ c<sub>high</sub> × N<sub>high</sub>
+            &nbsp;&nbsp;+ ₹0 for checkpoints and phone approvals, always
             <br />
-            &nbsp;&nbsp;+ c<sub>appr</sub> × N<sub>approvals</sub>
-            <br />
-            &nbsp;&nbsp;+ 1.10 × LLM tokens at cost (optional gateway)
+            &nbsp;&nbsp;+ LLM tokens at cost + 10% (optional; or bring your own key)
           </div>
           <table className="table" style={{ marginTop: 10, fontSize: 12.5 }}>
             <tbody>
               <tr>
-                <td className="mono">P, Q</td>
-                <td>Platform fee and included low-impact actions: Starter ₹15,000 (5 agents, 50k), Growth ₹75,000 (25 agents, 5 lakh), Enterprise ₹2,50,000 (100 agents, 30 lakh)</td>
+                <td className="mono">P</td>
+                <td>Pilot free (2 agents, 10,000 actions) · Starter ₹9,999 (5 agents, 1 lakh) · Growth ₹49,999 (25 agents, 10 lakh) · Enterprise ₹1,99,999 (100 agents, 50 lakh, private cloud or on-premise)</td>
               </tr>
               <tr>
-                <td className="mono">A × r</td>
-                <td>₹2,000 per agent above the plan × risk multiplier r: low 1.0 (read-only), medium 1.5 (writes inside limits), high 2.5 (money, health data, prices)</td>
+                <td className="mono">r</td>
+                <td>Risk of an extra agent: 1.0 read-only (₹1,000) · 1.5 writes inside limits (₹1,500) · 2.0 money, health data or prices (₹2,000)</td>
               </tr>
               <tr>
-                <td className="mono">c_low</td>
-                <td>₹0.02 per low-impact governed action above the quota (reads, in-limit writes)</td>
+                <td className="mono">₹0</td>
+                <td>Checkpoints, phone approvals, escalations, audit PDFs and the signed ledger are never metered</td>
               </tr>
               <tr>
-                <td className="mono">c_high</td>
-                <td>₹2 per high-impact action evaluated at a checkpoint (grounding, DLP, rules, hash)</td>
-              </tr>
-              <tr>
-                <td className="mono">c_appr</td>
-                <td>₹10 per human approval routed (push to phone, evidence pack, escalation, two-key)</td>
+                <td className="mono">GST</td>
+                <td>Prices exclude 18% GST. Yearly billing: pay for 10 months, get 12</td>
               </tr>
             </tbody>
           </table>
           <p className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
-            Why hybrid, not pure subscription or pure usage: the platform fee covers the fixed cost (rulebook, registry, audit, anchoring) and gives finance a predictable base. Usage is priced on what actually costs us and creates value for the customer: risky agents and high-impact actions. Cheap reads stay nearly free, so governing everything never punishes speed.
+            Why this shape: Indian buyers prefer a predictable flat plan, so the plan covers almost everything. Usage only grows with agents and volume, never with safety: a company should never pay more because a person checked something. For scale, AWS AgentCore Policy lists about $0.025 per 1,000 checks, Microsoft Agent 365 $15 per user a month, and third-party estimates put IBM watsonx.governance at $3,500–6,500 a month.
           </p>
         </div>
 
@@ -169,17 +160,9 @@ export default function BusinessPage() {
                 <input inputMode="numeric" value={agents[k]} onChange={(e) => setAgents({ ...agents, [k]: Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0) })} />
               </label>
             ))}
-            <label className="field">
-              Actions / month
+            <label className="field" style={{ gridColumn: 'span 3' }}>
+              Governed actions / month
               <input inputMode="numeric" value={actions} onChange={(e) => setActions(Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0))} />
-            </label>
-            <label className="field">
-              High-impact %
-              <input inputMode="numeric" value={highPct} onChange={(e) => setHighPct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))} />
-            </label>
-            <label className="field">
-              of those, need a person %
-              <input inputMode="numeric" value={apprPct} onChange={(e) => setApprPct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))} />
             </label>
             <label className="field" style={{ gridColumn: 'span 3' }}>
               LLM tokens through the gateway (₹ at cost)
@@ -190,9 +173,8 @@ export default function BusinessPage() {
             <tbody>
               <Row k={`Platform (${T.name})`} v={T.fee} />
               <Row k={`Extra agents: ${Math.max(0, totalAgents - T.agents)} (risk-weighted)`} v={agentFee} />
-              <Row k={`Low-impact above quota: ${Math.max(0, low - T.actions).toLocaleString('en-IN')} × ₹0.02`} v={lowFee} />
-              <Row k={`High-impact checkpoints: ${high.toLocaleString('en-IN')} × ₹2`} v={highFee} />
-              <Row k={`Phone approvals: ${approvals.toLocaleString('en-IN')} × ₹10`} v={apprFee} />
+              <Row k={`Actions above the plan: ${over.toLocaleString('en-IN')} × ₹0.005`} v={overFee} />
+              <Row k="Checkpoints and phone approvals (unlimited)" v={0} />
               <Row k="LLM gateway (cost + 10%)" v={llmFee} />
               <tr>
                 <td>
@@ -205,7 +187,7 @@ export default function BusinessPage() {
             </tbody>
           </table>
           <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-            {totalAgents} agents · {inr(bill / Math.max(1, totalAgents))} per agent · {(bill / Math.max(1, actions)).toFixed(3)} ₹ per governed action. One prevented ₹40,000 wrong refund pays for {Math.max(0, Math.floor(40000 / Math.max(1, bill / Math.max(1, actions))))} governed actions.
+            {totalAgents} agents · {inr(bill / Math.max(1, totalAgents))} per agent · ₹{(bill / Math.max(1, actions)).toFixed(3)} per governed action · {inr(bill * 10)} a year on yearly billing (+18% GST). One stopped ₹40,000 wrong refund covers {bill > 0 ? `${Math.round((40000 / bill) * 100)}%` : 'all'} of this bill.
           </div>
         </div>
       </div>

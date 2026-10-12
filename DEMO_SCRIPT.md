@@ -15,7 +15,7 @@ Round 1 = ideation. Deck sirf idea, approach aur plan dikhata hai (diagrams); we
 | 8–10 | Innovation | "Approval exact action ke fingerprint se bandha; grounding real records se; Trust Score; rules bhi do insaan ke bina nahi badalte. IBM/AWS/Microsoft models ya identity govern karte hain — hum action." |
 | 11–12 | Technical feasibility | "Normal building blocks — decision code hai, LLM nahi. Saat records har decision samjhate hain; har risk ka jawab already plan mein hai." |
 | 13 | Execution timeline | "36 ghante, 9 blocks, 4 milestones; har milestone pe kuch chalta hua. M3 tak sab built hai — abhi live dikhate hain." |
-| 14 | Presentation of idea | "Risk pe price. 20 agents wali bank ≈ ₹1.41 lakh/month, ₹0.17 per action." |
+| 14 | Presentation of idea | "Indian companies ke liye price: Pilot free, ₹9,999, ₹49,999, ₹1,99,999. Approvals aur checkpoints hamesha free — safety pe kabhi charge nahi. 20 agents wali bank: ₹49,999/month, ₹0.06 per action. AWS, Microsoft, IBM se compare karke rakha hai." |
 | 15 | Sab | "Teen demo moments — judge approve karega, attack fail hoga, galti fix hogi. QR scan karo." |
 
 **Naya wow (zaroor dikhao):** Fleet pe kisi agent ka **⤓** dabao → us agent ki apni PDF report (Trust Score 300–900, delegations, kisne kya approve kiya, refusals, ledger). Security page pe **compliance evidence** (EU AI Act Art. 12/14, DPDP, RBI FREE-AI, OWASP) live data se.
@@ -143,7 +143,7 @@ Mentor ne bola tha company data denge. Do raaste:
 ## 12 · Insights + business (1 min)
 
 - **/insights**: speed vs control chart (gateway p95 ~1–3 ms), donuts, cost by agent, risk score, accountability chain.
-- **/business**: pricing formula + calculator (platform fee + risk-weighted agents + per-checkpoint + per-approval), competitor table (IBM watsonx.governance, AWS AgentCore, Microsoft Entra Agent ID, ServiceNow, guardrail libraries).
+- **/business**: pricing + calculator (Pilot free · ₹9,999 · ₹49,999 · ₹1,99,999; extra agents by risk; approvals and checkpoints ₹0), competitor table (IBM watsonx.governance, AWS AgentCore, Microsoft Entra Agent ID, ServiceNow, guardrail libraries).
 - **/integrate**: "Kisi bhi AI company ke liye — 6 API calls / 69-line SDK. Teeno websites yahi SDK chala rahi hain."
 
 ---
@@ -158,6 +158,7 @@ Mentor ne bola tha company data denge. Do raaste:
 
 | Sawal | Jawab |
 |---|---|
+| "Price zyada nahi?" | AWS AgentCore Policy ~$0.025 per 1,000 checks sirf policy ke liye; Microsoft Agent 365 $15/user/month + E5; IBM watsonx.governance ~$3.5k–6.5k/month. Hum Pilot free, Growth ₹49,999 — poora action layer, aur approvals free taaki company safety pe kanjoosi na kare. |
 | "Kya yeh real LLM hai?" | Haan — Groq `gpt-oss-120b`, har thought ke tokens/ms panel mein. Keys Supabase Vault mein, kabhi browser/git mein nahi. |
 | "Security speed slow karti hai?" | Rule engine deterministic code hai, LLM nahi. Har step pe measured ms dikh raha hai (p95 ~1–3 ms). |
 | "Approve kaun kar sakta hai?" | Sirf signed-in approver (PIN → signed token), role check (L1/L2/executive/rule approver). Owner apna khud ka agent approve nahi kar sakta; two-key mein do alag log. |
