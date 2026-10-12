@@ -345,7 +345,7 @@ function FleetCharts({ f }: { f: Fleet }) {
   for (const c of f.companies) for (const [k, v] of Object.entries(c.approvals)) approvals[k] = (approvals[k] ?? 0) + v;
   const reasons: Record<string, number> = {};
   for (const c of f.companies) for (const b of c.blockReasons) reasons[b.category] = (reasons[b.category] ?? 0) + b.count;
-  const tone: Record<string, string> = { EXECUTED: 'var(--allow)', PENDING: 'var(--human)', 'ON HOLD': '#e8c66a', REJECTED: 'var(--block)', EXPIRED: 'var(--muted-2)', VOID: '#b4a6ff', APPROVED: 'var(--allow)' };
+  const tone: Record<string, string> = { EXECUTED: 'var(--allow)', PENDING: 'var(--human)', 'ON HOLD': '#e8c66a', REJECTED: 'var(--block)', EXPIRED: 'var(--muted-2)', VOID: '#9a9a9a', APPROVED: 'var(--allow)' };
   const agents = f.companies.flatMap((c) => c.agents.map((a) => ({ ...a, company: c.tenant }))).filter((a) => a.actions).sort((a, b) => b.actions - a.actions).slice(0, 7);
   return (
     <div className="grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', marginBottom: 14 }}>

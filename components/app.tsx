@@ -114,6 +114,7 @@ export function WorldProvider({ children }: { children: React.ReactNode }) {
 }
 
 const NAV = [
+  { href: '/demo', label: 'Live Demo' },
   { href: '/fleet', label: 'Fleet' },
   { href: '/command', label: 'Command' },
   { href: '/incidents', label: 'Incidents' },
@@ -122,8 +123,12 @@ const NAV = [
   { href: '/security', label: 'Security' },
   { href: '/rules', label: 'Rules' },
   { href: '/lab', label: 'Lab' },
+];
+const MORE = [
+  { href: '/readiness', label: 'Roadmap & readiness' },
   { href: '/integrate', label: 'Integrate' },
-  { href: '/business', label: 'Business' },
+  { href: '/business', label: 'Pricing & market' },
+  { href: '/approver', label: 'Approver app' },
 ];
 
 const COMPANIES: [string, string][] = [
@@ -136,8 +141,7 @@ function TenantSwitch({ current }: { current?: string }) {
   return (
     <select
       aria-label="Company"
-      className="pill"
-      style={{ appearance: 'none', cursor: 'pointer', paddingRight: 14 }}
+      className="tenant"
       value={current ?? 'banking'}
       onChange={(e) => {
         document.cookie = `kv_tenant=${e.target.value}; path=/; max-age=31536000; samesite=lax`;
@@ -156,7 +160,6 @@ function TenantSwitch({ current }: { current?: string }) {
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <WorldProvider>
-      <div className="grain" />
       <ShellInner>{children}</ShellInner>
     </WorldProvider>
   );
@@ -169,19 +172,27 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     <div className="shell">
       <header className="topbar">
         <Link href="/" className="logo" aria-label="Abhed home">
-          <AbhedMark />
-          <span>
-            Abhed<span className="logo-suffix">.os</span>
-          </span>
+          <AbhedMark size={26} />
+          <span>Abhed</span>
         </Link>
         <nav className="nav" aria-label="Primary">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className={`pill ${path?.startsWith(n.href) ? 'active' : ''}`}>
+            <Link key={n.href} href={n.href} className={`navlink ${path?.startsWith(n.href) ? 'active' : ''}`}>
               {n.label}
-              {n.href === '/command' && view && view.kpi.waiting > 0 && <span style={{ color: 'var(--human)' }}>· {view.kpi.waiting}</span>}
-              {n.href === '/incidents' && view && view.kpi.openIncidents > 0 && <span style={{ color: 'var(--block)' }}>· {view.kpi.openIncidents}</span>}
+              {n.href === '/command' && view && view.kpi.waiting > 0 && <sup style={{ color: 'var(--human)' }}>{view.kpi.waiting}</sup>}
+              {n.href === '/incidents' && view && view.kpi.openIncidents > 0 && <sup style={{ color: 'var(--block)' }}>{view.kpi.openIncidents}</sup>}
             </Link>
           ))}
+          <details className="more">
+            <summary className={`navlink ${MORE.some((m) => path?.startsWith(m.href)) ? 'active' : ''}`}>More</summary>
+            <div className="more-menu">
+              {MORE.map((m) => (
+                <Link key={m.href} href={m.href} className={path?.startsWith(m.href) ? 'active' : ''}>
+                  {m.label}
+                </Link>
+              ))}
+            </div>
+          </details>
         </nav>
         <div className="topbar-right">
           <span className="row muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
