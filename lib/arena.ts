@@ -185,3 +185,19 @@ export function arenaFeed(w: World) {
   });
 }
 export type ArenaFeedItem = ReturnType<typeof arenaFeed>[number];
+
+/**
+ * A Break Abhed attempt pauses the attacked agent on purpose (that is the demo). The owner's resume after the
+ * attempt can be lost if the server stops early, which would leave the company's real website stuck. So an
+ * agent paused by an arena twin, with no arena run still going, is resumed the next time anyone needs it.
+ */
+export function releaseArenaPause(w: World, agentId: string, now = Date.now()) {
+  const a = w.agents.find((x) => x.id === agentId);
+  if (!a || a.status !== 'PAUSED') return false;
+  const seq = Number(/critical breach .*record #(\d+)/.exec(a.statusReason ?? '')?.[1]);
+  const rec = Number.isFinite(seq) ? w.ledger.find((r) => r.seq === seq) : undefined;
+  if ((rec?.meta as { channel?: string } | undefined)?.channel !== 'twin') return false;
+  if ((w.runs ?? []).some((r) => r.batch === 'arena' && r.agentId === agentId && (r.status === 'running' || r.status === 'waiting'))) return false;
+  resumeAgent(w, a.id, a.owner, 'Owner reviewed the blocked Break Abhed attempt and resumed the agent', now);
+  return true;
+}

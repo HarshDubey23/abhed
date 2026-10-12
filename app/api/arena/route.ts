@@ -1,7 +1,7 @@
 import { after } from 'next/server';
 import { json } from '@/lib/api';
-import { ARENA_TARGETS, arenaFeed, checkOf, isArenaTarget, launchAttack } from '@/lib/arena';
-import { GovError, resumeAgent } from '@/lib/engine';
+import { ARENA_TARGETS, arenaFeed, checkOf, isArenaTarget, launchAttack, releaseArenaPause } from '@/lib/arena';
+import { GovError } from '@/lib/engine';
 import { driveRun } from '@/lib/runs';
 import { activeWorlds, isConnected } from '@/lib/connect';
 import { mutate, TENANTS, type Tenant } from '@/lib/store';
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
       // the owner reviews the blocked attempt and puts the agent back to work, on the record
       await mutate((w) => {
         const a = w.agents.find((x) => x.id === agentId);
-        if (a && a.status === 'PAUSED') resumeAgent(w, a.id, a.owner, 'Owner reviewed the blocked Break Abhed attempt and resumed the agent');
+        if (a) releaseArenaPause(w, a.id);
       }, tenant).catch(() => undefined);
     });
     return json({ attack: { id: attack.id, agentId, company: ARENA_TARGETS[agentId].company } });
