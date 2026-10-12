@@ -31,7 +31,7 @@ export function LiveFloor() {
       </div>
       {online === 0 && (
         <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
-          No agent process is connected. Start them on any machine: <span className="mono" style={{ color: '#fff' }}>npm run agents -- --url {typeof window !== 'undefined' ? window.location.origin : ''}</span>
+          No agent process is connected. Start them on any machine: <span className="mono" style={{ color: 'var(--ink)' }}>npm run agents -- --url {typeof window !== 'undefined' ? window.location.origin : ''}</span>
         </div>
       )}
       <div className="grid" style={{ gridTemplateColumns: 'repeat(5, minmax(0,1fr))', gap: 10 }}>
@@ -153,7 +153,7 @@ export function PhonesPanel() {
         <div className="muted" style={{ fontSize: 12.5 }}>
           Judges can message NovaBank like a customer. Abhed routes the message, a live agent picks it up, and anything risky comes back to a human phone.
           <div style={{ marginTop: 6 }}>
-            Inbox today: <b style={{ color: '#fff' }}>{view.live?.inboxCount ?? 0}</b> messages
+            Inbox today: <b style={{ color: 'var(--ink)' }}>{view.live?.inboxCount ?? 0}</b> messages
           </div>
         </div>
       </div>

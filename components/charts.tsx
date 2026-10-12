@@ -25,7 +25,7 @@ export function SpeedChart({ points }: { points: { t: number; auto: number; held
           </g>
         );
       })}
-      {line && <polyline points={line} fill="none" stroke="#fff" strokeWidth={1.4} strokeDasharray="3 3" opacity={0.7} />}
+      {line && <polyline points={line} fill="none" stroke="var(--ink)" strokeWidth={1.4} strokeDasharray="3 3" opacity={0.7} />}
       <text x={pad} y={12} fill="var(--muted)" fontSize={10}>
         {max} actions
       </text>
@@ -75,7 +75,7 @@ export function Donut({ slices, label, size = 132 }: { slices: Slice[]; label: s
             <circle key={s.label} cx={c} cy={c} r={43} fill="none" stroke={s.color} strokeWidth={18} />
           ),
         )}
-        <text x={c} y={62} textAnchor="middle" fill="#fff" fontSize={20} fontWeight={600}>
+        <text x={c} y={62} textAnchor="middle" fill="var(--ink)" fontSize={20} fontWeight={600}>
           {total}
         </text>
         <text x={c} y={78} textAnchor="middle" fill="var(--muted)" fontSize={9}>
@@ -117,4 +117,4 @@ export function HBars({ items, color = 'var(--info)' }: { items: { label: string
   );
 }
 
-export const PALETTE = ['#ff6363', '#ffb547', '#9fb4c8', '#d4d4d4', '#6fe0b4', '#e8c66a'];
+export const PALETTE = ['#C2261C', '#B25E00', '#1E44D6', '#5B6270', '#0F7B45', '#8A6A00'];

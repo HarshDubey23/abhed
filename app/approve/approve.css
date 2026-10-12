@@ -83,32 +83,26 @@ body:has(.ap) { margin: 0; min-height: 100vh; }
 .ap-nav.ap-facts { display: flex; flex-direction: column; gap: 0.5vw; }
 @media (max-width: 700px) { .ap-nav.ap-facts { display: flex; gap: 8px; } }
 
-/* ═══ Abhed v2: black stage, Manrope, silver type, white pills ═══ */
-html:has(.ap), body:has(.ap) { background: #050505 !important; color: #fafafa !important; }
-.ap { --background: #050505; --foreground: #fafafa; font-family: "Manrope", system-ui, sans-serif; background: #050505; color: #fafafa; text-rendering: geometricPrecision; }
+/* ═══ Abhed · paper & ink ═══ */
+html:has(.ap), body:has(.ap) { background: #f4f5f7 !important; color: #0c0e12 !important; }
+.ap { --background: #f4f5f7; --foreground: #0c0e12; font-family: "Manrope", system-ui, sans-serif; background: #f4f5f7; color: #0c0e12; text-rendering: geometricPrecision; }
 .ap-background { display: none !important; }
-.ap-headline, .ap-wordmark, .ap-contact-links button { font-family: "Manrope", system-ui, sans-serif; font-weight: 500; letter-spacing: -0.02em; }
-.ap-wordmark { font-weight: 600; letter-spacing: -0.01em; }
-.ap-tag { background: rgba(255, 255, 255, 0.07); color: #cfcfcf; border: 1px solid rgba(255, 255, 255, 0.1); }
-.ap-detail-row { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-.ap-detail-row span:first-child { opacity: 1; color: #8b8a8a; }
-.ap-nav { color: #b6b5b5; }
-.ap-nav button:hover, .ap-nav button[aria-pressed="true"] { color: #fff; }
-.ap-name, .ap select, .ap input, .ap textarea { background: rgba(255, 255, 255, 0.06) !important; color: #fafafa !important; border: 1px solid rgba(255, 255, 255, 0.14) !important; }
-.ap-name:focus { box-shadow: none; border-color: rgba(255, 255, 255, 0.5) !important; }
-.ap select option { background: #111; color: #fafafa; }
-.ap-socials { color: #8b8a8a; }
-.ap-err { color: #ffb3b3; }
-.ap-note { color: #8b8a8a; }
-@media (min-width: 701px) {
-  .ap::before { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(60% 70% at 72% 40%, rgba(255, 255, 255, 0.06), transparent 70%); }
-}
+.ap-headline, .ap-wordmark, .ap-contact-links button { font-family: "Manrope", system-ui, sans-serif; font-weight: 700; letter-spacing: -0.025em; }
+.ap-tag { background: #fff; color: #5b6270; border: 1px solid #e2e5ea; font-weight: 600; }
+.ap-detail-row { border-bottom: 1px solid #eef0f3; }
+.ap-detail-row span:first-child { opacity: 1; color: #5b6270; }
+.ap-nav { color: #5b6270; font-weight: 500; }
+.ap-nav button:hover, .ap-nav button[aria-pressed="true"] { color: #0c0e12; text-decoration-color: #1e44d6; }
+.ap-name, .ap select, .ap input, .ap textarea { background: #fff !important; color: #0c0e12 !important; border: 1px solid #e2e5ea !important; border-radius: 8px !important; }
+.ap-name:focus { box-shadow: 0 0 0 3px #ebf0fe; border-color: #1e44d6 !important; }
+.ap-socials { color: #8a909c; }
+.ap-err { color: #c2261c; }
+.ap-note { color: #5b6270; }
+.ap .ap-contact-links button.ap-primary { display: inline-flex; align-items: center; justify-content: center; background: #0c0e12; color: #fff; border-radius: 10px; padding: 0 1.6vw; height: 3.3vw; font-weight: 700; font-size: 1.25vw; text-decoration: none; margin-bottom: 0.6vw; transition: background 0.2s; }
+.ap .ap-contact-links button.ap-primary:hover:not(:disabled) { background: #242a35; }
+.ap .ap-contact-links button.ap-primary:disabled { background: #d5d9df; color: #8a909c; opacity: 1; }
 @media (max-width: 700px) {
-  html:has(.ap), body:has(.ap) { background: #050505 !important; }
-  .ap { --background: #050505; padding-bottom: 48px; }
-  .ap-headline, .ap-contact-links button { font-weight: 500; }
+  html:has(.ap), body:has(.ap) { background: #f4f5f7 !important; }
+  .ap { --background: #f4f5f7; padding-bottom: 48px; }
+  .ap .ap-contact-links button.ap-primary { height: 52px; padding: 0 24px; font-size: 17px; margin-bottom: 8px; }
 }
-.ap .ap-contact-links button.ap-primary { display: inline-flex; align-items: center; justify-content: center; background: #fff; color: #050505; border-radius: 999px; padding: 0 1.6vw; height: 3.3vw; font-weight: 600; font-size: 1.25vw; text-decoration: none; margin-bottom: 0.6vw; transition: background 0.25s, transform 0.3s; }
-.ap .ap-contact-links button.ap-primary:hover:not(:disabled) { background: #e9e9e9; transform: translateY(-1px); }
-.ap .ap-contact-links button.ap-primary:disabled { background: rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.55); opacity: 1; }
-@media (max-width: 700px) { .ap .ap-contact-links button.ap-primary { height: 52px; padding: 0 26px; font-size: 18px; margin-bottom: 8px; } }

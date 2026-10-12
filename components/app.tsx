@@ -114,6 +114,7 @@ export function WorldProvider({ children }: { children: React.ReactNode }) {
 }
 
 const NAV = [
+  { href: '/arena', label: 'Break Abhed' },
   { href: '/demo', label: 'Live Demo' },
   { href: '/fleet', label: 'Fleet' },
   { href: '/command', label: 'Command' },
@@ -149,7 +150,7 @@ function TenantSwitch({ current }: { current?: string }) {
       }}
     >
       {COMPANIES.map(([id, name]) => (
-        <option key={id} value={id} style={{ background: '#111' }}>
+        <option key={id} value={id} style={{ background: '#fff', color: '#0c0e12' }}>
           {name}
         </option>
       ))}

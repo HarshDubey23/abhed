@@ -34,7 +34,7 @@ export default function IncidentPage({ params }: { params: Promise<{ id: string 
             {inc.title.split(':')[0]}: <em>{inc.title.split(':').slice(1).join(':').trim() || 'accountability chain'}</em>
           </h1>
           <p className="page-sub">
-            Owner: <b style={{ color: '#fff' }}>{owner?.name}</b> ({owner?.title}). Source record <span className="mono">#{inc.sourceSeq}</span>.
+            Owner: <b style={{ color: 'var(--ink)' }}>{owner?.name}</b> ({owner?.title}). Source record <span className="mono">#{inc.sourceSeq}</span>.
           </p>
         </div>
         <div className="row">

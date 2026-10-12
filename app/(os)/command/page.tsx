@@ -47,7 +47,7 @@ function WaitingPanel() {
               <div style={{ marginTop: 4 }}>The approver decides on their own phone. Their name goes into the ledger.</div>
             </div>
             <div className="muted">
-              Needs <b style={{ color: '#fff' }}>{ap.approverRole.replace('_', ' ').toUpperCase()}</b>
+              Needs <b style={{ color: 'var(--ink)' }}>{ap.approverRole.replace('_', ' ').toUpperCase()}</b>
               {ap.twoKey > 1 ? ` · two keys (${ap.votes.length}/${ap.twoKey})` : ''}
               {ap.escalationLevel > 0 ? ` · escalated ×${ap.escalationLevel}` : ''}
             </div>
@@ -191,7 +191,7 @@ function AgentTable() {
               </tr>
               {open === a.id && (
                 <tr>
-                  <td colSpan={10} style={{ background: 'rgba(255,255,255,0.02)' }}>
+                  <td colSpan={10} style={{ background: 'var(--surface-2)' }}>
                     <div className="grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0,1fr))', fontSize: 12.5 }}>
                       <div>
                         <div className="badge-k">Passport</div>
@@ -386,7 +386,7 @@ function SidePanels() {
 function Heatmap() {
   const { view } = useWorld();
   if (!view) return null;
-  const colors = ['rgba(255,255,255,0.04)', 'rgba(111,224,180,0.35)', 'rgba(255,181,71,0.55)', 'rgba(255,99,99,0.7)'];
+  const colors = ['var(--line-2)', 'rgba(15,123,69,0.35)', 'rgba(178,94,0,0.5)', 'rgba(194,38,28,0.65)'];
   return (
     <div className="panel">
       <div className="panel-title">

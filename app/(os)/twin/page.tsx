@@ -39,11 +39,11 @@ function Universe({ run, side }: { run: TwinRun; side: 'without' | 'with' }) {
       <div className="muted" style={{ textAlign: 'center', fontSize: 13.5 }}>
         {bad ? (
           <>
-            refunds sent · <b style={{ color: '#fff' }}>{u.records.toLocaleString('en-IN')}</b> customer records exported · {u.emails} email{u.emails === 1 ? '' : 's'} out
+            refunds sent · <b style={{ color: 'var(--ink)' }}>{u.records.toLocaleString('en-IN')}</b> customer records exported · {u.emails} email{u.emails === 1 ? '' : 's'} out
           </>
         ) : (
           <>
-            moved · {u.records} records exported · {run.with.paused ? <b style={{ color: '#fff' }}>agent paused, bank keeps working</b> : 'nothing left the bank'}
+            moved · {u.records} records exported · {run.with.paused ? <b style={{ color: 'var(--ink)' }}>agent paused, bank keeps working</b> : 'nothing left the bank'}
           </>
         )}
       </div>
