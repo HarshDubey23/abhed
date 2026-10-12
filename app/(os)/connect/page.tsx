@@ -275,7 +275,7 @@ export default function ConnectPage() {
           </div>
           {s && s.companies.length + gw.length === 0 && <div className="panel dim">No companies yet.</div>}
           {gw.map((c) => (
-            <GwRow key={c.id} c={c} open={open === `gw:${c.id}`} toggle={() => setOpen(open === `gw:${c.id}` ? null : `gw:${c.id}`)} fresh={created?.id === c.id} busy={busy} post={gpost} withPin={async (label, body) => { const pin = window.prompt(`${label}\nPIN:`); if (!pin) return; if (await gpost({ ...body, pin })) setCreated(null); }} onKey={(key) => setCreated({ id: c.id, key })} />
+            <GwRow key={c.id} c={c} open={open === `gw:${c.id}`} toggle={() => setOpen(open === `gw:${c.id}` ? null : `gw:${c.id}`)} fresh={created?.id === c.id} busy={busy} post={gpost} withPin={async (label, body) => { const pin = window.prompt(`${label}\nPIN:`); if (!pin) return; if (await gpost({ ...body, pin })) setCreated(null); }} onKey={(key) => { setMode('nocode'); setCreated({ id: c.id, key }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
           ))}
           {s?.companies.map((c) => {
             const on = c.agents.filter((a) => a.online).length;
