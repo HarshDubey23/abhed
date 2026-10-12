@@ -6,6 +6,8 @@
 CodeX 3.0 · Hack Arena · **PS5: AI Agent Governance and Human Accountability Operating System**.
 NovaBank and everyone in it are fictional.
 
+**Round 1 material:** [17-slide deck](docs/Abhed_Round1_Deck.pdf) · [10-page solution brief](docs/Abhed_Solution_Brief.pdf) · [live demo script](DEMO_SCRIPT.md)
+
 ## What it does (PS5, line by line)
 
 | PS5 asks for | Abhed | Where you see it |
