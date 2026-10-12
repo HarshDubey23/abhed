@@ -178,6 +178,20 @@ export default function WarRoom() {
           </div>
         </aside>
       </div>
+      <footer className="wr-foot">
+        <span>Every attempt above is a real call through the Abhed gateway, written to the hash-chained ledger. Companies are fictional.</span>
+        <button
+          className="wr-clear"
+          onClick={async () => {
+            const pin = window.prompt('Presenter PIN to clear the War Room');
+            if (!pin) return;
+            const r = await fetch('/api/arena', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin }) });
+            if (!r.ok) window.alert('Wrong PIN');
+          }}
+        >
+          clear
+        </button>
+      </footer>
     </main>
   );
 }

@@ -1,5 +1,7 @@
 # Abhed — Live Demo Script (≈ 12–15 min)
 
+> **Round 2 ke liye naya, page-by-page script: [`PRESENTER_SCRIPT.md`](PRESENTER_SCRIPT.md) (PDF: `docs/Abhed_Presenter_Script.pdf`). Woh Break Abhed War Room se shuru hota hai — wahi follow karo.**
+
 > Ek line mein pitch: **"AI agents ab sirf baat nahi karte, kaam karte hain — refund, dawai, price change. Abhed woh layer hai jo har agent ke har action ko real time mein govern karta hai: chhota kaam turant, bada kaam insaan ke phone pe approval ke liye, aur galat kaam block + agent pause. Sab kuch ek aisi audit trail mein jo koi edit nahi kar sakta."**
 
 ---

@@ -103,3 +103,11 @@ export async function POST(req: Request) {
     return json({ error: e instanceof Error ? e.message : 'Unexpected error' }, 500);
   }
 }
+
+/** Presenter clears the War Room before judging (the ledger itself is never touched). */
+export async function DELETE(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  if (String(body.pin ?? '') !== (process.env.ADMIN_PIN ?? '2468')) return json({ error: 'Wrong PIN' }, 403);
+  for (const t of TENANTS) await mutate((w) => void (w.arena = []), t);
+  return json({ cleared: true });
+}

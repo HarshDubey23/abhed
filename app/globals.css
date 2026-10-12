@@ -474,6 +474,8 @@ textarea:focus, input:focus, select:focus { border-color: var(--accent); box-sha
 .wr-ticker { position: sticky; top: 84px; max-height: calc(100vh - 110px); display: flex; flex-direction: column; }
 .wr-full .wr-ticker { top: 20px; max-height: calc(100vh - 40px); }
 .wr-ticks { overflow: auto; margin: 0 -4px; padding: 0 4px; }
+.wr-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; color: var(--muted-2); font-size: 12px; }
+.wr-clear { background: none; border: 0; color: var(--muted-2); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
 .wr-tick { padding: 9px 0; border-bottom: 1px solid var(--line-2); animation: slidein 0.4s var(--ease) both; }
 .wr-tick-what { font-size: 13.5px; margin-top: 4px; }
 .wr-tick-what b { font-weight: 700; }
