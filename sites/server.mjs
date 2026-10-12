@@ -127,6 +127,26 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === '/health') return send(res, 200, { ok: true, site: SITE.brand, agents: Object.keys(clients) });
     if (url.pathname === '/api/data') return send(res, 200, await data());
+    if (url.pathname === '/api/protection') {
+      // why these agents need Abhed: what they tried that was stopped or sent to a person, from Abhed's ledger
+      if (!ADMIN_KEY) return send(res, 200, { available: false });
+      const r = await kavachAdmin('/api/v1/admin');
+      if (r.status !== 200) return send(res, 200, { available: false });
+      const o = r.data;
+      const mine = new Set(SITE.agents.map((a) => a.name));
+      const caught = (o.ledger ?? []).filter((x) => mine.has(x.actor) && (x.decision === 'BLOCKED' || x.decision === 'NEEDS_APPROVAL')).slice(0, 5);
+      const agents = (o.agents ?? []).filter((a) => SITE.agents.some((s) => s.id === a.id));
+      const sum = (k) => agents.reduce((n, a) => n + (a.metrics?.[k] ?? 0), 0);
+      return send(res, 200, {
+        available: true,
+        stopped: sum('blocked'),
+        asked: sum('held'),
+        actions: sum('actions'),
+        paused: agents.filter((a) => a.status === 'PAUSED').length,
+        chain: o.chain,
+        caught: caught.map((x) => ({ seq: x.seq, ts: x.ts, actor: x.actor, action: x.action, decision: x.decision, reason: x.reason, rule: x.ruleRef })),
+      });
+    }
     if (req.method === 'POST' && url.pathname === '/api/task') {
       const b = await readBody(req);
       const agent = SITE.agents.find((a) => a.id === b.agent) ?? SITE.agents[0];
