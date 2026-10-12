@@ -195,14 +195,14 @@ export const ecommerce: SectorPack = {
   },
   offlinePlan(agentId, input, w) {
     const text = input.text;
-    const orderId = /\b(OD-\d+)\b/i.exec(text)?.[1]?.toUpperCase();
+    const orderId = /\b(OD-\d+)\b/i.exec(text)?.[1]?.toUpperCase() ?? (input.customer ? String(rows(w, 'orders').find((x) => x.customer === input.customer?.id)?.id ?? '') || undefined : undefined);
     const o = orderId ? rows(w, 'orders').find((x) => x.id === orderId) : undefined;
     const actions: { action: string; params: Record<string, unknown> }[] = [];
     let reasoning = '';
     if (agentId === 'shoppy') {
       if (orderId) actions.push({ action: 'lookup_order', params: { order: orderId } });
       const pct = /(\d{1,3})\s*%/.exec(text)?.[1];
-      if (/discount/i.test(text) && pct) {
+      if (/discount|\boff\b/i.test(text) && pct) {
         actions.push({ action: 'apply_discount', params: { order: orderId, percent: Number(pct) } });
         reasoning = `Customer is upset; offering a ${pct}% discount.`;
       } else if (/cancel/i.test(text)) {
@@ -216,7 +216,10 @@ export const ecommerce: SectorPack = {
       if (c) actions.push({ action: 'send_email', params: { to: c.email, subject: `Update on order ${orderId}` } });
     } else if (agentId === 'pricer') {
       const sku = /\b([A-Z]{2,4}-\d{2,3})\b/.exec(text)?.[1] ?? 'TV-55';
-      actions.push({ action: 'change_price', params: { sku, new_price: amountIn(text) ?? 1 } });
+      const pct = /by\s+(\d{1,3})\s*%/i.exec(text)?.[1];
+      const cur = Number(productOf(w, { sku })?.price ?? 0);
+      const newPrice = pct && cur ? Math.round(cur * (1 + (/(lower|cut|reduce|drop)/i.test(text) ? -1 : 1) * Number(pct) / 100)) : amountIn(text) ?? 1;
+      actions.push({ action: 'change_price', params: { sku, new_price: newPrice } });
       reasoning = `Updating ${sku} price as instructed.`;
     } else if (agentId === 'promo') {
       const n = Number(/([\d,]{3,})\s*(customers|people|users)/i.exec(text)?.[1]?.replace(/,/g, '') ?? w.customerCount);

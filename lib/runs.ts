@@ -277,7 +277,8 @@ function advance(w: World, run: Run, llm: Awaited<ReturnType<typeof llmTurn>> | 
   // deterministic planner
   if (!run.queue) {
     const pack = packFor(w.sector);
-    const plan = offlinePlanFor(pack, run.agentId, { text: run.command }, w);
+    const subject = w.sessions?.[`run:${run.id}`]?.subject;
+    const plan = offlinePlanFor(pack, run.agentId, { text: run.command, customer: subject ? w.customers.find((c) => c.id === subject) : undefined }, w);
     run.queue = plan.actions.slice(0, MAX_STEPS);
     step(run, { kind: 'thought', text: plan.reasoning || 'Planning the steps.' }, now);
     return true;
