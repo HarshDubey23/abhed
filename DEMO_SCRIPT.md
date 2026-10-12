@@ -4,6 +4,64 @@
 
 ---
 
+## Round 2 · Prototype demo (8–10 min) — har parameter ke liye kya dikhana hai
+
+Round 2 sheet: **Functionality/Relevance · Performance/Final Demo · UX/Design · Market Readiness/Impact · Implementation Plan/Future Scope** (har ek 20 marks). Neeche ka flow har parameter ko alag se, evidence ke saath cover karta hai.
+
+### Setup (judging se 5 min pehle)
+1. **Laptop tab 1:** `kavach-os.vercel.app` — landing (ABHED intro chalega; dobara dikhana ho to `?` ke bina naye tab mein kholo).
+2. **Laptop tab 2:** `kavach-os.vercel.app/demo` → **Reset demo** dabao.
+3. **Laptop tab 3:** `novabank-agents.onrender.com` (Render ko jagane ke liye pehle khol lo).
+4. **Phone:** `kavach-os.vercel.app/approver` → NovaBank → **Guest Judge** → PIN **1234** → go on duty.
+
+### 1 · Opening — UX/Design (45 s)
+Landing kholo. ABHED title sequence chalne do (3–4 s), phir hero.
+> "Abhed — Sanskrit mein *abhed*, jo toota na ja sake. AI agents ke liye accountability layer: har action ek gate se, bada action sahi insaan ke phone pe, aur sab ek aise ledger pe jo koi edit nahi kar sakta."
+
+Neeche strip pe **novabank · sanjeevani · bazaar.in** dikhao: "yeh teen asli chalti websites hain jo Abhed se governed hain." **Start Live Demo** dabao.
+
+### 2 · Moment 1 — Functionality (2.5 min) ⭐
+`/demo` → **01 A person approves**.
+1. **Run Rex** → "VIP customer ka duplicate EMI. Rex ₹40,000 refund maangta hai." Right side **Live record** mein dikhao: `read ticket · ALLOWED`, phir `issue refund ₹40,000 · WAITING FOR A PERSON · REFUND-L1@2`.
+2. QR dikhao → **judge ko bolo apne phone se scan kare** (ya aapke phone pe Guest Judge ke paas card khud aa jayega). Evidence kholo → **approve it**. Phone pe: "approved. your name is on it · record #…".
+3. **Try ₹40,001 with the same approval** → laal: "different fingerprint, so it needs a new approval."
+> "Approval exact action ka fingerprint hai. Ek rupaya badla — approval void."
+
+### 3 · Moment 2 — Performance (1.5 min)
+**02 An attack fails**.
+- **Run the shadow agent** → BLOCKED: "Unregistered agent: no passport, no owner, so fail-closed."
+- **Start the loop** → circuit breaker ne Nova ko pause kiya, key revoke.
+- Twin universe kholo (optional): same poisoned message — bina Abhed ₹ aur records leak, Abhed ke saath ₹0.
+> "Har decision code hai, LLM nahi — gateway ~1 ms (Fleet pe live p95 dikhta hai)."
+
+### 4 · Moment 3 — Functionality + trust (1.5 min)
+**03 A mistake gets fixed**.
+- **Open the dispute** → incident room: chain (Rex → Priya → REFUND-AUTO@3 → ₹8,000 disputed), root cause, replay, second person activate.
+- **Tamper with a record** → top bar laal: "ledger broken at #…". "Insider ne DB mein amount badla — hash chain ne exact record pakda."
+- **Audit report (PDF)** download.
+
+### 5 · Real company site — Relevance (1 min)
+NovaBank site pe Rex se poochho: *"What is your policy if an EMI gets debited twice?"* → policy **NB-REF-01** cite karta hai, right panel mein har thought, tool call, ms aur ledger record.
+
+### 6 · Market readiness & Implementation plan (1.5 min)
+**More → Roadmap & readiness** (`/readiness`):
+- **Live right now** — stats is deployment se live (companies, agents, ledger records).
+- **Architecture** — 4 layers; "decision code hai, model nahi."
+- **Production-ready today** — 8 cheezein jo abhi chal rahi hain.
+- **How a company adopts it** — Day 1 → Week 1, 3 lines ka SDK.
+- **Market readiness** — kaun khareedega (banks/NBFC, hospitals, e-commerce), why now (RBI FREE-AI, DPDP, OWASP), pricing.
+- **Roadmap** — 30 din / 90 din / 6 mahine / 12 mahine.
+
+### Closing (15 s)
+> "Agents tez chalte rahe — 1 ms ka gate. Bada kaam sahi insaan ke phone pe, unke naam ke saath. Galat kaam block, agent pause. Aur sab kuch ek aise ledger pe jise koi edit nahi kar sakta. Yeh hai Abhed."
+
+### Agar kuch atak jaye
+- LLM rate-limit → agents rule-based planner pe chalte rahte hain (Fleet pe "LLM OFFLINE" chip). Demo same chalega.
+- Render site so rahi ho → `/demo` sab kuch Abhed ke andar hi dikha deta hai; site skip kar do.
+- Kuch bhi gadbad → `/demo` pe **Reset demo**.
+
+---
+
 ## Round 1 · Deck walkthrough (5–6 min) — `docs/Abhed_Round1_Ideation.pdf`
 
 Round 1 = ideation. Deck sirf idea, approach aur plan dikhata hai (diagrams); website aur demo deck ke baad live dikhana. Har page ke top-right pe likha hai woh kis criterion ke marks ke liye hai.
