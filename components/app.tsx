@@ -146,7 +146,7 @@ function TenantSwitch({ current }: { current?: string }) {
     >
       {COMPANIES.map(([id, name]) => (
         <option key={id} value={id} style={{ background: '#111' }}>
-          {name} · fictional
+          {name}
         </option>
       ))}
     </select>

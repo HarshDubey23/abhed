@@ -66,10 +66,14 @@ export default function LabPage() {
   const [busy, setBusy] = useState(false);
   const [redteam, setRedteam] = useState(false);
 
+  const [past, setPast] = useState<{ batch: string; tasks: number; at: number }[]>([]);
   useEffect(() => {
     fetch('/api/admin')
       .then((r) => r.json())
-      .then((o) => setTables(o.importable ?? []))
+      .then((o) => {
+        setTables(o.importable ?? []);
+        setPast(o.batches ?? []);
+      })
       .catch(() => undefined);
   }, [view?.sector]);
 
@@ -236,6 +240,25 @@ export default function LabPage() {
               </span>
             )}
           </div>
+          {past.length > 0 && (
+            <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+              <span className="muted" style={{ fontSize: 12 }}>
+                Earlier runs:
+              </span>
+              {past.slice(0, 6).map((b) => (
+                <button
+                  key={b.batch}
+                  className={`pill${b.batch === batch ? ' on' : ''}`}
+                  onClick={() => {
+                    setBatch(b.batch);
+                    void poll(b.batch, b.tasks);
+                  }}
+                >
+                  {b.batch} · {b.tasks}
+                </button>
+              ))}
+            </div>
+          )}
           {!rep ? (
             <div className="muted">Upload a requests file and run it. This fills in live as the agents work.</div>
           ) : (
