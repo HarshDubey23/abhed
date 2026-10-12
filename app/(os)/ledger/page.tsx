@@ -39,7 +39,7 @@ function LedgerInner() {
             The <em>Ledger</em>
           </h1>
           <p className="page-sub">
-            Append-only, hash-chained, personal data masked before writing. Humans and agents in one trail: what, which data, on whose behalf, which rule, who approved, what happened next.
+            Every action by people and agents. Append-only and hash-chained.
           </p>
         </div>
         <div className="row wrap">

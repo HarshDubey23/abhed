@@ -31,7 +31,7 @@ export default function InsightsPage() {
             Speed, risk, cost <em>and who signed</em>
           </h1>
           <p className="page-sub">
-            {d.sector.company}. Every number is computed live from the hash-chained ledger and approvals{d.sampleExcluded ? ` (${d.sampleExcluded} labelled sample records excluded)` : ''}. Nothing here is typed in by hand.
+            {d.sector.company} · computed live from the ledger
           </p>
         </div>
         <a className="btn btn-solid" href="/api/audit?by=Judge" download>

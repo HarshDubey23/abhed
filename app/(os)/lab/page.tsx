@@ -134,7 +134,7 @@ export default function LabPage() {
             Test it on <em>your own data</em>
           </h1>
           <p className="page-sub">
-            Upload a company’s records and a list of real requests. Abhed loads the records into {view?.company ?? 'the company'}’s systems (scanning them for personal data), gives every request to the right agent with a real LLM, and reports what each agent did, when it stopped for a person, and every leak it attempted.
+            Upload records and real requests; see what each agent would do.
           </p>
         </div>
       </div>

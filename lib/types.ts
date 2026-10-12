@@ -397,7 +397,10 @@ export interface Run {
 }
 
 export interface Connection {
-  status: 'connected' | 'waiting' | 'disconnected';
+  /** only connected companies exist in Abhed's views; anything else is hidden */
+  status: 'connected' | 'waiting' | 'disconnected' | 'removed';
+  /** the agents the website declared when it paired (display); missing = every agent of the company */
+  agents?: string[];
   code?: string;
   codeExp?: number;
   since?: number;

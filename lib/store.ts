@@ -103,6 +103,14 @@ async function mutateDoc<D extends Doc, T>(id: string, init: () => D, fn: (d: D)
   throw new Error('Busy: too many concurrent writes, try again');
 }
 
+/** Small shared documents outside any company (e.g. the pending pairing code). */
+export async function getDoc<D extends Doc>(id: string, init: () => D): Promise<D> {
+  return (await backend().load<D>(id)) ?? init();
+}
+export async function mutateShared<D extends Doc, T>(id: string, init: () => D, fn: (d: D) => T) {
+  return mutateDoc<D, T>(id, init, fn);
+}
+
 // ───────── tenants: every company gets its own isolated governed world ─────────
 
 export const TENANTS = ['banking', 'healthcare', 'ecommerce'] as const;

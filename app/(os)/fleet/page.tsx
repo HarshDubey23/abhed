@@ -46,6 +46,8 @@ export default function FleetPage() {
   const { run, toast } = useWorld();
   const [f, setF] = useState<Fleet | null>(null);
   const [origin, setOrigin] = useState('');
+  const [openAgent, setOpenAgent] = useState<string | null>(null);
+  const [openRun, setOpenRun] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
       const r = await fetch('/api/fleet', { cache: 'no-store' });
@@ -79,23 +81,20 @@ export default function FleetPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">
-            The <em>Fleet</em>, live
+            Fleet <em>· live</em>
           </h1>
           <p className="page-sub">
-            {f.companies.length} companies · {all.length} governed AI agents · {all.filter((a) => a.onSite).length} of them serve customers live on the companies’ own websites, each plugged in with one Abhed key. Every thought, tool call, approval and pause shows up here as it happens.
+            {f.companies.length} {f.companies.length === 1 ? 'company' : 'companies'} · {all.length} governed agents · every action, as it happens
           </p>
         </div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <span className={`chip ${f.llm ? 'chip-allow' : 'chip-warn'}`}>{f.llm ? 'LLM gateway live · gpt-oss-120b' : 'LLM offline'}</span>
-          <span className="chip chip-info">
-            {f.approvers.filter((a) => a.online).length} approver phone{f.approvers.filter((a) => a.online).length === 1 ? '' : 's'} on duty
+          <span className={`chip ${f.llm ? 'chip-allow' : 'chip-warn'}`}>{f.llm ? 'LLM live' : 'LLM offline'}</span>
+          <span className="chip chip-muted">
+            {f.approvers.filter((a) => a.online).length} phone{f.approvers.filter((a) => a.online).length === 1 ? '' : 's'} on duty
           </span>
-          <a className="btn btn-ghost btn-sm" href="/api/audit?by=Judge" download>
-            ⤓ Audit report (PDF)
+          <a className="btn btn-ghost btn-sm" href="/api/audit?by=Judge" download title="Audit report (PDF)">
+            ⤓ Audit PDF
           </a>
-          <Link className="btn btn-solid btn-sm" href="/approver">
-            Be an approver on your phone
-          </Link>
         </div>
       </div>
 
@@ -166,84 +165,104 @@ export default function FleetPage() {
           </div>
           <Link href="/connect" className="fl-conn">
             <span>
-              <b>
-                {f.pulse.connected} of {f.companies.length}
-              </b>{' '}
-              company websites connected
+              <b>{f.companies.length}</b> {f.companies.length === 1 ? 'company' : 'companies'} in Abhed
             </span>
-            <span>Connect →</span>
+            <span>Add a company →</span>
           </Link>
         </div>
       </section>
 
-      <FleetCharts f={f} />
-
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginBottom: 14 }}>
+      <div className="fl-cos">
         {f.companies.map((c) => (
-          <div key={c.tenant} className="panel">
-            <div className="row between" style={{ marginBottom: 8 }}>
+          <div key={c.tenant} className="panel fl-co">
+            <div className="fl-co-h">
               <div>
-                <div className="row" style={{ gap: 8 }}>
-                  <span style={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.02em' }}>{short(c.company)}</span>
-                  {c.connection && c.connection !== 'connected' ? (
-                    <Link href={`/connect?tenant=${c.tenant}`} className="chip chip-human">
-                      {c.connection === 'waiting' ? 'Pairing…' : 'Not connected · connect'}
-                    </Link>
-                  ) : (
-                    <span className="chip chip-allow">Connected</span>
-                  )}
-                </div>
-                <div className="muted" style={{ fontSize: 12 }}>
-                  {c.label} · {c.integrity.records} ledger records · {c.integrity.blocks} signed block{c.integrity.blocks === 1 ? '' : 's'} {c.integrity.ledger && c.integrity.chain ? '✓' : '✕'}
+                <div className="fl-co-name">{short(c.company)}</div>
+                <div className="dim fl-co-sub">
+                  {c.label} · {c.integrity.records} records {c.integrity.ledger && c.integrity.chain ? '· chain ✓' : '· chain ✕'}
                 </div>
               </div>
-              <span className="row" style={{ gap: 6 }}>
-                <a className="btn btn-ghost btn-sm" href={c.site} target="_blank" rel="noopener">
-                  Site ↗
-                </a>
-                <a className="btn btn-ghost btn-sm" href={`${c.site}/admin`} target="_blank" rel="noopener">
-                  Admin ↗
-                </a>
+              <a className="btn btn-ghost btn-sm" href={c.site} target="_blank" rel="noopener" title="Open the company website">
+                Site ↗
+              </a>
+            </div>
+            <div className="fl-co-stats">
+              <span>
+                <b>{c.mix.total}</b> actions
+              </span>
+              <span>
+                <b style={{ color: 'var(--human)' }}>{c.mix.held}</b> to a person
+              </span>
+              <span>
+                <b style={{ color: 'var(--block)' }}>{c.mix.blocked}</b> refused
               </span>
             </div>
-            {c.agents.map((a) => (
-              <div key={a.id} className="row between" style={{ padding: '7px 0', borderTop: '1px solid var(--border-soft)', gap: 8 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div className="row" style={{ gap: 6 }}>
-                    <b style={{ fontWeight: 500 }}>{a.name}</b>
-                    <Chip d={a.status} />
-                    {a.onSite && <span className="chip chip-info">on website</span>}
-                    {a.trust && (
-                      <span className={`chip ${a.trust.band === 'Trusted' ? 'chip-allow' : a.trust.band === 'Standard' ? 'chip-info' : a.trust.band === 'Watch' ? 'chip-warn' : 'chip-block'}`} title={`Abhed Trust Score · ${a.trust.recommendation}`}>
-                        trust {a.trust.score}
-                      </span>
-                    )}
-                  </div>
-                  <div className="muted" style={{ fontSize: 11.5 }}>
-                    {a.purpose} · owner {a.owner}
-                  </div>
-                  <div className="dim" style={{ fontSize: 11 }}>
-                    {a.actions} actions · {a.held} asked · {a.blocked} refused · {a.tokens.toLocaleString('en-IN')} tokens · ₹{a.costInr.toFixed(2)} · risk {a.riskScore}
-                  </div>
-                  {a.status === 'PAUSED' && <div style={{ fontSize: 11, color: 'var(--block)' }}>{a.statusReason}</div>}
+            {c.agents.map((a) => {
+              const key = `${c.tenant}:${a.id}`;
+              const isOpen = openAgent === key;
+              return (
+                <div key={a.id} className={`fl-agent ${isOpen ? 'open' : ''}`}>
+                  <button className="fl-agent-row" onClick={() => setOpenAgent(isOpen ? null : key)} aria-expanded={isOpen}>
+                    <span className={`fl-dot ${a.status === 'PAUSED' ? 'bad' : 'ok'}`} />
+                    <b>{a.name}</b>
+                    <span className="dim fl-agent-job">{a.purpose}</span>
+                    <span className="dim fl-agent-n">{a.actions}</span>
+                    <span className="fl-chev">›</span>
+                  </button>
+                  {isOpen && (
+                    <div className="fl-agent-d">
+                      <div className="fl-agent-grid">
+                        <span>
+                          Owner <b>{a.owner}</b>
+                        </span>
+                        <span>
+                          Status <b style={{ color: a.status === 'PAUSED' ? 'var(--block)' : 'var(--allow)' }}>{a.status.toLowerCase()}</b>
+                        </span>
+                        {a.trust && (
+                          <span>
+                            Trust <b>{a.trust.score}</b> · {a.trust.band}
+                          </span>
+                        )}
+                        <span>
+                          Asked <b>{a.held}</b> · refused <b>{a.blocked}</b>
+                        </span>
+                        <span>
+                          Tokens <b>{a.tokens.toLocaleString('en-IN')}</b> · ₹{a.costInr.toFixed(2)}
+                        </span>
+                        <span>
+                          Risk <b>{a.riskScore}</b>
+                          {a.onSite ? ' · on website' : ''}
+                        </span>
+                      </div>
+                      {a.status === 'PAUSED' && <div className="fl-paused">{a.statusReason}</div>}
+                      <div className="row" style={{ gap: 8, marginTop: 12 }}>
+                        <a className="btn btn-ghost btn-sm" href={`/api/audit?tenant=${c.tenant}&agent=${a.id}&by=Judge`} download>
+                          ⤓ Report
+                        </a>
+                        {a.status === 'PAUSED' ? (
+                          <button className="btn btn-ghost btn-sm" onClick={() => act(c.tenant, 'resume', a.id)}>
+                            Resume
+                          </button>
+                        ) : (
+                          <button className="btn btn-ghost btn-sm btn-danger" onClick={() => act(c.tenant, 'pause', a.id)}>
+                            Pause
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <a className="btn btn-ghost btn-sm" href={`/api/audit?tenant=${c.tenant}&agent=${a.id}&by=Judge`} download title={`Download ${a.name}'s report (PDF)`}>
-                  ⤓
-                </a>
-                {a.status === 'PAUSED' ? (
-                  <button className="btn btn-ghost btn-sm" onClick={() => act(c.tenant, 'resume', a.id)}>
-                    Resume
-                  </button>
-                ) : (
-                  <button className="btn btn-ghost btn-sm btn-danger" onClick={() => act(c.tenant, 'pause', a.id)}>
-                    Pause
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
+        <Link href="/connect" className="panel fl-add">
+          <span>+</span>
+          Add a company
+        </Link>
       </div>
+
+      <FleetCharts f={f} />
 
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.35fr) minmax(0, 1fr)', alignItems: 'start' }}>
         <div className="panel">
@@ -254,44 +273,47 @@ export default function FleetPage() {
             <span>{f.sessions.filter((s) => s.status === 'running' || s.status === 'waiting').length} active</span>
           </div>
           {!f.sessions.length && <div className="muted">No sessions yet. Open a company site and ask its agent something.</div>}
-          {f.sessions.map((s) => (
-            <div key={`${s.tenant}-${s.id}`} className="panel" style={{ marginBottom: 10, padding: 12, borderColor: s.status === 'waiting' ? 'color-mix(in srgb, var(--human) 60%, transparent)' : s.status === 'paused' ? 'color-mix(in srgb, var(--block) 60%, transparent)' : undefined }}>
-              <div className="row between" style={{ gap: 8 }}>
-                <div className="row" style={{ gap: 8, minWidth: 0 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 4, background: TONE[s.tenant], flex: 'none' }} />
-                  <b style={{ fontWeight: 500 }}>{s.agentName}</b>
-                  <span className="muted" style={{ fontSize: 12 }}>
-                    {short(s.company)} · {s.id} · for {s.by}
-                  </span>
-                </div>
-                <span className={`chip chip-${s.status === 'done' ? 'allow' : s.status === 'waiting' ? 'human' : s.status === 'running' ? 'info' : 'block'}`}>{s.status === 'running' ? 'working' : s.status}</span>
-              </div>
-              <div style={{ margin: '6px 0 8px', fontSize: 13.5 }}>“{s.command.replace(/<!--[\s\S]*-->/, '⟨hidden instruction⟩').slice(0, 180)}”</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {s.steps.map((st, i) => (
-                  <div key={i} style={{ fontSize: 12, display: 'grid', gridTemplateColumns: '58px 1fr auto', gap: 8, alignItems: 'baseline', color: st.kind === 'thought' ? 'var(--muted)' : undefined }}>
-                    <span className="mono dim">{hhmm(st.at)}</span>
-                    <span style={{ minWidth: 0 }}>
-                      {st.kind === 'thought' && <i>💭 {st.text?.slice(0, 160)}</i>}
-                      {st.kind === 'action' && (
-                        <>
-                          <span className="mono">{st.action}</span> <span className="dim mono">{JSON.stringify(st.params ?? {}).slice(0, 80)}</span>
-                          {st.decision !== 'ALLOWED' && <div className="muted">{st.reason?.slice(0, 160)}</div>}
-                        </>
-                      )}
-                      {st.kind === 'result' && <span>{st.text}</span>}
-                      {st.kind === 'security' && <span style={{ color: 'var(--warn)' }}>🛡 {st.text}</span>}
-                      {st.kind === 'final' && <span>💬 {st.text?.slice(0, 220)}</span>}
-                    </span>
-                    <span>{st.decision ? <Chip d={st.decision} /> : null} {st.gatewayMs !== undefined && <span className="mono dim">{st.gatewayMs}ms</span>}</span>
+          {f.sessions.map((s, i) => {
+            const key = `${s.tenant}-${s.id}`;
+            const isOpen = openRun ? openRun === key : i === 0 && (s.status === 'running' || s.status === 'waiting');
+            return (
+              <div key={key} className={`fl-run ${isOpen ? 'open' : ''} st-${s.status}`}>
+                <button className="fl-run-h" onClick={() => setOpenRun(isOpen ? '-' : key)} aria-expanded={isOpen}>
+                  <b>{s.agentName}</b>
+                  <span className="dim fl-run-cmd">“{s.command.replace(/<!--[\s\S]*-->/, '⟨hidden instruction⟩').slice(0, 90)}”</span>
+                  <span className={`chip chip-${s.status === 'done' ? 'allow' : s.status === 'waiting' ? 'human' : s.status === 'running' ? 'muted' : 'block'}`}>{s.status === 'running' ? 'working' : s.status}</span>
+                  <span className="fl-chev">›</span>
+                </button>
+                {isOpen && (
+                  <div className="fl-run-d">
+                    <div className="dim" style={{ fontSize: 12, marginBottom: 8 }}>
+                      {short(s.company)} · for {s.by} · {s.model ?? s.planner} · {ago(s.updatedAt, f.now)}
+                    </div>
+                    {s.steps.map((st, j) => (
+                      <div key={j} className={`fl-step k-${st.kind}`}>
+                        <span className="mono dim">{hhmm(st.at)}</span>
+                        <span style={{ minWidth: 0 }}>
+                          {st.kind === 'thought' && <i>{st.text?.slice(0, 140)}</i>}
+                          {st.kind === 'action' && (
+                            <>
+                              <span className="mono">{st.action}</span>
+                              {st.decision !== 'ALLOWED' && <div className="muted">{st.reason?.slice(0, 140)}</div>}
+                            </>
+                          )}
+                          {st.kind === 'result' && <span>{st.text}</span>}
+                          {st.kind === 'security' && <span style={{ color: 'var(--warn)' }}>{st.text}</span>}
+                          {st.kind === 'final' && <span>{st.text?.slice(0, 200)}</span>}
+                        </span>
+                        <span>
+                          {st.decision ? <Chip d={st.decision} /> : null} {st.gatewayMs !== undefined && <span className="mono dim">{st.gatewayMs}ms</span>}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-              <div className="dim" style={{ fontSize: 11, marginTop: 6 }}>
-                {s.model ?? s.planner} · {s.tokens.toLocaleString('en-IN')} tokens · ₹{s.costInr.toFixed(3)} · owner {s.owner} · {ago(s.updatedAt, f.now)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

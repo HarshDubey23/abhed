@@ -98,7 +98,7 @@ export default function DemoPage() {
           <h1 className="page-title">
             Three moments. <em>Real agents, a real gateway, real people.</em>
           </h1>
-          <p className="page-sub">Everything below runs through the same gateway the three company websites use. Nothing is a recording: each button acts, and the record on the right is written as it happens.</p>
+          <p className="page-sub">Live, not a recording. Every button acts on the real gateway.</p>
         </div>
         <div className="row" style={{ gap: 10 }}>
           <Link href="/approver" className="btn btn-ghost">

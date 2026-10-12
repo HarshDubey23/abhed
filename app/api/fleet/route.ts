@@ -1,10 +1,10 @@
 import { json } from '@/lib/api';
 import { nameOf } from '@/lib/engine';
-import { conn } from '@/lib/connect';
+import { activeWorlds, conn } from '@/lib/connect';
 import { buildInsights } from '@/lib/insights';
 import { llmAvailable } from '@/lib/llm';
 import { packFor } from '@/lib/sectors';
-import { getLive, getWorld, TENANTS } from '@/lib/store';
+import { getLive } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,14 +20,15 @@ const SITES: Record<string, string> = {
 /** Every company Abhed governs, live: agents, sessions, approvals, decisions, speed. */
 export async function GET() {
   const now = Date.now();
-  const [worlds, phones] = await Promise.all([Promise.all(TENANTS.map((t) => getWorld(t))), getLive('banking')]);
+  const [worlds, phones] = await Promise.all([activeWorlds(), getLive('banking')]);
   const companies = worlds.map((w) => {
     const pack = packFor(w.sector);
     const ins = buildInsights(w, now);
-    const siteAgents = new Set(Object.keys(pack.agentTools));
+    // a company that joined live shows the agents its website declared; NovaBank (set up in advance) shows all
+    const siteAgents = new Set(conn(w).agents ?? Object.keys(pack.agentTools));
     return {
       tenant: w.sector,
-      company: pack.company,
+      company: conn(w).site?.name ?? pack.company,
       label: pack.label,
       site: conn(w).site?.url ?? SITES[w.sector],
       connection: conn(w).status,
@@ -92,7 +93,7 @@ export async function GET() {
     const ms = rows.map((r) => r.perf?.gatewayMs).filter((x): x is number => typeof x === 'number');
     return { t: start, auto: rows.filter((r) => r.decision === 'ALLOWED').length, held: rows.filter((r) => r.decision === 'NEEDS_APPROVAL').length, blocked: rows.filter((r) => r.decision === 'BLOCKED').length, p95: pct(ms, 95) ?? 0, p50: pct(ms, 50) ?? 0 };
   });
-  const lives = await Promise.all(TENANTS.map((t) => getLive(t)));
+  const lives = await Promise.all(worlds.map((w) => getLive(w.sector)));
   const lastMin = acts.filter((r) => now - r.ts < 60_000);
   const last5 = acts.filter((r) => now - r.ts < 300_000);
   const pulse = {

@@ -3,14 +3,14 @@ import { identities } from '@/lib/approver-auth';
 import { human } from '@/lib/engine';
 import { canDecide } from '@/lib/people';
 import { packFor } from '@/lib/sectors';
-import { getWorld, TENANTS } from '@/lib/store';
+import { activeWorlds } from '@/lib/connect';
 
 export const dynamic = 'force-dynamic';
 
 /** One phone covers every company. Signed in, each request says whether *you* can decide it. */
 export async function GET(req: Request) {
   const me = await identities(req);
-  const worlds = await Promise.all(TENANTS.map((t) => getWorld(t)));
+  const worlds = await activeWorlds();
   const pending = worlds
     .flatMap((w) => {
       const mine = me.find((m) => m.tenant === w.sector);

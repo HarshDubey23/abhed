@@ -2,26 +2,39 @@ import { adminKeyFor } from './agentapi';
 import { appendLedger } from './engine';
 import { keyFor } from './live';
 import { packFor } from './sectors';
-import { getWorld, mutate, mutateLive, TENANTS, type Tenant } from './store';
+import { getDoc, getWorld, isTenant, mutate, mutateLive, mutateShared, resetWorld, TENANTS, type Tenant } from './store';
 import type { Connection, World } from './types';
 
 /**
- * Live connection of a company's website to Abhed.
- * Abhed issues a one-time pairing code; the website's admin enters it; the website receives its agent
- * keys at runtime and its agents come online under governance. While a company is not connected,
- * Abhed refuses its agent and admin keys (fail-closed), so "disconnect" really cuts the agents off.
+ * Companies join Abhed live.
+ * Abhed issues a one-time pairing code that belongs to no company yet. A company's website redeems it and
+ * says who it is (name, industry, its agents). Abhed then creates the company fresh, applies its deterministic
+ * industry rulebook, hands over the agent keys, and starts monitoring. Until then the company exists nowhere
+ * in Abhed. Removing it wipes it and refuses its keys again (fail-closed).
  */
 export const CODE_TTL_MS = 10 * 60_000;
 export const ONLINE_MS = 30_000;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const REGISTRY = 'connect';
+
+type Note = Connection['timeline'][number];
+export interface Registry {
+  version: number;
+  code: string | null;
+  exp: number | null;
+  log: (Note & { tenant?: string })[];
+}
+const emptyRegistry = (): Registry => ({ version: 0, code: null, exp: null, log: [] });
 
 export const conn = (w: World): Connection => w.connection ?? { status: 'connected', timeline: [] };
-const note = (c: Connection, text: string, tone: Connection['timeline'][number]['tone'] = 'info', at = Date.now()) => {
-  c.timeline.push({ at, text, tone });
-  if (c.timeline.length > 40) c.timeline.splice(0, c.timeline.length - 40);
+export const isVisible = (w: World) => conn(w).status === 'connected';
+const note = (list: Note[], text: string, tone: Note['tone'] = 'info', at = Date.now()) => {
+  list.push({ at, text, tone });
+  if (list.length > 40) list.splice(0, list.length - 40);
 };
 const record = (w: World, action: string, reason: string, params: Record<string, unknown> = {}) =>
   appendLedger(w, { actorType: 'system', actorId: 'abhed-connect', actorName: 'Abhed · Connect', action, params, decision: 'INFO', reason });
+const company = (t: string) => packFor(t).company.replace(' (fictional)', '');
 
 export function newCode() {
   let s = '';
@@ -29,59 +42,87 @@ export function newCode() {
   return s;
 }
 
-/** Issue a pairing code for a company (a new code replaces the old one). */
-export function issueCode(w: World, now = Date.now()) {
-  const c = (w.connection = conn(w));
-  c.code = newCode();
-  c.codeExp = now + CODE_TTL_MS;
-  if (c.status !== 'connected') c.status = 'waiting';
-  note(c, `Pairing code issued, valid for ${CODE_TTL_MS / 60_000} minutes`, 'info', now);
-  return c.code;
+export const getRegistry = () => getDoc<Registry>(REGISTRY, emptyRegistry);
+
+/** A new one-time code; any website may redeem it once, within 10 minutes. */
+export async function issueCode(now = Date.now()) {
+  const { result } = await mutateShared<Registry, string>(REGISTRY, emptyRegistry, (r) => {
+    r.code = newCode();
+    r.exp = now + CODE_TTL_MS;
+    note(r.log, 'Pairing code issued, valid for 10 minutes', 'info', now);
+    return r.code;
+  });
+  return result;
 }
 
-export function disconnect(w: World, by = 'Company admin', now = Date.now()) {
-  const c = (w.connection = conn(w));
-  const was = c.site?.url;
-  c.status = 'disconnected';
-  c.code = undefined;
-  c.codeExp = undefined;
-  c.site = undefined;
-  c.since = undefined;
-  c.seen = {};
-  note(c, `Disconnected by ${by}. Agent keys refused from now on.`, 'warn', now);
-  record(w, 'disconnect_site', `${packFor(w.sector).company} website disconnected by ${by}${was ? ` (${was})` : ''}. Its agent keys are refused until it pairs again.`);
+/** All companies currently in Abhed (connected). */
+export async function activeWorlds() {
+  const worlds = await Promise.all(TENANTS.map((t) => getWorld(t)));
+  return worlds.filter(isVisible);
 }
 
-/** The website redeems a code: Abhed marks the company connected and hands over its agent keys. */
-export async function pair(code: string, site: { url: string; name: string }) {
+/** The website redeems the code and introduces itself. */
+export async function pair(code: string, site: { url: string; name: string; sector: string; agents?: { id: string; name: string }[] }) {
   const want = code.trim().toUpperCase();
   if (!/^[A-Z2-9]{6}$/.test(want)) return { ok: false as const, status: 400, error: 'A pairing code is 6 letters and digits.' };
-  for (const t of TENANTS) {
-    const w0 = await getWorld(t);
-    const c0 = conn(w0);
-    if (c0.code !== want) continue;
-    if ((c0.codeExp ?? 0) < Date.now()) return { ok: false as const, status: 410, error: 'This code has expired. Generate a new one in Abhed → Connect.' };
-    const { result } = await mutate((w) => {
-      const c = (w.connection = conn(w));
-      const now = Date.now();
-      c.status = 'connected';
-      c.code = undefined;
-      c.codeExp = undefined;
-      c.since = now;
-      c.seen = {};
-      c.site = { url: site.url.slice(0, 120), name: site.name.slice(0, 60), at: now };
-      note(c, `Website paired: ${c.site.url}`, 'ok', now);
-      const r = record(w, 'connect_site', `${packFor(w.sector).company} website ${c.site.url} connected to Abhed with a one-time pairing code. Its agents are governed from this record on.`, { site: c.site.url });
-      return { seq: r.seq };
-    }, t);
-    const pack = packFor(t);
-    const keys = Object.fromEntries(Object.keys(pack.agentTools).map((id) => [id, keyFor(id)]));
-    return { ok: true as const, tenant: t as Tenant, company: pack.company, keys, adminKey: adminKeyFor(t), record: result.seq };
-  }
-  return { ok: false as const, status: 404, error: 'No company is waiting for this code. Check the code in Abhed → Connect.' };
+  if (!isTenant(site.sector)) return { ok: false as const, status: 400, error: `Abhed has no rulebook for the industry “${site.sector}” yet.` };
+  const t = site.sector;
+  // claim the code atomically so it works exactly once
+  const { result: claim } = await mutateShared<Registry, 'ok' | 'expired' | 'unknown'>(REGISTRY, emptyRegistry, (r) => {
+    if (!r.code || r.code !== want) return 'unknown';
+    if ((r.exp ?? 0) < Date.now()) return 'expired';
+    r.code = null;
+    r.exp = null;
+    return 'ok';
+  });
+  if (claim === 'expired') return { ok: false as const, status: 410, error: 'This code has expired. Generate a new one in Abhed → Connect.' };
+  if (claim === 'unknown') return { ok: false as const, status: 404, error: 'Abhed is not waiting for this code. Check it on Abhed → Connect.' };
+
+  const pack = packFor(t);
+  const was = conn(await getWorld(t)).status;
+  // a company that was not in Abhed starts fresh: nothing about it existed before this moment
+  if (was !== 'connected') await resetWorld({ tenant: t, history: false });
+  const declared = (site.agents ?? []).map((a) => a.id).filter((id) => id in pack.agentTools);
+  const { result } = await mutate((w) => {
+    const now = Date.now();
+    const c: Connection = (w.connection = { status: 'connected', since: now, seen: {}, timeline: was === 'connected' ? conn(w).timeline : [] });
+    if (declared.length) c.agents = declared;
+    c.site = { url: site.url.slice(0, 120), name: (site.name || company(t)).slice(0, 60), at: now };
+    note(c.timeline, `${c.site.name} joined Abhed from ${c.site.url}`, 'ok', now);
+    note(c.timeline, `Abhed’s ${pack.label.toLowerCase()} rulebook applied: ${w.rules.filter((r) => r.active).length} deterministic rules`, 'info', now);
+    const r = record(w, 'connect_site', `${c.site.name} connected to Abhed from ${c.site.url} with a one-time pairing code. Industry rulebook applied; every action of its agents is governed from this record on.`, { site: c.site.url });
+    return { seq: r.seq, name: c.site.name };
+  }, t);
+  await mutateShared<Registry, void>(REGISTRY, emptyRegistry, (r) => void note(r.log, `${result.name} joined from ${site.url}`, 'ok'));
+  const keys = Object.fromEntries(Object.keys(pack.agentTools).map((id) => [id, keyFor(id)]));
+  forgetConnection(t);
+  return { ok: true as const, tenant: t, company: result.name, keys, adminKey: adminKeyFor(t), record: result.seq };
 }
 
-/** Website heartbeat for one agent: shows it online in Abhed; the first one after pairing is noted. */
+/** Delete a company from Abhed: its data is wiped and its keys are refused until it pairs again. */
+export async function removeCompany(t: Tenant, by = 'the Abhed operator') {
+  const name = conn(await getWorld(t)).site?.name ?? company(t);
+  await resetWorld({ tenant: t, history: false });
+  await mutate((w) => {
+    w.connection = { status: 'removed', timeline: [] };
+  }, t);
+  await mutateShared<Registry, void>(REGISTRY, emptyRegistry, (r) => void note(r.log, `${name} removed by ${by}`, 'warn'));
+  forgetConnection(t);
+}
+
+/** Back to the opening state: only NovaBank, no pending code. */
+export async function resetDemo() {
+  for (const t of TENANTS) await resetWorld({ tenant: t });
+  await mutateShared<Registry, void>(REGISTRY, emptyRegistry, (r) => {
+    r.code = null;
+    r.exp = null;
+    r.log = [];
+    note(r.log, 'Demo reset: only NovaBank is connected', 'info');
+  });
+  for (const t of TENANTS) forgetConnection(t);
+}
+
+/** Website heartbeat for one agent: shows it online; the first one after joining is noted. */
 export async function heartbeat(tenant: Tenant, agentId: string, site: string) {
   const now = Date.now();
   await mutateLive((l) => {
@@ -110,7 +151,7 @@ export async function heartbeat(tenant: Tenant, agentId: string, site: string) {
     if (c.seen[agentId]) return;
     c.seen[agentId] = now;
     const a = w.agents.find((x) => x.id === agentId);
-    note(c, `${a?.name ?? agentId} came online on ${site || 'the website'}`, 'ok', now);
+    note(c.timeline, `${a?.name ?? agentId} came online on ${site || 'the website'}`, 'ok', now);
   }, tenant);
 }
 

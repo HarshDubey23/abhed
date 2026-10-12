@@ -45,7 +45,7 @@ export default function IntegratePage() {
             Plug any agent in, <em>in an afternoon</em>
           </h1>
           <p className="page-sub">
-            Abhed sits between an AI company’s agents and its systems, like a governed tool gateway. The company keeps its own agent code and model choice. It swaps direct tool calls for <span className="mono">abhed.call()</span>, and gets rules, phone approvals, pause, grounding and an audit trail it cannot edit.
+            Keep your agents. Swap direct tool calls for <span className="mono">abhed.call()</span>.
           </p>
         </div>
       </div>

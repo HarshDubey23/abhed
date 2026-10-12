@@ -139,6 +139,23 @@ const COMPANIES: [string, string][] = [
 ];
 
 function TenantSwitch({ current }: { current?: string }) {
+  // only companies that are connected to Abhed right now; the list follows live joins and removals
+  const [list, setList] = useState<[string, string][]>(COMPANIES.slice(0, 1));
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch('/api/connect', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((j: { companies?: { tenant: string; company: string }[] }) => alive && j.companies && setList(j.companies.map((c) => [c.tenant, c.company])))
+        .catch(() => undefined);
+    void load();
+    const t = setInterval(load, 8000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+  const opts = list;
   return (
     <select
       aria-label="Company"
@@ -149,7 +166,8 @@ function TenantSwitch({ current }: { current?: string }) {
         window.location.reload();
       }}
     >
-      {COMPANIES.map(([id, name]) => (
+      {!opts.some(([id]) => id === (current ?? 'banking')) && <option value={current ?? 'banking'}>—</option>}
+      {opts.map(([id, name]) => (
         <option key={id} value={id} style={{ background: '#111', color: '#ededed' }}>
           {name}
         </option>
@@ -276,9 +294,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           </details>
         </nav>
         <div className="topbar-right">
-          <span className="row muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+          <span className="top-led" title={view ? (view.verify.valid ? `Ledger intact · ${view.ledgerTotal} records` : `Ledger broken at #${view.verify.firstBadSeq}`) : ''}>
             <span className="live-dot" style={view?.verify.valid === false ? { background: 'var(--block)', boxShadow: '0 0 10px var(--block)' } : undefined} />
-            {view ? (view.verify.valid ? `ledger intact · ${view.ledgerTotal}` : `ledger broken at #${view.verify.firstBadSeq}`) : 'connecting…'}
+            <span className="top-led-t">{view ? (view.verify.valid ? `ledger intact · ${view.ledgerTotal}` : `ledger broken at #${view.verify.firstBadSeq}`) : 'connecting…'}</span>
           </span>
           <TenantSwitch current={view?.sector} />
           <ThemeToggle />

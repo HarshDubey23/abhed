@@ -87,7 +87,7 @@ function TwinInner() {
             Twin <em>Universe</em>
           </h1>
           <p className="page-sub">
-            Same agent, same poisoned ticket, same second. Left: a sandbox copy with no gateway. Right: the live bank. The ₹ and record counts are summed from what the agent actually proposed.
+            Same agent, same poisoned ticket. Left without Abhed, right with it.
           </p>
         </div>
         <div className="row">

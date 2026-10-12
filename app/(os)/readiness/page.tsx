@@ -50,7 +50,7 @@ export default function ReadinessPage() {
           <h1 className="page-title">
             Built to run today. <em>Planned for what comes next.</em>
           </h1>
-          <p className="page-sub">How Abhed is put together, what already works in production, how a company adopts it, and where it goes after the hackathon.</p>
+          <p className="page-sub">What runs today, how a company adopts it, and what comes next.</p>
         </div>
         <div className="row" style={{ gap: 10 }}>
           <Link href="/demo" className="btn btn-solid">

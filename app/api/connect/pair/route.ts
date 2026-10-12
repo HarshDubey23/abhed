@@ -1,5 +1,5 @@
 import { json } from '@/lib/api';
-import { forgetConnection, pair } from '@/lib/connect';
+import { pair } from '@/lib/connect';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +13,8 @@ export async function POST(req: Request) {
   tries.set(ip, { n: t && Date.now() - t.at < 60_000 ? t.n + 1 : 1, at: Date.now() });
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const site = (b.site ?? {}) as Record<string, unknown>;
-  const r = await pair(String(b.code ?? ''), { url: String(site.url ?? 'unknown site'), name: String(site.name ?? '') });
+  const agents = Array.isArray(site.agents) ? (site.agents as { id?: unknown; name?: unknown }[]).slice(0, 12).map((a) => ({ id: String(a.id ?? ''), name: String(a.name ?? '') })) : [];
+  const r = await pair(String(b.code ?? ''), { url: String(site.url ?? 'unknown site'), name: String(site.name ?? ''), sector: String(site.sector ?? ''), agents });
   if (!r.ok) return json({ error: r.error }, r.status);
-  forgetConnection(r.tenant);
   return json(r);
 }

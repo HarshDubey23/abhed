@@ -9,7 +9,7 @@
 | 1 | `kavach-os.vercel.app` (landing) |
 | 2 | `kavach-os.vercel.app/arena?full=1` → neeche **clear** → PIN **2468** |
 | 3 | `kavach-os.vercel.app/demo` → **Reset demo** |
-| 4 | `bazaar-agents.onrender.com` aur `/admin` (pehle khol do, jaagne mein 40 s) · Abhed → **Connect** pe Bazaar **Not connected** ho |
+| 4 | `bazaar-agents.onrender.com` aur `/admin` (pehle khol do, jaagne mein 40 s) · Abhed → **Connect** → **Reset demo** (2468) → sirf NovaBank |
 | Phone | `kavach-os.vercel.app/approver` → NovaBank → **Guest Judge** → PIN **1234** → go on duty |
 
 ## 1 · Opening — Landing (30 s)
@@ -52,11 +52,11 @@ Jab card aaye, sirf **3 cheezein** batao:
 
 > **BOLO:** "Is company ke apne AI agents hain, par Abhed se connect nahi — isliye band hain."
 
-**DIKHAO:** Abhed → **Connect** → Bazaar.in → **Generate pairing code**. Bazaar `/admin` (PIN **2468**) → code daalo → **Connect to Abhed**.
+**DIKHAO:** Abhed → **Connect** (sirf NovaBank hai) → **Generate pairing code**. Bazaar `/admin` (PIN **2468**) → code daalo → **Connect to Abhed**.
 
 > **BOLO:** "Ek one-time code. Koi key copy-paste nahi."
 
-**DIKHAO:** Abhed Connect page: green flash, **"Shoppy came online"**, **"Pricer came online"**. Bazaar site: banner gayab, chat on. Suggestion **"OD-5512 arrived damaged…"** → ₹1,499 turant. **"OD-5530 never arrived…"** → ₹38,990 phone pe approve.
+**DIKHAO:** Abhed Connect: **"Joined just now · Bazaar.in"** — rulebook applied (11 rules), Shoppy + Pricer online. Bazaar ab Fleet aur switcher mein bhi. Bazaar site: banner gayab, chat on. Suggestion **"OD-5512 arrived damaged…"** → ₹1,499 turant. **"OD-5530 never arrived…"** → ₹38,990 phone pe approve.
 
 > **BOLO:** "10 second mein connect, aur ab inka har action Abhed se ho ke jaata hai."
 

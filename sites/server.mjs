@@ -75,12 +75,12 @@ async function pairWith(code) {
   const r = await fetch(`${KAVACH_URL}/api/connect/pair`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ code, site: { url: PUBLIC_URL, name: SITE.brand } }),
+    // the website introduces itself: Abhed knew nothing about this company until now
+    body: JSON.stringify({ code, site: { url: PUBLIC_URL, name: SITE.brand, sector: SITE.tenant, agents: SITE.agents.map((a) => ({ id: a.id, name: a.name })) } }),
   }).catch(() => null);
   if (!r) return { status: 502, data: { error: 'Abhed is unreachable from this website' } };
   const d = await r.json().catch(() => ({}));
   if (!r.ok) return { status: r.status, data: d };
-  if (d.tenant !== SITE.tenant) return { status: 400, data: { error: `That code belongs to ${d.company}, not ${SITE.brand}.` } };
   useKeys(d.keys, d.adminKey);
   link = { since: Date.now(), via: 'pairing', error: null };
   try {

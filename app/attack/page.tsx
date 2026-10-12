@@ -42,6 +42,20 @@ export default function AttackPage() {
   const [err, setErr] = useState('');
   const [id, setId] = useState<string | null>(null);
   const [res, setRes] = useState<Attack | null>(null);
+  const [live, setLive] = useState<Target[] | null>(null);
+
+  // only agents of companies that are connected to Abhed right now
+  useEffect(() => {
+    fetch('/api/arena', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((j: { targets?: Record<string, unknown> }) => {
+        const ids = TARGETS.map((t) => t.id).filter((id) => j.targets && id in j.targets);
+        setLive(ids);
+        if (ids.length && !ids.includes(target)) setTarget(ids[0]);
+      })
+      .catch(() => setLive(TARGETS.map((t) => t.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     try {
@@ -104,7 +118,7 @@ export default function AttackPage() {
 
           <label className="atk-label">Pick an agent</label>
           <div className="atk-targets">
-            {TARGETS.map((t) => (
+            {TARGETS.filter((t) => !live || live.includes(t.id)).map((t) => (
               <button key={t.id} className={`atk-t ${target === t.id ? 'on' : ''}`} onClick={() => setTarget(t.id)}>
                 <b>{t.agent}</b>
                 <span>{t.company}</span>

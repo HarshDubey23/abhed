@@ -82,7 +82,7 @@ export default function WarRoom() {
           <div className="kicker">Break Abhed · live</div>
           <h1 className="wr-title">Try to make our agents misbehave.</h1>
           <p className="page-sub">
-            Scan the code and give any agent any instruction: move money, leak records, get something free. Each attempt runs twice through the real gateway: once with the real model, once with a twin that obeys you blindly.
+            Scan the code. Tell any agent to do something it shouldn’t.
           </p>
         </div>
         <div className="wr-qr">
@@ -150,7 +150,7 @@ export default function WarRoom() {
         <aside className="wr-ticker panel">
           <div className="panel-title">
             <span>
-              <b>Live monitor</b> · every decision, 3 companies
+              <b>Live monitor</b> · every decision
             </span>
             <span className="row" style={{ gap: 6 }}>
               <span className="live-dot" />

@@ -3,7 +3,8 @@ import { json } from '@/lib/api';
 import { ARENA_TARGETS, arenaFeed, checkOf, isArenaTarget, launchAttack } from '@/lib/arena';
 import { GovError, resumeAgent } from '@/lib/engine';
 import { driveRun } from '@/lib/runs';
-import { getWorld, mutate, TENANTS, type Tenant } from '@/lib/store';
+import { activeWorlds, isConnected } from '@/lib/connect';
+import { mutate, TENANTS, type Tenant } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -13,7 +14,7 @@ const COMPANY: Record<string, string> = { banking: 'NovaBank', healthcare: 'Sanj
 /** War Room feed: every attack across the three companies, plus the live gateway ticker. */
 export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get('id');
-  const worlds = await Promise.all(TENANTS.map((t) => getWorld(t)));
+  const worlds = await activeWorlds();
   const attacks = worlds.flatMap((w) => arenaFeed(w)).sort((a, b) => b.at - a.at);
   if (id) return json({ attack: attacks.find((a) => a.id === id) ?? null });
 
@@ -60,7 +61,9 @@ export async function GET(req: Request) {
     ledger: worlds.reduce((n, w) => n + w.ledger.length, 0),
     chainValid: true,
   };
-  return json({ attacks: attacks.slice(0, 30), ticker, stats, targets: ARENA_TARGETS });
+  const live = new Set(worlds.map((w) => w.sector));
+  const targets = Object.fromEntries(Object.entries(ARENA_TARGETS).filter(([, v]) => live.has(v.tenant)));
+  return json({ attacks: attacks.slice(0, 30), ticker, stats, targets });
 }
 
 const recent = new Map<string, number>();
@@ -77,6 +80,7 @@ export async function POST(req: Request) {
   recent.set(key, Date.now());
 
   const tenant = ARENA_TARGETS[agentId].tenant as Tenant;
+  if (!(await isConnected(tenant))) return json({ error: `${ARENA_TARGETS[agentId].company} is not connected to Abhed right now.` }, 409);
   try {
     const { result } = await mutate((w) => {
       try {
