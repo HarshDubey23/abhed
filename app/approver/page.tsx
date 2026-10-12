@@ -337,7 +337,7 @@ export default function ApproverPage() {
 
       <div className="ap-logo" role="img" aria-label="Abhed">
         <span className="ap-wordmark">
-          <AbhedMark /> abhed
+          <AbhedMark size={34} /> Abhed
         </span>
       </div>
 
@@ -361,7 +361,7 @@ export default function ApproverPage() {
             </select>
             <input className="ap-name" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="PIN (from your company admin)" inputMode="numeric" type="password" aria-label="PIN" />
             <div className="ap-contact-links">
-              <button disabled={busy || pin.length < 4 || !who} onClick={signIn}>
+              <button className="ap-primary" disabled={busy || pin.length < 4 || !who} onClick={signIn}>
                 {onDuty ? 'add this company →' : 'go on duty →'}
               </button>
             </div>

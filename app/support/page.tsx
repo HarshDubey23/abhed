@@ -127,7 +127,7 @@ export default function SupportPage() {
 
       <div className="ap-logo" role="img" aria-label="Abhed">
         <span className="ap-wordmark">
-          <AbhedMark /> abhed
+          <AbhedMark size={34} /> Abhed
         </span>
       </div>
 

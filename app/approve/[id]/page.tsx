@@ -38,13 +38,8 @@ function Icon({ kind }: { kind: 'shield' | 'clock' | 'print' }) {
       </svg>
     );
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <g transform="rotate(-30 12 12)">
-        <circle cx="7.3" cy="3.2" r="1.45" />
-        <rect x="5.5" y="4.7" width="3.6" height="14.6" rx="1.8" />
-        <rect x="14.9" y="4.7" width="3.6" height="14.6" rx="1.8" />
-        <circle cx="16.7" cy="20.8" r="1.45" />
-      </g>
+    <svg viewBox="-8 -1 48 50" fill="currentColor" aria-hidden="true">
+      <path d="M21.5 0 L21.5 19.5 L31.5 19.5 L31.5 29 L10 48.5 L10 28.5 L0.5 28.5 L0.5 18.5 Z" />
     </svg>
   );
 }
@@ -315,7 +310,7 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
 
       <div className="ap-logo" role="img" aria-label="Abhed">
         <span className="ap-wordmark">
-          <AbhedMark /> abhed
+          <AbhedMark size={34} /> Abhed
         </span>
       </div>
 
@@ -350,7 +345,7 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
             </p>
             {me.can.ok ? (
               <div className="ap-contact-links">
-                <button disabled={sending} onClick={() => decide('approve')}>
+                <button className="ap-primary" disabled={sending} onClick={() => decide('approve')}>
                   approve it →
                 </button>
                 <button disabled={sending} onClick={() => decide('reject')}>
