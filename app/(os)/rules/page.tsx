@@ -45,8 +45,8 @@ export default function RulesPage() {
                 </span>
               </div>
               <div style={{ fontSize: 15.5, marginTop: 8, letterSpacing: '-0.015em' }}>“{r.says}”</div>
-              <div className="mono dim" style={{ fontSize: 11, marginTop: 8 }}>
-                when {JSON.stringify(r.when)}
+              <div className="mono dim" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6, overflowWrap: 'anywhere' }}>
+                when {whenText(r.when)}
               </div>
               <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
                 {on ? 'active' : 'superseded'} · author {view.humans.find((h) => h.id === r.author)?.name ?? r.author} · approved by{' '}
@@ -93,4 +93,18 @@ export default function RulesPage() {
       )}
     </main>
   );
+}
+
+/** A rule's condition, readable: `action = issue_refund · amount > ₹10,000 · amount ≤ ₹50,000`. */
+function whenText(when: object) {
+  const OPS: Record<string, string> = { _gt: '>', _gte: '≥', _lt: '<', _lte: '≤' };
+  const money = (k: string) => /amount|value|price|total/.test(k);
+  return Object.entries(when as Record<string, unknown>)
+    .map(([k, v]) => {
+      const op = Object.keys(OPS).find((o) => k.endsWith(o));
+      const key = (op ? k.slice(0, -op.length) : k).replace(/_/g, ' ');
+      const val = typeof v === 'number' ? (money(k) ? `₹${v.toLocaleString('en-IN')}` : v.toLocaleString('en-IN')) : Array.isArray(v) ? v.join(' or ') : typeof v === 'object' ? JSON.stringify(v) : String(v);
+      return `${key} ${op ? OPS[op] : '='} ${val}`;
+    })
+    .join(' · ');
 }

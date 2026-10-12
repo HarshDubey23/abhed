@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Visitor } from '@/components/visitor';
+import { PricingHero } from './hero';
 
 const PROBLEMS = [
   ['Agents act with human permissions, without human accountability', 'An agent can refund, prescribe, re-price or email customers. When it goes wrong, nobody can say who allowed it.'],
@@ -70,16 +72,22 @@ export default function BusinessPage() {
   const bill = agentFee + actFee + llmFee;
 
   return (
+    <>
+    <PricingHero
+      actions={actions}
+      setActions={setActions}
+      high={agents.high}
+      setHigh={(n) => setAgents({ ...agents, high: n })}
+      bill={bill}
+      agentFee={agentFee}
+      onReset={() => {
+        setAgents({ low: 5, medium: 7, high: 8 });
+        setActions(800000);
+        setLlm(0);
+      }}
+    />
     <main className="page">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">
-            The problem, the price, <em>the field</em>
-          </h1>
-          <p className="page-sub">Abhed is priced purely on usage: governed actions and active agents, with a free allowance every month. No plans and no minimum. Checkpoints and phone approvals are never charged.</p>
-        </div>
-      </div>
-
+      <h2 className="sr-only">The problem, the price, the field</h2>
       <div className="panel" style={{ marginBottom: 14 }}>
         <div className="panel-title">
           <span>
@@ -144,7 +152,7 @@ export default function BusinessPage() {
           </p>
         </div>
 
-        <div className="panel">
+        <div className="panel" id="calc" style={{ scrollMarginTop: 'calc(var(--topbar-h, 72px) + 24px)' }}>
           <div className="panel-title">
             <span>
               <b>Calculator</b>
@@ -223,6 +231,8 @@ export default function BusinessPage() {
         </p>
       </div>
     </main>
+    <Visitor first={9000} />
+    </>
   );
 }
 

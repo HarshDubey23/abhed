@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AmbientField, useNumberGlint } from './ambient';
+import { AmbientField, useFitText, useNumberGlint } from './ambient';
 import { usePathname, useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -238,6 +238,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const { view } = useWorld();
   useSpotlight();
   useNumberGlint();
+  useFitText();
   const more = useRef<HTMLDetailsElement>(null);
   const bar = useRef<HTMLElement>(null);
   // the bar is fixed; the page starts below it at whatever height it wraps to on small screens

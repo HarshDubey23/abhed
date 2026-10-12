@@ -184,6 +184,38 @@ export function AmbientField({ beat }: { beat: number }) {
   return <canvas ref={ref} className="q-field" aria-hidden="true" />;
 }
 
+/** Big numbers shrink just enough to fit their tile, so a long amount never gets cut. */
+export function useFitText(selector = '.kpi-value, .fl-big b, .wr-v') {
+  useEffect(() => {
+    let raf = 0;
+    const fit = () => {
+      raf = 0;
+      document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+        el.style.fontSize = '';
+        let size = parseFloat(getComputedStyle(el).fontSize);
+        let guard = 0;
+        while (el.scrollWidth > el.clientWidth + 1 && size > 14 && guard++ < 30) {
+          size -= 1;
+          el.style.fontSize = `${size}px`;
+        }
+      });
+    };
+    const later = () => {
+      if (!raf) raf = requestAnimationFrame(fit);
+    };
+    later();
+    const mo = new MutationObserver(later);
+    mo.observe(document.body, { subtree: true, childList: true, characterData: true });
+    window.addEventListener('resize', later);
+    void document.fonts?.ready.then(later);
+    return () => {
+      cancelAnimationFrame(raf);
+      mo.disconnect();
+      window.removeEventListener('resize', later);
+    };
+  }, [selector]);
+}
+
 /** Live numbers glint when the data changes them (never on first render). */
 export function useNumberGlint() {
   useEffect(() => {

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { inr, useWorld } from '@/components/app';
+import { Visitor } from '@/components/visitor';
+import StudioFooter from './studio-footer';
 
 type Health = { ok: boolean; store: string; llm: boolean; tenants: { sector: string; company: string; ledger: number; agents: number }[] };
 
@@ -43,6 +45,7 @@ export default function ReadinessPage() {
   const k = view?.kpi;
 
   return (
+    <>
     <main className="page ready">
       <div className="page-head">
         <div>
@@ -218,6 +221,9 @@ const r = await s.call('issue_refund', { amount: 40000 })   // ALLOWED · NEEDS_
         </table>
       </section>
     </main>
+    <StudioFooter />
+    <Visitor />
+    </>
   );
 }
 
