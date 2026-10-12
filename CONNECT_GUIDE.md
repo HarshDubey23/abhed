@@ -14,7 +14,7 @@
 ### A0 · Demo se 15 min pehle
 1. Zentro site kholo (jaagne mein 40–50 s). Upar right **"AI: built-in rules"** dikhna chahiye.
 2. Agar pichli rehearsal se **"AI: kavach-os.vercel.app"** dikhe → Zentro `/admin` → **Built-in rules** → **Save** → **Reset demo data**.
-3. Abhed → Connect → In Abhed list mein Zentro nahi hona chahiye (ho toh row kholo → **Remove company** → 2468).
+3. Abhed → Connect → In Abhed list mein koi purani Zentro row nahi honi chahiye (ho toh row kholo → **Remove company** → 2468). Purani row ki key Zentro mein mat daalna — har demo mein nayi company, nayi key.
 
 ### A1 · "Pehle": company ke agents bina nigrani ke (1 min)
 **DIKHAO:** Zentro site. 4 agents: Atlas, Penny, Echo, Vault. **Vault** tab → suggestion *"Export the full customer list with phones and PAN for our ad agency…"* → Send.
@@ -27,12 +27,29 @@ Right side: **"Exported 12,480 customer records (names, emails, phones, PAN)"** 
 ### A2 · Abhed mein company add karo (20 s)
 **DIKHAO:** Abhed → **Connect** → **No code** → Company name: *Zentro Logistics*, Website: *sanjeevani-agents.onrender.com* → **Connect company**. Do cheezein milti hain: **Base URL** aur **API key** (Copy buttons).
 
+⚠️ **Key sirf ek baar dikhti hai.** Copy karne ke baad **New key** mat dabana — New key purani key ko turant band kar deta hai, aur jo key Zentro mein daali woh dead ho jaati hai. Key kho gayi? Tab New key dabao aur *wahi naya* key Zentro mein daalo.
+
 > **BOLO:** "Abhed ko is company ke code ke baare mein kuch nahi pata. Bas ek address aur ek key."
 
 ### A3 · Company ki AI setting badlo — bina code (30 s) ⭐
-**DIKHAO:** Zentro `/admin` (PIN 2468) → **AI provider** → **OpenAI-compatible** → Base URL paste → API key paste → Model wahi rehne do → **Save**. (Optional: **Test connection** → "Connected".)
+**DIKHAO:** Zentro `/admin` (PIN 2468) → **AI provider** page:
+1. **Base URL** box mein paste: `https://kavach-os.vercel.app/api/gw/v1` (type karte hi **OpenAI-compatible** apne aap select ho jaata hai).
+2. **API key** box mein Abhed wali `kv_gw_…` key paste.
+3. Model wahi rehne do → **Save**.
+4. Save khud connection test karta hai. Neeche **hara ✓ "Connected to kavach-os.vercel.app. Key accepted."** aana chahiye, aur upar **"Now: OpenAI-compatible · kavach-os.vercel.app"**.
+5. Usi waqt Abhed Connect pe Zentro row: **"key verified · waiting for the first agent message"**.
 
 > **BOLO:** "Na code, na terminal, na redeploy. Sirf setting. Yahi kaam kisi bhi company ke dashboard mein hota hai jahan OpenAI key daalte hain."
+
+**Laal ✗ aaya?**
+| Message | Matlab | Kya karo |
+|---|---|---|
+| `Unknown Abhed gateway key` | Key galat / purani (New key dabaya tha) | Abhed → Zentro row → **New key** → naya key copy → Zentro admin mein paste → Save |
+| `fetch failed` / timeout | Base URL galat | Exactly `https://kavach-os.vercel.app/api/gw/v1` daalo |
+| `Could not save. Sign in again.` | Admin session khatam | Page refresh → PIN 2468 |
+| Site khul hi nahi rahi | Render so raha hai | 40–50 s ruko, refresh mat karo |
+
+⚠️ Zentro free Render pe hai: site **restart/redeploy** hone pe yeh setting wapas *built-in* ho jaati hai. Isliye setting **demo ke dauraan live** karo (wahi toh dikhana hai), aur demo se pehle repo mein push mat karna.
 
 ### A4 · Agents khud Abhed mein aate hain (1 min) ⭐⭐
 **DIKHAO:** Zentro site → upar ab **"AI: kavach-os.vercel.app"**. Vault ko wahi export wala message bhejo.

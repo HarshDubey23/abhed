@@ -189,6 +189,12 @@ async function ask(agent, text, history) {
   return { steps, answer: 'Done.', brain: hostOf(ai.baseUrl) };
 }
 const hostOf = (u) => (u || '').replace(/^https?:\/\//, '').split('/')[0];
+// people paste all kinds of things: no scheme, a trailing slash, or the full /chat/completions address
+const cleanUrl = (u) => {
+  let v = String(u).trim().slice(0, 200).replace(/\/+$/, '').replace(/\/(chat\/completions|models)$/, '');
+  if (v && !/^https?:\/\//i.test(v)) v = `https://${v}`;
+  return v;
+};
 
 // ───────── http ─────────
 const sign = (v) => createHmac('sha256', SECRET).update(v).digest('base64url');
@@ -249,7 +255,7 @@ createServer(async (req, res) => {
       if (sub === 'ai' && req.method === 'POST') {
         const b = await readBody(req);
         ai.mode = b.mode === 'openai' ? 'openai' : 'builtin';
-        if (typeof b.baseUrl === 'string') ai.baseUrl = b.baseUrl.trim().slice(0, 200);
+        if (typeof b.baseUrl === 'string') ai.baseUrl = cleanUrl(b.baseUrl);
         if (typeof b.apiKey === 'string' && b.apiKey.trim()) ai.apiKey = b.apiKey.trim().slice(0, 200);
         if (typeof b.model === 'string' && b.model.trim()) ai.model = b.model.trim().slice(0, 80);
         saveAi();
@@ -259,7 +265,7 @@ createServer(async (req, res) => {
         try {
           const r = await fetch(`${ai.baseUrl.replace(/\/$/, '')}/models`, { headers: { authorization: `Bearer ${ai.apiKey}` } });
           const j = await r.json().catch(() => ({}));
-          return send(res, 200, { ok: r.ok, status: r.status, models: (j.data ?? []).map((m) => m.id).slice(0, 5) });
+          return send(res, 200, { ok: r.ok, status: r.status, host: hostOf(ai.baseUrl), error: r.ok ? undefined : (j.error?.message ?? j.error ?? `HTTP ${r.status}`), models: (j.data ?? []).map((m) => m.id).slice(0, 5) });
         } catch (e) {
           return send(res, 200, { ok: false, error: e.message });
         }
@@ -338,13 +344,15 @@ const ADMIN = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta 
 label{display:block;margin-top:16px;font-size:13px;color:var(--mut)}input,select{width:100%;margin-top:6px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--card2);padding:0 14px;outline:none}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}.seg button{border:1px solid var(--line);background:var(--card2);border-radius:12px;padding:12px;text-align:left;cursor:pointer}.seg button b{display:block}.seg button span{font-size:12.5px;color:var(--mut)}.seg button.on{border-color:var(--ink)}
 .btns{display:flex;gap:10px;margin-top:22px}.btns button{height:48px;border-radius:999px;padding:0 22px;cursor:pointer;border:1px solid var(--line2);background:none}.btns .p{background:var(--ink);color:#111;border:0;font-weight:600}
-#msg{margin-top:14px;min-height:22px}</style></head><body>
+#msg{margin-top:14px;min-height:22px;line-height:1.5}.ok{color:#5ad48b}.bad{color:#ff8080}#now{margin:6px 0 4px;font-size:14px}</style></head><body>
 <header><div class="bar"><div class="brand"><span class="mark">Z</span>Zentro Logistics <span class="mut" style="font-weight:400;font-size:14px">· admin</span></div><a class="adm" href="/" style="margin-left:auto">← Operations</a></div></header>
 <div class="wrap" id="app"><h2>Staff sign-in</h2><p class="mut">Admin PIN</p><input id="pin" type="password" inputmode="numeric" autofocus><div class="btns"><button class="p" id="login">Sign in</button></div><p id="msg" class="mut"></p></div>
 <script>
 const $=s=>document.querySelector(s);let mode='builtin';
 async function load(){const r=await fetch('/admin/api/ai');if(r.status===401)return;const a=await r.json();mode=a.mode;
+ const now=a.mode==='openai'?'Now: OpenAI-compatible · '+a.baseUrl.split('//').pop().split('/')[0]:'Now: built-in rules (no AI provider)';
  $('#app').innerHTML='<h2>AI provider</h2><p class="mut">Where our agents send their model calls. Any OpenAI-compatible endpoint works. Changing this needs no code and no redeploy.</p>'
+ +'<p id="now" class="'+(a.mode==='openai'?'ok':'mut')+'">'+now+'</p>'
  +'<div class="seg"><button data-m="builtin"><b>Built-in rules</b><span>No AI provider. Simple keyword rules.</span></button><button data-m="openai"><b>OpenAI-compatible</b><span>Base URL + API key</span></button></div>'
  +'<label>Base URL<input id="url" placeholder="https://api.example.com/v1" value="'+(a.baseUrl||'')+'"></label>'
  +'<label>API key<input id="key" type="password" placeholder="'+(a.keySet?'saved: '+a.keyHint+' (leave empty to keep)':'paste the key')+'"></label>'
@@ -352,9 +360,19 @@ async function load(){const r=await fetch('/admin/api/ai');if(r.status===401)ret
  +'<div class="btns"><button class="p" id="save">Save</button><button id="test">Test connection</button><button id="reset">Reset demo data</button></div><p id="msg" class="mut"></p>';
  const seg=()=>document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));seg();
  document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;seg()});
- $('#save').onclick=async()=>{const r=await fetch('/admin/api/ai',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,baseUrl:$('#url').value,apiKey:$('#key').value,model:$('#model').value})});$('#msg').textContent=r.ok?'Saved. Our agents use this from their next message.':'Could not save'};
- $('#test').onclick=async()=>{$('#msg').textContent='Testing…';const j=await (await fetch('/admin/api/test',{method:'POST'})).json();$('#msg').textContent=j.ok?'Connected: '+(j.models||[]).join(', '):'Failed: '+(j.error||('HTTP '+j.status))};
- $('#reset').onclick=async()=>{await fetch('/admin/api/reset',{method:'POST'});$('#msg').textContent='Demo data restored.'}}
+ ['#url','#key'].forEach(id=>$(id).addEventListener('input',()=>{if($(id).value.trim()){mode='openai';seg()}}));
+ const say=(t,c)=>{$('#msg').textContent=t;$('#msg').className=c||'mut'};
+ const test=async()=>{say('Testing the connection…');try{const j=await (await fetch('/admin/api/test',{method:'POST'})).json();
+  if(j.ok)say('✓ Connected to '+j.host+'. Key accepted. Now send any agent a message on the operations page.','ok');
+  else say('✗ Not connected: '+(j.error||('HTTP '+j.status)),'bad')}catch(e){say('✗ Not connected: '+e.message,'bad')}};
+ $('#save').onclick=async()=>{
+  if(mode==='openai'&&!$('#url').value.trim())return say('Fill in the Base URL first.','bad');
+  if(mode==='openai'&&!$('#key').value.trim()&&!a.keySet)return say('Paste the API key first.','bad');
+  const r=await fetch('/admin/api/ai',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,baseUrl:$('#url').value,apiKey:$('#key').value,model:$('#model').value})});
+  if(!r.ok)return say('Could not save. Sign in again.','bad');
+  if(mode==='openai'){await load();await test()}else{await load();say('Saved. Agents use built-in rules again.','ok')}};
+ $('#test').onclick=test;
+ $('#reset').onclick=async()=>{await fetch('/admin/api/reset',{method:'POST'});say('Demo data restored.','ok')}}
 $('#login').onclick=async()=>{const r=await fetch('/admin/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin:$('#pin').value})});if(r.ok)load();else $('#msg').textContent='Wrong PIN'};
 $('#pin').onkeydown=e=>{if(e.key==='Enter')$('#login').click()};load();
 </script></body></html>`;

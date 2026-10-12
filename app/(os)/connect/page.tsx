@@ -22,7 +22,7 @@ type State = { pending: { code: string; exp: number } | null; log: Note[]; compa
 type GwAgent = { id: string; name: string; calls: number; toolCalls: number; blocked: number; held: number; online: boolean; lastSeen: number };
 type GwEvent = { id: number; at: number; agent: string; kind: string; text: string; tool?: string; args?: string; decision?: string; rule?: string; ms?: number };
 type GwHold = { id: string; agent: string; tool: string; args: string; reason: string; rule: string; at: number };
-type GwCompany = { id: string; name: string; site?: string; keyHint: string; createdAt: number; firstCallAt?: number; rules: { holdAbove: number; blockAbove: number; allowedDomains: string[]; blockTools: string[] }; agents: GwAgent[]; events: GwEvent[]; holds: GwHold[] };
+type GwCompany = { id: string; name: string; site?: string; keyHint: string; createdAt: number; firstCallAt?: number; linkedAt?: number; rules: { holdAbove: number; blockAbove: number; allowedDomains: string[]; blockTools: string[] }; agents: GwAgent[]; events: GwEvent[]; holds: GwHold[] };
 
 const DECISION: Record<string, [string, string]> = {
   ALLOWED: ['allow', 'Allowed'],
@@ -145,7 +145,7 @@ export default function ConnectPage() {
           {mode === 'nocode' ? (
             created ? (
               <div className="cn-joined">
-                <div className="cn-label">{mine?.firstCallAt ? 'Connected' : 'Paste these into the company’s AI settings'}</div>
+                <div className="cn-label">{mine?.firstCallAt ? 'Connected' : mine?.linkedAt ? 'Key verified · now send any agent a message' : 'Paste these into the company’s AI settings'}</div>
                 <div className="cn-name">{mine?.name ?? form.name}</div>
                 <div className="cn-cred">
                   <span>Base URL</span>
@@ -162,7 +162,8 @@ export default function ConnectPage() {
                   </button>
                 </div>
                 <ul className="cn-check">
-                  <li className={mine?.firstCallAt ? 'done' : 'wait'}>{mine?.firstCallAt ? 'First model call received' : 'Waiting for the first model call…'}</li>
+                  <li className={mine?.linkedAt || mine?.firstCallAt ? 'done' : 'wait'}>{mine?.linkedAt || mine?.firstCallAt ? 'Key verified by the company’s system' : 'Waiting for the company to save the key…'}</li>
+                  <li className={mine?.firstCallAt ? 'done' : 'wait'}>{mine?.firstCallAt ? 'First agent message received' : 'Waiting for the first agent message…'}</li>
                   <li className="done">Abhed rulebook on: bulk data, destructive actions, data leaving, money limits</li>
                   {(mine?.agents ?? []).map((a) => (
                     <li key={a.id} className="done">
@@ -378,7 +379,7 @@ function GwRow({ c, open, toggle, fresh, busy, post, withPin, onKey }: { c: GwCo
             {c.name} <span className="chip chip-muted">no code</span>
           </b>
           <span className="dim">
-            AI gateway · {c.firstCallAt ? `${c.agents.length} agent${c.agents.length === 1 ? '' : 's'} discovered` : 'waiting for first call'}
+            AI gateway · {c.firstCallAt ? `${c.agents.length} agent${c.agents.length === 1 ? '' : 's'} discovered` : c.linkedAt ? 'key verified · waiting for the first agent message' : 'waiting for the company to paste the key'}
             {c.holds.length ? ` · ${c.holds.length} waiting for a person` : ''}
           </span>
         </span>

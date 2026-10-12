@@ -35,6 +35,8 @@ export interface GwCompany {
   keyHint: string;
   createdAt: number;
   firstCallAt?: number;
+  /** Last time the company's system checked its key (e.g. a "Test connection" button). */
+  linkedAt?: number;
   rules: GwRules;
   agents: Record<string, GwAgent>;
 }
@@ -138,6 +140,17 @@ export async function companyForKey(auth: string | null) {
   if (!key.startsWith('kv_gw_')) return null;
   const h = sha(key);
   return (await getGateway()).companies.find((c) => c.keyHash === h) ?? null;
+}
+
+/** The company's system proved its key works: show it as linked in Abhed right away, before any agent talks. */
+export async function markLinked(id: string, from: string) {
+  await mutateGateway((d) => {
+    const c = d.companies.find((x) => x.id === id);
+    if (!c) return;
+    const now = Date.now();
+    if (!c.linkedAt || now - c.linkedAt > 5 * 60_000) pushEvent(d, { company: id, agent: '', kind: 'joined', text: `Key verified from ${from}. Linked: agents appear as they send their first message.` });
+    c.linkedAt = now;
+  });
 }
 
 /** Who is calling: the OpenAI `user` field if set, else the name in the system prompt ("You are Atlas, …"). */

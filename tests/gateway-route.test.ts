@@ -15,6 +15,7 @@ vi.mock('../lib/llm', () => ({
 }));
 
 const { POST } = await import('../app/api/gw/v1/chat/completions/route');
+const { GET: models } = await import('../app/api/gw/v1/models/route');
 const { addGatewayCompany, getGateway, mutateGateway } = await import('../lib/gateway');
 
 const call = (key: string, agent: string, text: string) =>
@@ -24,6 +25,15 @@ describe('Gateway endpoint', () => {
   it('rejects an unknown key', async () => {
     const r = await call('kv_gw_nope', 'Atlas', 'hi');
     expect(r.status).toBe(401);
+  });
+
+  it('checks the key on the model list, so a wrong key never looks connected, and marks a right one linked', async () => {
+    const bad = await models(new Request('http://x/api/gw/v1/models', { headers: { authorization: 'Bearer kv_gw_wrong' } }));
+    expect(bad.status).toBe(401);
+    const { id, key } = await addGatewayCompany('Linked Co');
+    const ok = await models(new Request('http://x/api/gw/v1/models', { headers: { authorization: `Bearer ${key}` } }));
+    expect(ok.status).toBe(200);
+    expect((await getGateway()).companies.find((x) => x.id === id)?.linkedAt).toBeGreaterThan(0);
   });
 
   it('discovers the agent and strips a blocked tool call before the company can run it', async () => {
