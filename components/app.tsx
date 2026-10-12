@@ -117,19 +117,18 @@ const NAV = [
   { href: '/arena', label: 'Break Abhed' },
   { href: '/demo', label: 'Live Demo' },
   { href: '/fleet', label: 'Fleet' },
-  { href: '/command', label: 'Command' },
-  { href: '/incidents', label: 'Incidents' },
   { href: '/ledger', label: 'Ledger' },
+  { href: '/readiness', label: 'Readiness' },
+];
+const MORE = [
+  { href: '/command', label: 'Command center' },
+  { href: '/incidents', label: 'Incidents' },
   { href: '/insights', label: 'Insights' },
   { href: '/security', label: 'Security' },
   { href: '/rules', label: 'Rules' },
-  { href: '/lab', label: 'Lab' },
-];
-const MORE = [
-  { href: '/readiness', label: 'Roadmap & readiness' },
+  { href: '/lab', label: 'Test on your data' },
   { href: '/integrate', label: 'Integrate' },
   { href: '/business', label: 'Pricing & market' },
-  { href: '/approver', label: 'Approver app' },
 ];
 
 const COMPANIES: [string, string][] = [
@@ -218,6 +217,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             {view ? (view.verify.valid ? `ledger intact · ${view.ledgerTotal}` : `ledger broken at #${view.verify.firstBadSeq}`) : 'connecting…'}
           </span>
           <TenantSwitch current={view?.sector} />
+          <Link href="/approver" className="top-pill">
+            Approver app
+          </Link>
         </div>
       </header>
       {children}
@@ -274,7 +276,8 @@ function DemoDock() {
   const { view, run, busy, toast } = useWorld();
   const pathname = usePathname();
   const router = useRouter();
-  const [hidden, setHidden] = useState(false);
+  // keyboard shortcuts stay live; the bar itself appears on "."
+  const [hidden, setHidden] = useState(true);
 
   const steps = useCallback(
     () => ({

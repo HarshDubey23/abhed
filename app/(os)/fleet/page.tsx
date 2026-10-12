@@ -116,7 +116,7 @@ export default function FleetPage() {
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginBottom: 14 }}>
         {f.companies.map((c) => (
-          <div key={c.tenant} className="panel" style={{ borderTop: `2px solid ${TONE[c.tenant]}` }}>
+          <div key={c.tenant} className="panel">
             <div className="row between" style={{ marginBottom: 8 }}>
               <div>
                 <div style={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.02em' }}>{short(c.company)}</div>

@@ -46,7 +46,7 @@ Neeche strip pe **novabank · sanjeevani · bazaar.in** dikhao: "yeh teen asli c
 NovaBank site pe Rex se poochho: *"What is your policy if an EMI gets debited twice?"* → policy **NB-REF-01** cite karta hai, right panel mein har thought, tool call, ms aur ledger record.
 
 ### 6 · Market readiness & Implementation plan (1.5 min)
-**More → Roadmap & readiness** (`/readiness`):
+**Readiness** (top nav) (`/readiness`):
 - **Live right now** — stats is deployment se live (companies, agents, ledger records).
 - **Architecture** — 4 layers; "decision code hai, model nahi."
 - **Production-ready today** — 8 cheezein jo abhi chal rahi hain.

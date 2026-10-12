@@ -63,6 +63,12 @@ footer{max-width:1360px;margin:0 auto;padding:0 28px 40px;color:var(--mut2);font
 @media(max-width:1100px){main,.top{grid-template-columns:1fr}.hnav{display:none}.tries{grid-template-columns:1fr}.chat{min-height:180px}}@media(max-width:640px){.who-l{display:none}}
 @media(max-width:640px){.hbar{gap:12px;padding:0 16px;height:auto;min-height:60px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}.top,main{padding-left:16px;padding-right:16px}.gov.abhed span{display:none}.hello h1{font-size:30px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+.hello h1{font-weight:500;letter-spacing:-.03em;font-size:44px;background:none;-webkit-text-fill-color:currentColor;color:#fff}.hello p{font-size:16px;color:#9a9a9a}
+.card{border-radius:18px;padding:22px;background-color:#0f0f0f;border-color:rgba(255,255,255,.075)}.card h3{font-family:inherit;letter-spacing:.16em;color:#7a7a7a}
+.gov,select,.tab{border-radius:999px}.send{border-radius:999px;padding:0 26px}.try{border-radius:14px}textarea{border-radius:16px}
+.big{font-weight:500}.pstats b{font-weight:400;font-size:32px}.pstats div{border-radius:14px}
+@media(max-width:640px){.hello h1{font-size:32px}}
 </style></head><body>
 <header><div class="hbar">
 <div class="brand"><div class="logo">${site.brand[0]}</div><b>${site.brand}</b></div>
