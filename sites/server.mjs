@@ -12,6 +12,14 @@ import { page } from './page.mjs';
  * Abhed with one key each and the SDK in abhed-sdk.mjs. Keys come either from env
  * (KAVACH_KEYS = {"agentId":"kv_live_…"}) or live, from a one-time pairing code entered in /admin.
  */
+// SITE=zentro runs the separate Zentro Logistics website (no Abhed SDK) on the same kind of service
+if (process.env.SITE === 'zentro') {
+  await import('./zentro/server.mjs');
+} else {
+  await startSite();
+}
+
+async function startSite() {
 const SITE = SITES[process.env.SITE ?? 'novabank'];
 if (!SITE) throw new Error(`Unknown SITE ${process.env.SITE}`);
 const KAVACH_URL = (process.env.KAVACH_URL ?? 'https://kavach-os.vercel.app').replace(/\/$/, '');
@@ -258,3 +266,4 @@ const server = createServer(async (req, res) => {
   }
 });
 server.listen(PORT, () => console.log(`${SITE.brand} on :${PORT} → governed by ${KAVACH_URL} (${Object.keys(clients).join(', ') || 'no keys'})`));
+}
