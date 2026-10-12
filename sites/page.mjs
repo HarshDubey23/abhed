@@ -69,14 +69,18 @@ footer{max-width:1360px;margin:0 auto;padding:0 28px 40px;color:var(--mut2);font
 .gov,select,.tab{border-radius:999px}.send{border-radius:999px;padding:0 26px}.try{border-radius:14px}textarea{border-radius:16px}
 .big{font-weight:500}.pstats b{font-weight:400;font-size:32px}.pstats div{border-radius:14px}
 @media(max-width:640px){.hello h1{font-size:32px}}
+.offline{max-width:1360px;margin:22px auto 0;padding:0 28px}.offline-in{display:flex;gap:14px;align-items:flex-start;border:1px solid rgba(229,168,75,.35);background:rgba(229,168,75,.08);border-radius:16px;padding:16px 18px;font-size:14.5px;line-height:1.55;animation:in .6s var(--ease) both}.offline-in a{text-decoration:underline}.off-dot{width:9px;height:9px;border-radius:50%;background:var(--hold);margin-top:7px;flex:none;box-shadow:0 0 0 4px rgba(229,168,75,.15)}
+.gov.abhed.off{color:var(--hold);border-color:rgba(229,168,75,.35)}
+@media(max-width:640px){.offline{padding:0 16px}}
 </style></head><body>
 <header><div class="hbar">
 <div class="brand"><div class="logo">${site.brand[0]}</div><b>${site.brand}</b></div>
 <nav class="hnav">${(site.nav || []).map((n) => `<span>${n}</span>`).join('')}</nav>
 <div class="hright"><label class="who"><span class="who-l">Signed in as</span> <select id="cust"></select></label>
 <a class="gov" href="/admin">Staff &amp; admin</a>
-<a class="gov abhed" href="${kavachUrl}/fleet" target="_blank" rel="noopener"><svg viewBox="0 0 31.5 48.5"><path d="M21.5 0L21.5 19.5L31.5 19.5L31.5 29L10 48.5L10 28.5L0.5 28.5L0.5 18.5Z" fill="#ededed"/><rect x="0.5" y="18.5" width="9" height="10" fill="#ffffff"/><rect x="22" y="19.5" width="9.5" height="9.5" fill="#ffffff"/></svg><span>Protected by Abhed</span></a></div>
+<a class="gov abhed" href="${kavachUrl}/fleet" target="_blank" rel="noopener"><svg viewBox="0 0 31.5 48.5"><path d="M21.5 0L21.5 19.5L31.5 19.5L31.5 29L10 48.5L10 28.5L0.5 28.5L0.5 18.5Z" fill="#ededed"/><rect x="0.5" y="18.5" width="9" height="10" fill="#ffffff"/><rect x="22" y="19.5" width="9.5" height="9.5" fill="#ffffff"/></svg><span id="gov-t">Protected by Abhed</span></a></div>
 </div></header>
+<div id="offline" class="offline" hidden><div class="offline-in"><span class="off-dot"></span><div><b>Our AI assistants are switched off.</b> This website is not connected to Abhed yet, so no agent may act for a customer. <span class="muted">Staff: open <a href="/admin">Admin</a> and enter the pairing code from Abhed.</span></div></div></div>
 <section class="top">
   <div>
     <div class="hello"><h1 id="hello">${site.tagline}</h1><p>${site.intro}</p></div>
@@ -109,7 +113,7 @@ let mine=function(){const el=$('#mine');const c=(D.customers||[]).find(x=>x.id==
  else if(C.id==='sanjeevanihospital'&&c){const p=(D.patients||[]).find(x=>x.id===c.id)||{};h='<div class="kv"><span>Insurer</span><b>'+esc(p.insurer)+'</b></div><div class="kv"><span>Shares records with insurer</span><b>'+(p.consentInsurer?'yes':'no')+'</b></div><table><tr><th>Prescription</th><th>Refills left</th></tr>'+(p.prescriptions||[]).map(r=>'<tr><td>'+esc(r.drug)+'</td><td>'+esc(r.refillsLeft)+'</td></tr>').join('')+'</table><table style="margin-top:8px"><tr><th>Bill</th><th>Amount</th><th>Status</th></tr>'+(D.bills||[]).filter(b=>b.patient===c.id).map(b=>'<tr><td>'+esc(b.for)+'</td><td>'+inr(b.amount)+'</td><td>'+esc(b.status)+'</td></tr>').join('')+'</table>'}
  else if(C.id==='bazaarin'){h='<table><tr><th>Product</th><th>Price</th></tr>'+(D.products||[]).map(p=>'<tr><td>'+esc(p.name)+' <span class="mono" style="color:var(--mut)">'+esc(p.sku)+'</span></td><td><b>'+inr(p.price)+'</b></td></tr>').join('')+'</table>'+(c?'<table style="margin-top:10px"><tr><th>Your order</th><th>Total</th><th>Status</th></tr>'+(D.orders||[]).filter(o=>o.customer===c.id).map(o=>'<tr><td>'+esc(o.id)+' · '+esc(o.item)+'</td><td>'+inr(o.total)+'</td><td>'+esc(o.status)+'</td></tr>').join('')+'</table>':'')}
  if(el.dataset.h!==h){if(el.dataset.h)el.classList.remove('flash'),void el.offsetWidth,el.classList.add('flash');el.dataset.h=h;el.innerHTML=h}}
-function agentsPanel(){$('#agents').innerHTML=C.agents.map(a=>{const s=(D.agents||{})[a.id];const st=s?s.status:'…';const tone=st==='ACTIVE'?'c-ok':st==='PAUSED'?'c-no':'c-hold';return '<div class="kv"><span>'+esc(a.name)+' · '+esc(a.job)+'</span><b class="chip '+tone+'">'+esc(st)+'</b></div>'+(s&&s.status==='PAUSED'?'<div style="font-size:11.5px;color:var(--no);margin:-2px 0 6px">'+esc(s.statusReason||'')+'</div>':'')}).join('')}
+function agentsPanel(){$('#agents').innerHTML=C.agents.map(a=>{const s=(D.agents||{})[a.id];const st=s?s.status:(linked===false?'OFF':'…');const tone=st==='ACTIVE'?'c-ok':st==='PAUSED'?'c-no':st==='OFF'?'c-mut':'c-hold';return '<div class="kv"><span>'+esc(a.name)+' · '+esc(a.job)+'</span><b class="chip '+tone+'">'+esc(st)+'</b></div>'+(s&&s.status==='PAUSED'?'<div style="font-size:11.5px;color:var(--no);margin:-2px 0 6px">'+esc(s.statusReason||'')+'</div>':'')}).join('')}
 async function load(){try{D=await (await fetch('/api/data')).json();custList();mine();agentsPanel()}catch(e){}}
 function add(cls,html){const d=document.createElement('div');d.className=cls;d.innerHTML=html;$('#chat').appendChild(d);$('#chat').scrollTop=1e9;return d}
 function tr(cls,html){const t=$('#trace');if(t.firstChild&&t.firstChild.classList.contains('c-mut'))t.innerHTML='';const d=document.createElement('div');d.className='st '+cls;d.innerHTML=html;t.prepend(d)}
@@ -138,6 +142,13 @@ $('#p-chain').textContent=p.chain&&p.chain.valid?'Ledger verified: '+p.chain.rec
 function greet(){const c=(D.customers||[]).find(x=>x.id===cust);const h=new Date().getHours();$('#hello').textContent=(h<12?'Good morning':h<17?'Good afternoon':'Good evening')+(c?', '+c.name.replace(/^(Mr|Mrs|Ms|Dr)\\.\\s*/,'').split(' ')[0]:'')+'.'}
 const _mine=mine;mine=function(){_mine();greet()};
 document.addEventListener('pointermove',e=>{const c=e.target.closest&&e.target.closest('.card');if(!c)return;const r=c.getBoundingClientRect();c.style.setProperty('--mx',(e.clientX-r.left)+'px');c.style.setProperty('--my',(e.clientY-r.top)+'px')},{passive:true});
+let linked=null;
+async function linkState(){try{const c=await (await fetch('/api/connection')).json();const was=linked;linked=!!c.connected;
+ $('#offline').hidden=linked;$('#send').disabled=!linked||busy;$('#text').placeholder=linked?'Type your request…':'Assistant offline until this website is connected to Abhed';
+ $('#gov-t').textContent=linked?'Protected by Abhed':'Not connected to Abhed';document.querySelector('.gov.abhed').classList.toggle('off',!linked);if(!linked){D.agents={};agentsPanel()}
+ if(!linked&&!(D.customers||[]).length)$('#mine').innerHTML='<p class="muted">Your account loads once our assistants are connected to Abhed.</p>';
+ if(was===false&&linked){load();protect();add('sys','Connected to Abhed just now. Our assistants are online and every action they take is governed.')}}catch(e){}}
+linkState();setInterval(linkState,3000);
 tabs();tries();load();setInterval(load,4000);protect();setInterval(protect,8000);
 </script></body></html>`;
 }

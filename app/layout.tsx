@@ -13,8 +13,10 @@ export const viewport: Viewport = { themeColor: '#0a0a0a', width: 'device-width'
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* apply the saved theme before first paint, so light mode never flashes dark */}
+        <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('abhed-theme');if(t=='light')document.documentElement.dataset.theme='light'}catch(e){}" }} />
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

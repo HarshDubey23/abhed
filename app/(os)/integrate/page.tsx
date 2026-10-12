@@ -31,9 +31,9 @@ const API = [
 ];
 
 const SITES = [
-  ['NovaBank', 'Retail bank · Rex (refunds), Aria (cards)', 'https://novabank-agents.onrender.com', '#ededed'],
-  ['Sanjeevani Hospital', 'Hospital · Rxa (pharmacy), Claimy (insurance)', 'https://sanjeevani-agents.onrender.com', '#a1a1a1'],
-  ['Bazaar.in', 'E-commerce · Shoppy (orders), Pricer (pricing)', 'https://bazaar-agents.onrender.com', '#6e6e6e'],
+  ['NovaBank', 'Retail bank · Rex (refunds), Aria (cards)', 'https://novabank-agents.onrender.com', 'var(--ink)'],
+  ['Sanjeevani Hospital', 'Hospital · Rxa (pharmacy), Claimy (insurance)', 'https://sanjeevani-agents.onrender.com', 'var(--muted)'],
+  ['Bazaar.in', 'E-commerce · Shoppy (orders), Pricer (pricing)', 'https://bazaar-agents.onrender.com', 'var(--muted-2)'],
 ];
 
 export default function IntegratePage() {

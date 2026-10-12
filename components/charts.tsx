@@ -117,4 +117,70 @@ export function HBars({ items, color = 'var(--info)' }: { items: { label: string
   );
 }
 
-export const PALETTE = ['#FF6B6B', '#E5A84B', '#EDEDED', '#7A7A7A', '#5CC98B', '#D6B85A'];
+export const PALETTE = ['var(--block)', 'var(--human)', 'var(--ink)', 'var(--muted)', 'var(--allow)', 'var(--warn)'];
+
+/** Fleet-scale "speed vs control": stacked outcomes per bucket, gateway p95 on the right axis. */
+export function BigSpeedChart({ points, bucketMs }: { points: { t: number; auto: number; held: number; blocked: number; p95: number }[]; bucketMs: number }) {
+  const W = 1200,
+    H = 440,
+    L = 52,
+    R = 78,
+    T = 30,
+    B = 42;
+  const max = Math.max(4, ...points.map((p) => p.auto + p.held + p.blocked));
+  const nice = Math.ceil(max / 4) * 4;
+  const maxMs = Math.max(1, ...points.map((p) => p.p95));
+  const bw = (W - L - R) / Math.max(1, points.length);
+  const y = (v: number) => H - B - (v / nice) * (H - T - B);
+  const ym = (v: number) => H - B - (v / (maxMs * 1.15)) * (H - T - B);
+  const line = points.map((p, i) => (p.p95 ? [L + i * bw + bw / 2, ym(p.p95)] : null)).filter((x): x is number[] => x !== null);
+  const hhmm = (t: number) => new Date(t).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const every = Math.max(1, Math.round(points.length / 6));
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="Every agent action over time by outcome, with gateway p95 latency">
+      {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+        <g key={f}>
+          <line x1={L} x2={W - R} y1={y(nice * f)} y2={y(nice * f)} stroke="var(--line)" />
+          <text x={L - 10} y={y(nice * f) + 4} fill="var(--muted-2)" fontSize={15} textAnchor="end">
+            {Math.round(nice * f)}
+          </text>
+        </g>
+      ))}
+      {points.map((p, i) => {
+        const x = L + i * bw + 2;
+        const a = y(p.auto),
+          h = y(p.auto + p.held),
+          b = y(p.auto + p.held + p.blocked);
+        const w = Math.max(2, bw - 4);
+        return (
+          <g key={p.t}>
+            <rect x={x} y={a} width={w} height={H - B - a} fill="var(--allow)" opacity={0.85} rx={2} />
+            <rect x={x} y={h} width={w} height={a - h} fill="var(--human)" />
+            <rect x={x} y={b} width={w} height={h - b} fill="var(--block)" rx={2} />
+            <rect x={x - 2} y={T} width={bw} height={H - T - B} fill="transparent">
+              <title>{`${hhmm(p.t)} · ${p.auto} on their own · ${p.held} asked a person · ${p.blocked} refused · p95 ${p.p95 ? p.p95.toFixed(1) : '—'} ms`}</title>
+            </rect>
+            {i % every === 0 && (
+              <text x={L + i * bw + bw / 2} y={H - 12} fill="var(--muted-2)" fontSize={15} textAnchor="middle">
+                {hhmm(p.t)}
+              </text>
+            )}
+          </g>
+        );
+      })}
+      {line.length > 1 && <polyline points={line.map((q) => q.join(',')).join(' ')} fill="none" stroke="var(--ink)" strokeWidth={1.6} strokeDasharray="4 4" opacity={0.8} />}
+      {line.map(([cx, cy], i) => (
+        <circle key={i} cx={cx} cy={cy} r={2.6} fill="var(--ink)" />
+      ))}
+      <text x={W - R + 10} y={ym(maxMs) + 4} fill="var(--muted)" fontSize={15}>
+        {maxMs.toFixed(1)} ms
+      </text>
+      <text x={W - R + 10} y={H - B + 4} fill="var(--muted-2)" fontSize={15}>
+        0 ms
+      </text>
+      <text x={L} y={16} fill="var(--muted-2)" fontSize={15}>
+        actions per {bucketMs >= 3_600_000 ? 'hour' : '2 min'}
+      </text>
+    </svg>
+  );
+}

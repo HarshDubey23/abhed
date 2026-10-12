@@ -33,7 +33,7 @@ function Universe({ run, side }: { run: TwinRun; side: 'without' | 'with' }) {
   return (
     <div className={`universe ${bad ? 'bad' : 'good'}`}>
       <h3 style={{ color: bad ? 'var(--block)' : 'var(--allow)' }}>{bad ? 'Without Abhed' : 'With Abhed'}</h3>
-      <div className="big-money" style={{ color: bad ? '#ff7a7a' : 'var(--allow)' }}>
+      <div className="big-money" style={{ color: bad ? 'var(--block)' : 'var(--allow)' }}>
         {inr(rupees)}
       </div>
       <div className="muted" style={{ textAlign: 'center', fontSize: 13.5 }}>
@@ -51,7 +51,7 @@ function Universe({ run, side }: { run: TwinRun; side: 'without' | 'with' }) {
         {u.events.map((e, i) => (
           <div className="ev" key={i} style={{ animationDelay: `${0.25 + i * 0.32}s` }}>
             <span style={{ color: color(e.tone), fontWeight: 600 }}>{icon(e.tone)}</span>
-            <span style={{ color: bad ? '#f3c9c9' : color(e.tone) === 'var(--muted)' ? '#ddd' : color(e.tone) }}>{e.text}</span>
+            <span style={{ color: bad ? 'var(--block)' : color(e.tone) === 'var(--muted)' ? 'var(--ink-2)' : color(e.tone) }}>{e.text}</span>
           </div>
         ))}
       </div>

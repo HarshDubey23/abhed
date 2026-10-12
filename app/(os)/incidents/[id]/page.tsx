@@ -94,7 +94,7 @@ export default function IncidentPage({ params }: { params: Promise<{ id: string 
             {inc.confirmedCause && <span className="serif muted"> · confirmed by {inc.confirmedBy}</span>}
           </div>
           <div className="muted" style={{ marginTop: 6, fontSize: 13 }}>
-            <b style={{ color: '#ddd', fontWeight: 500 }}>Why:</b> {inc.causeWhy}
+            <b style={{ color: 'var(--ink-2)', fontWeight: 500 }}>Why:</b> {inc.causeWhy}
           </div>
           {!inc.confirmedCause && inc.type === 'INCORRECT_OUTPUT' && (
             <>

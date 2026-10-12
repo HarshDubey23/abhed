@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { adminPage } from './admin.mjs';
 import { Abhed } from './abhed-sdk.mjs';
 import { runAgent } from './agent.mjs';
@@ -8,18 +9,35 @@ import { page } from './page.mjs';
 
 /**
  * A company website with its own AI agents. The agents are this company's code; they plug into
- * Abhed with one key each (env KAVACH_KEYS = {"agentId":"kv_live_…"}) and the SDK in abhed-sdk.mjs.
+ * Abhed with one key each and the SDK in abhed-sdk.mjs. Keys come either from env
+ * (KAVACH_KEYS = {"agentId":"kv_live_…"}) or live, from a one-time pairing code entered in /admin.
  */
 const SITE = SITES[process.env.SITE ?? 'novabank'];
 if (!SITE) throw new Error(`Unknown SITE ${process.env.SITE}`);
 const KAVACH_URL = (process.env.KAVACH_URL ?? 'https://kavach-os.vercel.app').replace(/\/$/, '');
-const KEYS = JSON.parse(process.env.KAVACH_KEYS ?? '{}');
 const PORT = Number(process.env.PORT ?? 4000);
-const ADMIN_KEY = process.env.KAVACH_ADMIN_KEY ?? '';
+const PUBLIC_URL = (process.env.RENDER_EXTERNAL_URL ?? process.env.PUBLIC_URL ?? `http://localhost:${PORT}`).replace(/\/$/, '');
 const ADMIN_PIN = process.env.ADMIN_PIN ?? '2468';
+const STATE_FILE = process.env.ABHED_STATE_FILE ?? `/tmp/abhed-${SITE.tenant}.json`;
+
+// ───────── the link to Abhed: env keys, or keys received by pairing (kept on disk while the instance lives) ─────────
+let KEYS = JSON.parse(process.env.KAVACH_KEYS ?? '{}');
+let ADMIN_KEY = process.env.KAVACH_ADMIN_KEY ?? '';
+let link = { since: Object.keys(KEYS).length ? Date.now() : null, via: Object.keys(KEYS).length ? 'setup' : null, error: null };
+if (!Object.keys(KEYS).length) {
+  try {
+    const saved = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
+    KEYS = saved.keys ?? {};
+    ADMIN_KEY = saved.adminKey ?? '';
+    link = { since: saved.since ?? Date.now(), via: 'pairing', error: null };
+  } catch {
+    /* not paired yet */
+  }
+}
 
 // ───────── admin session: PIN → signed cookie (12 h) ─────────
-const sign = (v) => createHmac('sha256', ADMIN_KEY || 'local').update(v).digest('base64url');
+const COOKIE_SECRET = process.env.SITE_COOKIE_SECRET ?? randomUUID();
+const sign = (v) => createHmac('sha256', COOKIE_SECRET).update(v).digest('base64url');
 const adminCookie = () => {
   const exp = String(Date.now() + 12 * 3_600_000);
   return `kv_site_admin=${exp}.${sign(exp)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${process.env.RENDER ? '; Secure' : ''}`;
@@ -42,8 +60,62 @@ async function kavachAdmin(path, body) {
 }
 const pinTries = { n: 0, until: 0 };
 
-const clients = Object.fromEntries(SITE.agents.filter((a) => KEYS[a.id]).map((a) => [a.id, new Abhed({ url: KAVACH_URL, key: KEYS[a.id], site: SITE.brand })]));
+let clients = {};
 const profiles = new Map();
+function useKeys(keys, adminKey) {
+  KEYS = keys ?? {};
+  ADMIN_KEY = adminKey ?? '';
+  clients = Object.fromEntries(SITE.agents.filter((a) => KEYS[a.id]).map((a) => [a.id, new Abhed({ url: KAVACH_URL, key: KEYS[a.id], site: SITE.brand })]));
+  profiles.clear();
+}
+useKeys(KEYS, ADMIN_KEY);
+const connected = () => Object.keys(clients).length > 0;
+
+async function pairWith(code) {
+  const r = await fetch(`${KAVACH_URL}/api/connect/pair`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code, site: { url: PUBLIC_URL, name: SITE.brand } }),
+  }).catch(() => null);
+  if (!r) return { status: 502, data: { error: 'Abhed is unreachable from this website' } };
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) return { status: r.status, data: d };
+  if (d.tenant !== SITE.tenant) return { status: 400, data: { error: `That code belongs to ${d.company}, not ${SITE.brand}.` } };
+  useKeys(d.keys, d.adminKey);
+  link = { since: Date.now(), via: 'pairing', error: null };
+  try {
+    writeFileSync(STATE_FILE, JSON.stringify({ keys: d.keys, adminKey: d.adminKey, since: link.since }));
+  } catch {
+    /* read-only disk: stays in memory */
+  }
+  void beat();
+  return { status: 200, data: { ok: true, company: d.company, agents: SITE.agents.filter((a) => clients[a.id]).map((a) => a.name), record: d.record } };
+}
+function dropLink(reason) {
+  useKeys({}, '');
+  link = { since: null, via: null, error: reason };
+  try {
+    unlinkSync(STATE_FILE);
+  } catch {
+    /* nothing saved */
+  }
+}
+
+// every agent reports in; if Abhed has cut this company off, the website notices within seconds
+async function beat() {
+  const host = PUBLIC_URL.replace(/^https?:\/\//, '');
+  for (const a of SITE.agents) {
+    const key = KEYS[a.id];
+    if (!key) continue;
+    const r = await fetch(`${KAVACH_URL}/api/connect/heartbeat`, { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify({ site: host }) }).catch(() => null);
+    if (r?.status === 403) {
+      dropLink('Abhed disconnected this website. Ask the Abhed operator for a new pairing code.');
+      return;
+    }
+  }
+}
+setInterval(() => void beat(), 10_000);
+void beat();
 async function profileOf(id) {
   if (!profiles.has(id) || Date.now() - profiles.get(id).at > 60_000) profiles.set(id, { at: Date.now(), p: await clients[id].profile() });
   return profiles.get(id).p;
@@ -104,8 +176,13 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/admin/api/')) {
       if (!isAdmin(req)) return send(res, 401, { error: 'Admin sign-in required' });
-      if (!ADMIN_KEY) return send(res, 503, { error: 'This site has no Abhed admin key configured' });
       const sub = url.pathname.slice('/admin/api/'.length);
+      if (sub === 'connect' && req.method === 'POST') {
+        const b = await readBody(req);
+        const r = await pairWith(String(b.code ?? '').trim().toUpperCase());
+        return send(res, r.status, r.data);
+      }
+      if (!connected() || !ADMIN_KEY) return send(res, 409, { error: 'Not connected to Abhed yet', notConnected: true, abhed: KAVACH_URL });
       if (sub === 'overview') {
         const r = await kavachAdmin('/api/v1/admin');
         return send(res, r.status, r.data);
@@ -126,10 +203,11 @@ const server = createServer(async (req, res) => {
       return send(res, 404, { error: 'not found' });
     }
     if (url.pathname === '/health') return send(res, 200, { ok: true, site: SITE.brand, agents: Object.keys(clients) });
+    if (url.pathname === '/api/connection') return send(res, 200, { connected: connected(), since: link.since, via: link.via, error: link.error, abhed: KAVACH_URL, agents: SITE.agents.map((a) => ({ id: a.id, name: a.name, online: !!clients[a.id] })) });
     if (url.pathname === '/api/data') return send(res, 200, await data());
     if (url.pathname === '/api/protection') {
       // why these agents need Abhed: what they tried that was stopped or sent to a person, from Abhed's ledger
-      if (!ADMIN_KEY) return send(res, 200, { available: false });
+      if (!ADMIN_KEY || !connected()) return send(res, 200, { available: false, connected: false });
       const r = await kavachAdmin('/api/v1/admin');
       if (r.status !== 200) return send(res, 200, { available: false });
       const o = r.data;
@@ -150,7 +228,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/task') {
       const b = await readBody(req);
       const agent = SITE.agents.find((a) => a.id === b.agent) ?? SITE.agents[0];
-      if (!clients[agent.id]) return send(res, 503, { error: `${agent.name} has no Abhed key` });
+      if (!clients[agent.id]) return send(res, 503, { error: `${agent.name} is offline: this website is not connected to Abhed yet.`, notConnected: true });
       const text = String(b.text ?? '').trim().slice(0, 1200);
       if (text.length < 3) return send(res, 400, { error: 'Type a message' });
       const t = newTask(agent.id);

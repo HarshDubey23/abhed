@@ -116,6 +116,7 @@ export function WorldProvider({ children }: { children: React.ReactNode }) {
 const NAV = [
   { href: '/arena', label: 'Break Abhed' },
   { href: '/demo', label: 'Live Demo' },
+  { href: '/connect', label: 'Connect' },
   { href: '/fleet', label: 'Fleet' },
   { href: '/ledger', label: 'Ledger' },
   { href: '/readiness', label: 'Readiness' },
@@ -181,13 +182,76 @@ function useSpotlight() {
   }, []);
 }
 
+/** Dark by default; the choice is remembered on this device. The navigation bar stays dark in both. */
+function ThemeToggle() {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  useEffect(() => {
+    setTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  }, []);
+  const flip = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('abhed-theme', next);
+    } catch {
+      /* private mode */
+    }
+  };
+  return (
+    <button className="theme-btn" onClick={flip} aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} title={theme === 'dark' ? 'Light theme' : 'Dark theme'}>
+      {theme === 'dark' ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" />
+          <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 function ShellInner({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { view } = useWorld();
   useSpotlight();
+  const more = useRef<HTMLDetailsElement>(null);
+  const bar = useRef<HTMLElement>(null);
+  // the bar is fixed; the page starts below it at whatever height it wraps to on small screens
+  useEffect(() => {
+    const el = bar.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty('--topbar-h', `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // the More menu closes on navigation, on any click outside it, and on Escape
+  useEffect(() => {
+    if (more.current) more.current.open = false;
+  }, [path]);
+  useEffect(() => {
+    const close = (e: Event) => {
+      const d = more.current;
+      if (d?.open && !(e.target instanceof Node && d.contains(e.target))) d.open = false;
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && more.current) more.current.open = false;
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, []);
   return (
     <div className="shell">
-      <header className="topbar">
+      <header className="topbar" ref={bar}>
         <Link href="/" className="logo" aria-label="Abhed home">
           <AbhedMark size={26} />
           <span>Abhed</span>
@@ -200,11 +264,11 @@ function ShellInner({ children }: { children: React.ReactNode }) {
               {n.href === '/incidents' && view && view.kpi.openIncidents > 0 && <sup style={{ color: 'var(--block)' }}>{view.kpi.openIncidents}</sup>}
             </Link>
           ))}
-          <details className="more">
+          <details className="more" ref={more}>
             <summary className={`navlink ${MORE.some((m) => path?.startsWith(m.href)) ? 'active' : ''}`}>More</summary>
             <div className="more-menu">
               {MORE.map((m) => (
-                <Link key={m.href} href={m.href} className={path?.startsWith(m.href) ? 'active' : ''}>
+                <Link key={m.href} href={m.href} className={path?.startsWith(m.href) ? 'active' : ''} onClick={() => more.current && (more.current.open = false)}>
                   {m.label}
                 </Link>
               ))}
@@ -217,6 +281,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             {view ? (view.verify.valid ? `ledger intact · ${view.ledgerTotal}` : `ledger broken at #${view.verify.firstBadSeq}`) : 'connecting…'}
           </span>
           <TenantSwitch current={view?.sector} />
+          <ThemeToggle />
           <Link href="/approver" className="top-pill">
             Approver app
           </Link>

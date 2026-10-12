@@ -30,6 +30,12 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--
 .toast{position:fixed;right:18px;top:76px;background:var(--panel);border:1px solid var(--line);padding:10px 14px;border-radius:10px;z-index:20;max-width:420px}
 pre{white-space:pre-wrap;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mut)}
 @media(max-width:1000px){.kpis{grid-template-columns:repeat(2,1fr)}.g2,.g3{grid-template-columns:1fr!important}.pend{grid-template-columns:1fr}}
+.pair{max-width:520px;margin:9vh auto;text-align:left;animation:in .7s var(--ease) both}.pair-k{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mut);margin-bottom:14px}.pair h1{font-size:40px;font-weight:500;letter-spacing:-.03em;line-height:1.1}.pair p{margin-top:12px;font-size:14.5px;line-height:1.6}
+.pair-steps{margin:22px 0;padding-left:20px;display:grid;gap:8px;color:var(--mut);font-size:14px}.pair-steps b{color:var(--ink);font-weight:600}
+#pcode{width:100%;height:76px;font-size:38px;letter-spacing:.42em;text-align:center;font-family:'Geist Mono','JetBrains Mono',monospace;text-transform:uppercase;border-radius:16px;margin-bottom:12px;padding:0 0 0 .42em}
+#pgo{width:100%;height:52px;border-radius:999px;font-size:16px}
+.pair.ok{text-align:center}.pair-tick{width:84px;height:84px;border-radius:50%;margin:0 auto 22px;display:grid;place-items:center;background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok);animation:pop .6s var(--ease) both}.pair-tick svg{width:38px;height:38px}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 </style></head><body>
 <header><div class="brand"><div class="logo">${site.brand[0]}</div><div><b>${site.brand}</b> <span class="mut">· admin</span></div></div>
 <nav id="nav"></nav>
@@ -43,7 +49,7 @@ const RANK={approver_l1:1,approver_l2:2,executive:3};const lvl=p=>Math.max(0,...
 const can=(p,a)=>a.kind==='rule_change'?p.roles.includes('rule_approver'):lvl(p)>=(RANK[a.approverRole]||1);
 const ROLES=[['approver_l1','Approver L1'],['approver_l2','Approver L2'],['executive','Executive'],['rule_approver','Rule approver'],['rule_author','Rule author'],['agent_owner','Agent owner'],['operator','Operator'],['auditor','Auditor']];
 function toast(m,bad){const d=document.createElement('div');d.className='toast';d.style.borderColor=bad?'var(--no)':'var(--ok)';d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),4200)}
-async function api(path,body){const r=await fetch('/admin/api/'+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{});const j=await r.json().catch(()=>({}));if(r.status===401){location.reload();throw new Error('signed out')}if(!r.ok)throw new Error(j.error||('error '+r.status));return j}
+async function api(path,body){const r=await fetch('/admin/api/'+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{});const j=await r.json().catch(()=>({}));if(r.status===401){location.reload();throw new Error('signed out')}if(r.status===409&&j.notConnected){connectScreen();throw new Error('not connected')}if(!r.ok)throw new Error(j.error||('error '+r.status));return j}
 async function op(o,extra,msg){try{await api('op',{op:o,...extra});if(msg)toast(msg);await load()}catch(e){toast(e.message,1)}}
 // ───── charts (SVG, no libraries) ─────
 function donut(parts,label){const tot=parts.reduce((s,p)=>s+p.v,0);let a=-Math.PI/2;const R=52,r=34,cx=64,cy=64;let paths='';if(!tot)paths='<circle cx="64" cy="64" r="43" fill="none" stroke="var(--line)" stroke-width="18"/>';for(const p of parts){if(!p.v)continue;const b=a+2*Math.PI*p.v/tot;const L=b-a>Math.PI?1:0;const f=(ang,rad)=>(cx+rad*Math.cos(ang)).toFixed(2)+' '+(cy+rad*Math.sin(ang)).toFixed(2);if(p.v===tot){paths+='<circle cx="64" cy="64" r="43" fill="none" stroke="'+p.c+'" stroke-width="18"/>'}else paths+='<path d="M'+f(a,R)+' A'+R+' '+R+' 0 '+L+' 1 '+f(b,R)+' L'+f(b,r)+' A'+r+' '+r+' 0 '+L+' 0 '+f(a,r)+'Z" fill="'+p.c+'"><title>'+esc(p.l)+': '+p.v+'</title></path>';a=b}
@@ -111,7 +117,15 @@ function bind(){
  const lr=$('#lrun');if(lr)lr.onclick=()=>{lr.disabled=true;runLab()};
  const li=$('#limp');if(li)li.onclick=async()=>{li.disabled=true;try{const j=await api('op',{op:'data.import',table:lab.kind,rows:lab.rows,mode:$('#lrep').checked?'replace':'append'});lab.importResult=j.result;toast('Imported '+j.result.rows+' rows');await load()}catch(e){toast(e.message,1);li.disabled=false}};
 }
+let conn=false;
+function connectScreen(err){if(conn)return;conn=true;$('#nav').innerHTML='';$('#main').innerHTML='<div class="pair"><div class="pair-k">Abhed · connect</div><h1>Connect '+esc(C.brand)+' <em>to Abhed</em></h1><p class="mut">Our AI agents are installed but switched off: they do not act for customers until Abhed governs every action they take. Ask the Abhed operator for a pairing code and enter it here.</p><ol class="pair-steps"><li><b>Abhed → Connect</b> → pick '+esc(C.brand)+' → <b>Generate pairing code</b></li><li>Type the 6-character code below</li><li>Our agents come online in Abhed within seconds</li></ol><input id="pcode" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC123"><button class="b p" id="pgo">Connect to Abhed</button><p id="perr" class="mut" style="margin-top:12px;min-height:20px">'+esc(err||'')+'</p><p class="mut" style="font-size:12px">Abhed: '+esc(C.kavachUrl)+' · this website: '+esc(location.host)+'</p></div>';
+ const inp=$('#pcode');inp.focus();inp.oninput=()=>{inp.value=inp.value.toUpperCase().replace(/[^A-Z0-9]/g,'')};
+ const go=async()=>{const b=$('#pgo');b.disabled=true;b.textContent='Connecting…';$('#perr').textContent='';const r=await fetch('/admin/api/connect',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:inp.value})});const j=await r.json().catch(()=>({}));
+  if(!r.ok){b.disabled=false;b.textContent='Connect to Abhed';$('#perr').style.color='var(--no)';$('#perr').textContent=j.error||'Could not connect';return}
+  $('#main').innerHTML='<div class="pair ok"><div class="pair-tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><h1>Connected <em>to Abhed</em></h1><p class="mut">'+esc((j.agents||[]).join(' and '))+' are now online, governed by Abhed. Ledger record #'+esc(j.record)+'.</p></div>';setTimeout(()=>location.reload(),2600)};
+ $('#pgo').onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()}}
 async function gate(){const r=await fetch('/admin/api/overview');if(r.ok){O=await r.json();render();setInterval(load,3000);return}
+ if(r.status===409){connectScreen();setInterval(async()=>{if(!conn)return;const c=await fetch('/api/connection').then(x=>x.json()).catch(()=>null);if(c&&c.connected&&!document.querySelector('.pair.ok')&&document.activeElement!==$('#pcode'))location.reload()},4000);return}
  const go=async()=>{const r=await fetch('/admin/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin:$('#pin').value})});if(r.ok)location.reload();else $('#gerr').textContent='Wrong PIN'};$('#go').onclick=go;$('#pin').onkeydown=e=>{if(e.key==='Enter')go()}}
 gate();
 </script></body></html>`;

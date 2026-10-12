@@ -304,6 +304,8 @@ export interface World {
   sessions?: Record<string, { untrusted?: boolean; customerData?: boolean; subject?: string }>;
   humanMinutesToday: number;
   runs?: Run[];
+  /** How the company's own website is linked to Abhed (missing = connected, for older worlds). */
+  connection?: Connection;
   arena?: { id: string; at: number; name: string; agentId: 'rex' | 'claimy' | 'shoppy'; text: string; modelRun?: string; twinRun: string }[];
 }
 
@@ -392,4 +394,15 @@ export interface Run {
   costInr: number;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface Connection {
+  status: 'connected' | 'waiting' | 'disconnected';
+  code?: string;
+  codeExp?: number;
+  since?: number;
+  site?: { url: string; name: string; at: number };
+  /** first heartbeat of each agent after pairing */
+  seen?: Record<string, number>;
+  timeline: { at: number; text: string; tone: 'info' | 'ok' | 'warn' }[];
 }

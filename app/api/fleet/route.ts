@@ -1,5 +1,6 @@
 import { json } from '@/lib/api';
 import { nameOf } from '@/lib/engine';
+import { conn } from '@/lib/connect';
 import { buildInsights } from '@/lib/insights';
 import { llmAvailable } from '@/lib/llm';
 import { packFor } from '@/lib/sectors';
@@ -28,7 +29,8 @@ export async function GET() {
       tenant: w.sector,
       company: pack.company,
       label: pack.label,
-      site: SITES[w.sector],
+      site: conn(w).site?.url ?? SITES[w.sector],
+      connection: conn(w).status,
       agents: ins.agents
         .filter((a) => siteAgents.has(a.id))
         .map((a) => ({ ...a, onSite: (ON_SITE[w.sector] ?? []).includes(a.id), purpose: w.agents.find((x) => x.id === a.id)?.purpose, statusReason: w.agents.find((x) => x.id === a.id)?.statusReason }))
@@ -77,6 +79,31 @@ export async function GET() {
     .sort((a, b) => b.ts - a.ts)
     .slice(0, 40);
   const security = worlds.flatMap((w) => (w.security ?? []).slice(0, 10).map((s) => ({ ...s, company: packFor(w.sector).company }))).sort((a, b) => b.at - a.at).slice(0, 10);
+  // one fleet-wide series: every agent action across companies, same buckets, so the big chart is honest
+  const acts = worlds.flatMap((w) => w.ledger.filter((r) => !r.meta?.sample && r.actorType === 'agent' && r.action !== 'llm_call' && ['ALLOWED', 'NEEDS_APPROVAL', 'BLOCKED', 'EXECUTED'].includes(r.decision) && !r.approvers.length));
+  const recentActs = acts.filter((r) => now - r.ts < 3_600_000);
+  const hourly = recentActs.length < 3;
+  const bucketMs = hourly ? 3_600_000 : 120_000;
+  const n = hourly ? 24 : 30;
+  const pct = (xs: number[], p: number) => (xs.length ? [...xs].sort((x, y) => x - y)[Math.min(xs.length - 1, Math.floor((p / 100) * xs.length))] : null);
+  const points = Array.from({ length: n }, (_, i) => {
+    const start = now - (n - i) * bucketMs;
+    const rows = acts.filter((r) => r.ts >= start && r.ts < start + bucketMs);
+    const ms = rows.map((r) => r.perf?.gatewayMs).filter((x): x is number => typeof x === 'number');
+    return { t: start, auto: rows.filter((r) => r.decision === 'ALLOWED').length, held: rows.filter((r) => r.decision === 'NEEDS_APPROVAL').length, blocked: rows.filter((r) => r.decision === 'BLOCKED').length, p95: pct(ms, 95) ?? 0, p50: pct(ms, 50) ?? 0 };
+  });
+  const lives = await Promise.all(TENANTS.map((t) => getLive(t)));
+  const lastMin = acts.filter((r) => now - r.ts < 60_000);
+  const last5 = acts.filter((r) => now - r.ts < 300_000);
+  const pulse = {
+    perMin: lastMin.length,
+    last5: last5.length,
+    refused5: last5.filter((r) => r.decision === 'BLOCKED').length,
+    held5: last5.filter((r) => r.decision === 'NEEDS_APPROVAL').length,
+    online: lives.reduce((s, l) => s + Object.values(l.runtimes).filter((r) => now - r.lastSeen < 30_000).length, 0),
+    connected: worlds.filter((w) => conn(w).status === 'connected').length,
+    p95_5m: pct(last5.map((r) => r.perf?.gatewayMs).filter((x): x is number => typeof x === 'number'), 95),
+  };
   const approvers = Object.values(phones.approvers).map((a) => ({ name: a.name, online: now - a.lastSeen < 60_000, push: a.push, device: a.device }));
-  return json({ now, llm: llmAvailable(), companies, sessions, pending, decided, feed, security, approvers });
+  return json({ now, llm: llmAvailable(), overall: { bucketMs, points }, pulse, companies, sessions, pending, decided, feed, security, approvers });
 }

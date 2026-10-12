@@ -1,4 +1,5 @@
 import { resolveAgent } from './agentapi';
+import { isConnected } from './connect';
 import { json } from './api';
 import { GovError } from './engine';
 import { withTenant, type Tenant } from './store';
@@ -7,6 +8,7 @@ import { withTenant, type Tenant } from './store';
 export async function v1(req: Request, fn: (ctx: { agentId: string; tenant: Tenant; body: Record<string, unknown> }) => Promise<unknown>) {
   const who = resolveAgent(req.headers.get('authorization'));
   if (!who) return json({ error: 'Missing or unknown Abhed agent key. Unregistered agents are refused (fail-closed).' }, 401);
+  if (!(await isConnected(who.tenant))) return json({ error: 'This company is not connected to Abhed. Pair the website from Abhed → Connect.', notConnected: true }, 403);
   const body = req.method === 'GET' ? {} : ((await req.json().catch(() => ({}))) as Record<string, unknown>);
   try {
     const out = await withTenant(who.tenant, () => fn({ ...who, body }));

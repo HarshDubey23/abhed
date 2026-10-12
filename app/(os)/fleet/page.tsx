@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ago, Chip, hhmm, Qr, useWorld } from '@/components/app';
-import { Donut, HBars, PALETTE, SpeedChart } from '@/components/charts';
+import { BigSpeedChart, Donut, HBars, PALETTE } from '@/components/charts';
 
 type Step = { at: number; kind: string; text?: string; action?: string; decision?: string; reason?: string; ruleRef?: string; approvalId?: string; gatewayMs?: number; params?: Record<string, unknown> };
 type Agent = { id: string; name: string; onSite?: boolean; trust?: { score: number; band: string; recommendation: string }; owner: string; status: string; statusReason?: string; purpose?: string; actions: number; auto: number; held: number; blocked: number; tokens: number; costInr: number; valueInr: number; riskScore: number; llmCalls: number };
@@ -11,11 +11,14 @@ type Series = { bucketMs: number; points: { t: number; auto: number; held: numbe
 interface Fleet {
   now: number;
   llm: boolean;
+  overall: { bucketMs: number; points: { t: number; auto: number; held: number; blocked: number; p95: number; p50: number }[] };
+  pulse: { perMin: number; last5: number; refused5: number; held5: number; online: number; connected: number; p95_5m: number | null };
   companies: {
     tenant: string;
     company: string;
     label: string;
     site: string;
+    connection?: 'connected' | 'waiting' | 'disconnected';
     agents: Agent[];
     mix: { total: number; auto: number; held: number; blocked: number; autoPct: number | null; heldPct: number | null };
     speed: { measured: number; p50ms: number | null; p95ms: number | null };
@@ -36,7 +39,7 @@ interface Fleet {
   approvers: { name: string; online: boolean; push: boolean; device: string }[];
 }
 
-const TONE: Record<string, string> = { banking: '#ededed', healthcare: '#a1a1a1', ecommerce: '#6e6e6e' };
+const TONE: Record<string, string> = { banking: 'var(--ink)', healthcare: 'var(--muted)', ecommerce: 'var(--muted-2)' };
 const short = (c: string) => c.replace(' (fictional)', '');
 
 export default function FleetPage() {
@@ -64,13 +67,6 @@ export default function FleetPage() {
   const p95 = Math.max(0, ...f.companies.map((c) => c.speed.p95ms ?? 0));
   const p50s = f.companies.map((c) => c.speed.p50ms).filter((x): x is number => x !== null);
   const waits = f.companies.map((c) => c.human.medianWaitS).filter((x): x is number => x !== null);
-  const points = f.companies[0]?.series.points.map((p, i) => ({
-    t: p.t,
-    auto: f.companies.reduce((s, c) => s + (c.series.points[i]?.auto ?? 0), 0),
-    held: f.companies.reduce((s, c) => s + (c.series.points[i]?.held ?? 0), 0),
-    blocked: f.companies.reduce((s, c) => s + (c.series.points[i]?.blocked ?? 0), 0),
-    p95: Math.max(0, ...f.companies.map((c) => c.series.points[i]?.p95ms ?? 0)),
-  })) ?? [];
   const act = async (tenant: string, type: string, agentId: string) => {
     // pausing is anyone's right; resuming belongs to the agent's owner (the command route defaults to them)
     const r = await run(type, type === 'pause' ? { tenant, agentId, by: 'judge', reason: 'Paused from the fleet dashboard' } : { tenant, agentId, reason: 'Reviewed and resumed from the fleet dashboard' });
@@ -112,6 +108,74 @@ export default function FleetPage() {
         <Kpi label="Human wait (median)" value={waits.length ? `${Math.max(...waits)} s` : '—'} note={`${f.pending.length} waiting now`} />
       </div>
 
+      <section className="fl-mon">
+        <div className="panel fl-speed">
+          <div className="panel-title">
+            <span>
+              <b>Speed vs control</b> · every agent action across all companies, by outcome
+            </span>
+            <span>{f.overall.bucketMs === 120_000 ? 'last hour · live' : 'last 24 h'}</span>
+          </div>
+          <BigSpeedChart points={f.overall.points} bucketMs={f.overall.bucketMs} />
+          <div className="fl-legend">
+            <span>
+              <i style={{ background: 'var(--allow)' }} /> ran on its own
+            </span>
+            <span>
+              <i style={{ background: 'var(--human)' }} /> asked a person
+            </span>
+            <span>
+              <i style={{ background: 'var(--block)' }} /> refused at the gate
+            </span>
+            <span>
+              <i className="dash" /> gateway p95 (ms)
+            </span>
+          </div>
+        </div>
+        <div className="panel fl-now">
+          <div className="panel-title">
+            <span>
+              <b>Right now</b>
+            </span>
+            <span className="live-dot" />
+          </div>
+          <div className="fl-big">
+            <b>{f.pulse.perMin}</b>
+            <span>agent decisions in the last minute</span>
+          </div>
+          <div className="fl-big">
+            <b>
+              {f.pulse.online}
+              <small> online</small>
+            </b>
+            <span>agent processes sending heartbeats</span>
+          </div>
+          <div className="fl-row">
+            <div>
+              <b style={{ color: 'var(--block)' }}>{f.pulse.refused5}</b>
+              <span>refused · 5 min</span>
+            </div>
+            <div>
+              <b style={{ color: 'var(--human)' }}>{f.pulse.held5}</b>
+              <span>to a person · 5 min</span>
+            </div>
+            <div>
+              <b>{f.pulse.p95_5m != null ? `${f.pulse.p95_5m.toFixed(1)}` : '—'}</b>
+              <span>p95 ms · 5 min</span>
+            </div>
+          </div>
+          <Link href="/connect" className="fl-conn">
+            <span>
+              <b>
+                {f.pulse.connected} of {f.companies.length}
+              </b>{' '}
+              company websites connected
+            </span>
+            <span>Connect →</span>
+          </Link>
+        </div>
+      </section>
+
       <FleetCharts f={f} />
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginBottom: 14 }}>
@@ -119,7 +183,16 @@ export default function FleetPage() {
           <div key={c.tenant} className="panel">
             <div className="row between" style={{ marginBottom: 8 }}>
               <div>
-                <div style={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.02em' }}>{short(c.company)}</div>
+                <div className="row" style={{ gap: 8 }}>
+                  <span style={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.02em' }}>{short(c.company)}</span>
+                  {c.connection && c.connection !== 'connected' ? (
+                    <Link href={`/connect?tenant=${c.tenant}`} className="chip chip-human">
+                      {c.connection === 'waiting' ? 'Pairing…' : 'Not connected · connect'}
+                    </Link>
+                  ) : (
+                    <span className="chip chip-allow">Connected</span>
+                  )}
+                </div>
                 <div className="muted" style={{ fontSize: 12 }}>
                   {c.label} · {c.integrity.records} ledger records · {c.integrity.blocks} signed block{c.integrity.blocks === 1 ? '' : 's'} {c.integrity.ledger && c.integrity.chain ? '✓' : '✕'}
                 </div>
@@ -248,22 +321,6 @@ export default function FleetPage() {
               </div>
             </div>
           ))}
-
-          <div className="panel">
-            <div className="panel-title">
-              <span>
-                <b>Speed vs control</b> · every agent action, by outcome
-              </span>
-              <span>{f.companies[0]?.series.bucketMs === 120_000 ? 'last hour' : 'last 24 h'}</span>
-            </div>
-            <SpeedChart points={points} />
-            <div className="row" style={{ gap: 14, fontSize: 11.5, marginTop: 6 }} >
-              <span style={{ color: 'var(--allow)' }}>■ ran on its own</span>
-              <span style={{ color: 'var(--human)' }}>■ asked a person</span>
-              <span style={{ color: 'var(--block)' }}>■ refused</span>
-              <span className="muted">— gateway p95 (ms)</span>
-            </div>
-          </div>
 
           <div className="panel">
             <div className="panel-title">
