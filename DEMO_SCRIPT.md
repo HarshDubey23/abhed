@@ -4,6 +4,24 @@
 
 ---
 
+## Round 1 · Deck walkthrough (5–6 min) — `docs/Abhed_Round1_Deck.pdf`
+
+Har slide ke top-right pe likha hai woh kis Round 1 criterion ke marks ke liye hai. Judges ko yeh mapping dikhao.
+
+| Slides | Criterion (20 marks each) | Ek line jo bolni hai |
+|---|---|---|
+| 1–3 | Presentation of idea | "Agents ab act karte hain. Galti hone pe koi jawab nahi deta. PS5 ke 6 sawaal — har ek ka jawab live screen pe." |
+| 4, 5, 7 | Solution approach | "Ek darwaza: 8 checks ~1 ms mein. Customer ne ₹48,000 bola, bank record ₹40,000 tha — record jeeta, phir Arjun ne phone pe 3.9 s mein approve kiya." |
+| 8, 9, 10, 14 | Innovation | "Approval exact action ke fingerprint se bandha hai; grounding real records se; Trust Score se earned autonomy; rules bhi do insaan ke bina nahi badalte." |
+| 6, 11, 12, 13 | Technical feasibility | "Yeh chal raha hai: real gpt-oss-120b, 3 live company sites, 44 tests, 3 lines mein integrate." |
+| 15 | Business model | "Risk pe price: platform fee + risky agents + checkpoints + approvals." |
+| 16 | Execution timeline | "Har block ka commit public hai. Baaki ghante: MCP adapter, WhatsApp approvals, load test, jury ka CSV." |
+| 17 | Close + QR | "Abhi scan karo — aap khud approver ban sakte ho (Guest Judge, PIN 1234)." |
+
+**Naya wow (zaroor dikhao):** Fleet pe kisi agent ka **⤓** dabao → us agent ki apni PDF report (Trust Score 300–900, delegations, kisne kya approve kiya, refusals, ledger). Security page pe **compliance evidence** (EU AI Act Art. 12/14, DPDP, RBI FREE-AI, OWASP) live data se.
+
+---
+
 ## 0 · Setup (judging se 5 min pehle)
 
 | Kya | Kahan |
