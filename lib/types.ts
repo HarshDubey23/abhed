@@ -304,6 +304,7 @@ export interface World {
   sessions?: Record<string, { untrusted?: boolean; customerData?: boolean; subject?: string }>;
   humanMinutesToday: number;
   runs?: Run[];
+  arena?: { id: string; at: number; name: string; agentId: 'rex' | 'claimy' | 'shoppy'; text: string; modelRun?: string; twinRun: string }[];
 }
 
 /** Fast-changing runtime state, kept in its own document so heartbeats never contend with the ledger. */
@@ -383,6 +384,8 @@ export interface Run {
   pendingApprovalId?: string;
   pendingToolCallId?: string;
   injection?: string[];
+  /** Break Abhed: the compromised twin obeys the message literally */
+  literal?: boolean;
   actions: number;
   blocks: number;
   tokens: number;

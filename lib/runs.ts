@@ -4,6 +4,7 @@ import { pushApprovals } from './push';
 import { sealAndAnchor } from './sealer';
 import { scanInjection, securityEvent, OWASP } from './security';
 import { offlinePlanFor, packFor } from './sectors';
+import { isArenaTarget, literalPlan } from './arena';
 import type { SectorPack } from './sectors';
 import { currentTenant, getWorld, mutate } from './store';
 import { chat, DEFAULT_MODEL, llmAvailable } from './llm';
@@ -278,7 +279,10 @@ function advance(w: World, run: Run, llm: Awaited<ReturnType<typeof llmTurn>> | 
   if (!run.queue) {
     const pack = packFor(w.sector);
     const subject = w.sessions?.[`run:${run.id}`]?.subject;
-    const plan = offlinePlanFor(pack, run.agentId, { text: run.command, customer: subject ? w.customers.find((c) => c.id === subject) : undefined }, w);
+    const plan =
+      run.literal && isArenaTarget(run.agentId)
+        ? literalPlan(run.command, run.agentId, w)
+        : offlinePlanFor(pack, run.agentId, { text: run.command, customer: subject ? w.customers.find((c) => c.id === subject) : undefined }, w);
     run.queue = plan.actions.slice(0, MAX_STEPS);
     step(run, { kind: 'thought', text: plan.reasoning || 'Planning the steps.' }, now);
     return true;
