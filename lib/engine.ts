@@ -523,6 +523,12 @@ function gatewayInner(w: World, req: ActionReq, opts: { now?: number; reasoning?
     const why = [delegationHold, ev.decision === 'NEEDS_APPROVAL' ? ev.reasons[0] : undefined].filter(Boolean).join(' ');
     const approverRole: Role = ev.decision === 'NEEDS_APPROVAL' ? ev.approverRole : 'approver_l1';
     const twoKey = ev.decision === 'NEEDS_APPROVAL' ? ev.twoKey : 1;
+    // the same action already waiting for a person: point to that request, never open a second one
+    const dup = w.approvals.find((x) => x.status === 'PENDING' && x.actionHash === actionHash(req));
+    if (dup) {
+      const rec = appendLedger(w, { ts: now, actorType: req.actorType, actorId: req.actorId, actorName: nameOf(w, req.actorId), onBehalfOf, action: req.action, params: req.params, decision: 'NEEDS_APPROVAL', reason: `Same action already waiting for a person as ${dup.id}; no duplicate request opened.`, outcome: 'held', ticketId: req.ticketId, meta: { approvalId: dup.id, desc, duplicateOf: dup.id } });
+      return { decision: 'NEEDS_APPROVAL', reason: `Already waiting for a person (${dup.id}).`, ruleRef, seq: rec.seq, approvalId: dup.id, category: 'checkpoint' };
+    }
     const id = newApprovalId(w);
     const rec = appendLedger(w, {
       ts: now,

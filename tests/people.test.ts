@@ -66,3 +66,14 @@ describe('approver identity and authority', () => {
     expect(() => upsertPerson(w, { id: last.id, name: last.name, title: last.title, roles: ['operator'] })).toThrow(/rule approver/);
   });
 });
+
+describe('duplicate requests', () => {
+  it('an identical pending action reuses the open request instead of opening a second one', () => {
+    const w = seedWorld(NOW, { sector: 'banking', history: false });
+    const req = { actorType: 'agent' as const, actorId: 'rex', action: 'issue_refund', params: { customer: 'C-1029', amount: 40000 } };
+    const a = gateway(w, req, { now: NOW });
+    const b = gateway(w, req, { now: NOW + 1000 });
+    expect(b.approvalId).toBe(a.approvalId);
+    expect(w.approvals.filter((x) => x.status === 'PENDING').length).toBe(1);
+  });
+});
