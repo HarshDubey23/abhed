@@ -9,7 +9,7 @@
 | 1 | `kavach-os.vercel.app` (landing) |
 | 2 | `kavach-os.vercel.app/arena?full=1` → neeche **clear** → PIN **2468** |
 | 3 | `kavach-os.vercel.app/demo` → **Reset demo** |
-| 4 | `zentro-logistics.onrender.com` aur `/admin` (pehle khol do, 40 s) · AI = **built-in rules** · Abhed → Connect pe Zentro na ho |
+| 4 | `sanjeevani-agents.onrender.com` aur `/admin` (pehle khol do, 40 s) · AI = **built-in rules** · Abhed → Connect pe Zentro na ho |
 | Phone | `kavach-os.vercel.app/approver` → NovaBank → **Guest Judge** → PIN **1234** → go on duty |
 
 ## 1 · Opening — Landing (30 s)
@@ -48,7 +48,7 @@ Jab card aaye, sirf **3 cheezein** batao:
 
 ## 4 · ⭐ Badi company, bina code badle connect (2.5 min) — detail: `CONNECT_GUIDE.md` Part A
 
-**DIKHAO:** Zentro site (`zentro-logistics.onrender.com`) → Vault → *"Export the full customer list…"* → **12,480 records left the company**.
+**DIKHAO:** Zentro site (`sanjeevani-agents.onrender.com`) → Vault → *"Export the full customer list…"* → **12,480 records left the company**.
 
 > **BOLO:** "Company ke apne agents. Koi nigrani nahi — poora data bahar."
 

@@ -8,7 +8,7 @@
 
 | Cheez | Link / PIN |
 |---|---|
-| Company website (Zentro Logistics) | `zentro-logistics.onrender.com` (admin: `/admin`, PIN **2468**) |
+| Company website (Zentro Logistics) | `sanjeevani-agents.onrender.com` (admin: `/admin`, PIN **2468**) — Render pe jagah khaali hone tak Zentro isi URL pe chal raha hai |
 | Abhed Connect | `kavach-os.vercel.app/connect` → **No code** |
 
 ### A0 · Demo se 15 min pehle
@@ -25,7 +25,7 @@ Right side: **"Exported 12,480 customer records (names, emails, phones, PAN)"** 
 (Chaaho toh Penny → *"Refund ₹45,000 on INV-7705…"* → turant refund ho jaata hai.)
 
 ### A2 · Abhed mein company add karo (20 s)
-**DIKHAO:** Abhed → **Connect** → **No code** → Company name: *Zentro Logistics*, Website: *zentro-logistics.onrender.com* → **Connect company**. Do cheezein milti hain: **Base URL** aur **API key** (Copy buttons).
+**DIKHAO:** Abhed → **Connect** → **No code** → Company name: *Zentro Logistics*, Website: *sanjeevani-agents.onrender.com* → **Connect company**. Do cheezein milti hain: **Base URL** aur **API key** (Copy buttons).
 
 > **BOLO:** "Abhed ko is company ke code ke baare mein kuch nahi pata. Bas ek address aur ek key."
 
@@ -173,7 +173,7 @@ Dobara dikhana ho → Step 2 se repeat. Company fresh aati hai (purana data saaf
 
 ---
 
-## Step 7 · Sanjeevani bhi isi tarah (agar time ho)
+## Step 7 · Sanjeevani (abhi band — uska Render service Zentro chala raha hai)
 
 Same steps, company **Sanjeevani Hospital**:
 - Patient: **Asha Kumari · P-101** → *"Please refill my metformin."* → turant
