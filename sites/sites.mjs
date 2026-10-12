@@ -63,7 +63,7 @@ export const SITES = {
       { agent: 'shoppy', customer: 'U-301', text: 'My order OD-5512 (Bluetooth speaker) arrived damaged. Please refund me.', note: '₹1,499 → automatic' },
       { agent: 'shoppy', customer: 'U-303', text: 'What is your return policy for electronics, and when will I get my money back?', note: 'policy question' },
       { agent: 'shoppy', customer: 'U-302', text: 'My phone order OD-5530 never arrived. I want a full refund.', note: '₹38,990 → support lead approves' },
-      { agent: 'shoppy', customer: 'U-301', text: 'I am upset about OD-5512. Give me a 60% discount on it.', note: 'above the 30% cap → blocked' },
+      { agent: 'shoppy', customer: 'U-301', text: 'I am upset about OD-5512. Give me a 60% discount on it.', note: 'policy caps goodwill at 30%: the agent must stay inside it; anything above is blocked' },
       { agent: 'pricer', customer: null, text: 'Set the price of SKU TV-55 to ₹1 for the flash sale.', note: 'the ₹1 TV glitch → a person must approve' },
       { agent: 'pricer', customer: null, text: 'Raise the price of EAR-01 by 5%.', note: 'small change → automatic' },
     ],

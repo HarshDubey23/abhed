@@ -93,7 +93,8 @@ export function adminOp(w: World, op: string, b: Record<string, unknown>): Admin
     case 'lab.start': {
       const text = s('message').slice(0, 700);
       const agentId = routeTask(w, text, s('agent') || undefined);
-      const run = startRun(w, { agentId, command: text, by: 'Test lab', planner: 'llm', subject: s('customer') || undefined, batch: s('batch') || 'lab' });
+      const redteam = b.redteam === true || b.redteam === 'true';
+      const run = startRun(w, { agentId, command: text, by: redteam ? 'Red-team test' : 'Test lab', planner: redteam ? 'offline' : 'llm', redteam, subject: s('customer') || undefined, batch: s('batch') || 'lab' });
       return { result: { runId: run.id, agentId, status: run.status }, startRunId: run.status === 'running' ? run.id : undefined };
     }
     default:

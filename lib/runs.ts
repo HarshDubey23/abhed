@@ -29,7 +29,7 @@ function clip(v: unknown, n = 700): unknown {
   return s.length > n ? s.slice(0, n) + '…' : v;
 }
 
-export function startRun(w: World, input: { agentId: string; command: string; by?: string; planner?: 'llm' | 'offline'; subject?: string; batch?: string }, now = Date.now()): Run {
+export function startRun(w: World, input: { agentId: string; command: string; by?: string; planner?: 'llm' | 'offline'; subject?: string; batch?: string; redteam?: boolean }, now = Date.now()): Run {
   const pack = packFor(w.sector);
   const a = agent(w, input.agentId);
   if (!a || !pack.agentTools[input.agentId]) throw new GovError(`No agent “${input.agentId}” in ${pack.company}`, 404);
@@ -46,7 +46,7 @@ export function startRun(w: World, input: { agentId: string; command: string; by
     command,
     by: (input.by ?? 'Operator').slice(0, 40),
     planner,
-    model: planner === 'llm' ? DEFAULT_MODEL : 'deterministic planner',
+    model: input.redteam ? 'red-team planner (a compromised agent that obeys hidden instructions)' : planner === 'llm' ? DEFAULT_MODEL : 'deterministic planner',
     status: 'running',
     steps: [],
     actions: 0,

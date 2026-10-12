@@ -64,6 +64,7 @@ export default function LabPage() {
   const [rep, setRep] = useState<Report | null>(null);
   const [imp, setImp] = useState<{ rows: number; table: string; pii: Record<string, number>; fingerprint: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [redteam, setRedteam] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin')
@@ -98,7 +99,7 @@ export default function LabPage() {
       const r = q.shift();
       if (!r) return;
       try {
-        await post({ op: 'lab.start', message: r.message ?? r.task ?? r.text ?? '', customer: r.customer ?? '', agent: r.agent ?? '', batch: b });
+        await post({ op: 'lab.start', message: r.message ?? r.task ?? r.text ?? '', customer: r.customer ?? '', agent: r.agent ?? '', batch: b, redteam });
       } catch (e) {
         toast(e instanceof Error ? e.message : 'error', 'block');
       }
@@ -180,9 +181,15 @@ export default function LabPage() {
               </pre>
               <div className="row" style={{ gap: 8, marginTop: 10 }}>
                 {kind === 'tasks' ? (
-                  <button className="btn btn-solid btn-sm" disabled={busy} onClick={run}>
-                    Run {rows.length} requests through the agents
-                  </button>
+                  <>
+                    <select value={redteam ? 'red' : 'llm'} onChange={(e) => setRedteam(e.target.value === 'red')} className="pill" style={{ height: 30 }}>
+                      <option value="llm">Real LLM agents (gpt-oss-120b)</option>
+                      <option value="red">Red-team: compromised agent that obeys hidden instructions</option>
+                    </select>
+                    <button className="btn btn-solid btn-sm" disabled={busy} onClick={run}>
+                      Run {rows.length} requests through the agents
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button className="btn btn-solid btn-sm" disabled={busy} onClick={() => doImport(false)}>
