@@ -42,7 +42,7 @@ export async function POST(req: Request) {
         text: `${r.agent} · ${String(b.action).replace(/_/g, ' ')}${b.ticketId ? ` (${b.ticketId})` : ''} → ${r.decision === 'NEEDS_APPROVAL' ? `WAITING FOR A PERSON ${r.approvalId}` : r.decision}${r.ruleRef ? ` · ${r.ruleRef}` : ''}`,
         tone,
       });
-      if (r.paused) liveEvent(l, { agentId, kind: 'system', text: `${r.agent} AUTO-PAUSED by Kavach: key revoked, work moved to people`, tone: 'block' });
+      if (r.paused) liveEvent(l, { agentId, kind: 'system', text: `${r.agent} AUTO-PAUSED by Abhed: key revoked, work moved to people`, tone: 'block' });
       return null;
     }).catch(() => undefined);
   }

@@ -86,7 +86,7 @@ export default function FleetPage() {
             The <em>Fleet</em>, live
           </h1>
           <p className="page-sub">
-            {f.companies.length} companies · {all.length} governed AI agents · {all.filter((a) => a.onSite).length} of them serve customers live on the companies’ own websites, each plugged in with one Kavach key. Every thought, tool call, approval and pause shows up here as it happens.
+            {f.companies.length} companies · {all.length} governed AI agents · {all.filter((a) => a.onSite).length} of them serve customers live on the companies’ own websites, each plugged in with one Abhed key. Every thought, tool call, approval and pause shows up here as it happens.
           </p>
         </div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

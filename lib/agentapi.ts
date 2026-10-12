@@ -10,13 +10,13 @@ import type { Run, RunStep, World } from './types';
 import { sha256 } from './util';
 
 /**
- * Kavach Agent API v1: how any company's agent plugs in.
+ * Abhed Agent API v1: how any company's agent plugs in.
  *   1. POST /api/v1/sessions      → open a governed session for a task (scanned for injection)
- *   2. POST /api/v1/llm           → think through the Kavach LLM gateway (metered, logged)
- *   3. POST /api/v1/tools/call    → every tool call: Kavach decides, executes via the connector, records
+ *   2. POST /api/v1/llm           → think through the Abhed LLM gateway (metered, logged)
+ *   3. POST /api/v1/tools/call    → every tool call: Abhed decides, executes via the connector, records
  *   4. GET  /api/v1/approvals/:id → wait while a person decides on their phone
  *   5. POST /api/v1/sessions/:id/finish
- * Auth: `Authorization: Bearer kv_live_…` (a Kavach-issued agent key; the company never shares its LLM key).
+ * Auth: `Authorization: Bearer kv_live_…` (an Abhed-issued agent key; the company never shares its LLM key).
  */
 
 export function resolveAgent(auth: string | null): { agentId: string; tenant: Tenant } | null {
@@ -74,7 +74,7 @@ export async function openSession(tenant: Tenant, agentId: string, input: { task
   const { result } = await mutate((w) => {
     const a = agent(w, agentId);
     if (!a) throw new GovError('Agent not registered', 401);
-    if (a.status === 'PAUSED' || a.keyRevoked) throw new GovError(`${a.name} is paused: ${a.statusReason ?? 'by its owner'}. Kavach refuses new work until a person resumes it.`, 423);
+    if (a.status === 'PAUSED' || a.keyRevoked) throw new GovError(`${a.name} is paused: ${a.statusReason ?? 'by its owner'}. Abhed refuses new work until a person resumes it.`, 423);
     const now = Date.now();
     w.runs ??= [];
     w.counters.run = (w.counters.run ?? 0) + 1;
@@ -102,7 +102,7 @@ export async function openSession(tenant: Tenant, agentId: string, input: { task
     w.sessions[`run:${run.id}`] = { untrusted: signals.length > 0, subject };
     if (signals.length) {
       run.injection = signals;
-      step(run, { kind: 'security', text: `Kavach scanner flagged this task (${signals.join(', ')}). The session is tainted: nothing it reads may leave the company.` }, now);
+      step(run, { kind: 'security', text: `Abhed scanner flagged this task (${signals.join(', ')}). The session is tainted: nothing it reads may leave the company.` }, now);
       securityEvent(w, { kind: 'prompt injection', agentId, detail: `${run.id} from ${run.by}: ${signals.join(', ')}`, owasp: OWASP.ASI01, severity: 'high' }, now);
     }
     w.runs.unshift(run);
@@ -112,7 +112,7 @@ export async function openSession(tenant: Tenant, agentId: string, input: { task
   return result;
 }
 
-/** LLM gateway for external agents: Kavach makes the call, meters it and records it. */
+/** LLM gateway for external agents: Abhed makes the call, meters it and records it. */
 export async function think(tenant: Tenant, agentId: string, sessionId: string, body: { messages: ChatMessage[]; tools?: unknown[] }) {
   const w0 = await getWorld(tenant);
   const run0 = findRun(w0, sessionId, agentId);
@@ -137,7 +137,7 @@ export async function think(tenant: Tenant, agentId: string, sessionId: string, 
       action: 'llm_call',
       params: { model: r.model, tokens: r.tokens },
       decision: 'INFO',
-      reason: `${a?.name ?? agentId} thought via the Kavach LLM gateway (${r.model}, ${r.tokens} tokens, ${r.ms} ms) for ${sessionId}.`,
+      reason: `${a?.name ?? agentId} thought via the Abhed LLM gateway (${r.model}, ${r.tokens} tokens, ${r.ms} ms) for ${sessionId}.`,
       cost: r.costInr,
       meta: { runId: sessionId, model: r.model, ms: r.ms },
     });
@@ -170,7 +170,7 @@ export async function callTool(tenant: Tenant, agentId: string, sessionId: strin
     }
     if (res.paused) {
       run.status = 'paused';
-      step(run, { kind: 'final', text: `Kavach paused ${agent(w, agentId)?.name ?? agentId} after a critical policy breach. Its key is revoked; an incident is open for its owner.` }, now);
+      step(run, { kind: 'final', text: `Abhed paused ${agent(w, agentId)?.name ?? agentId} after a critical policy breach. Its key is revoked; an incident is open for its owner.` }, now);
     }
     return {
       decision: res.decision,

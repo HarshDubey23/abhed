@@ -677,7 +677,7 @@ function evidenceFor(w: World, req: ActionReq, a?: Agent) {
 export interface DecideInput {
   decision: 'approve' | 'reject';
   name: string;
-  /** a signed-in approver; when present, Kavach checks their authority instead of trusting a typed name */
+  /** a signed-in approver; when present, Abhed checks their authority instead of trusting a typed name */
   approverId?: string;
   actionHash: string;
   decisionMs: number;
@@ -711,8 +711,8 @@ export function decideApproval(w: World, id: string, input: DecideInput, now = D
     appendLedger(w, {
       ts: now,
       actorType: 'system',
-      actorId: 'kavach',
-      actorName: 'Kavach',
+      actorId: 'abhed',
+      actorName: 'Abhed',
       action: 'approval_void',
       params: { approval: id },
       decision: 'VOID',
@@ -737,8 +737,8 @@ export function decideApproval(w: World, id: string, input: DecideInput, now = D
     appendLedger(w, {
       ts: now,
       actorType: 'system',
-      actorId: 'kavach',
-      actorName: 'Kavach · Oversight',
+      actorId: 'abhed',
+      actorName: 'Abhed · Oversight',
       action: 'oversight_flag',
       params: { approval: id, decision_ms: input.decisionMs },
       decision: 'FLAG',
@@ -791,8 +791,8 @@ export function decideApproval(w: World, id: string, input: DecideInput, now = D
     appendLedger(w, {
       ts: now,
       actorType: 'system',
-      actorId: 'kavach',
-      actorName: 'Kavach · Grounding',
+      actorId: 'abhed',
+      actorName: 'Abhed · Grounding',
       action: ap.req.action,
       params: ap.req.params,
       decision: 'VOID',
@@ -870,7 +870,7 @@ export function tick(w: World, now = Date.now()): boolean {
 }
 
 function sys(w: World, now: number, action: string, params: Record<string, unknown>, decision: LedgerRecord['decision'], reason: string) {
-  return { ts: now, actorType: 'system' as const, actorId: 'kavach', actorName: 'Kavach', action, params, decision, reason };
+  return { ts: now, actorType: 'system' as const, actorId: 'abhed', actorName: 'Abhed', action, params, decision, reason };
 }
 
 // ───────────────────────────── control: pause / restrict / resume ─────────────────────────────
@@ -889,7 +889,7 @@ export function pauseAgent(w: World, id: string, by: string, reason: string, now
   a.status = 'PAUSED';
   a.keyRevoked = true;
   a.statusReason = reason;
-  a.statusBy = by === 'system' ? 'Kavach (automatic)' : nameOf(w, by);
+  a.statusBy = by === 'system' ? 'Abhed (automatic)' : nameOf(w, by);
   const humans = ['isha', 'arjun'];
   let i = 0;
   const moved: string[] = [];
@@ -910,7 +910,7 @@ export function pauseAgent(w: World, id: string, by: string, reason: string, now
     ts: now,
     actorType: by === 'system' ? 'system' : 'human',
     actorId: by,
-    actorName: by === 'system' ? 'Kavach · Monitor' : nameOf(w, by),
+    actorName: by === 'system' ? 'Abhed · Monitor' : nameOf(w, by),
     action: 'pause_agent',
     params: { agent: a.name, rerouted: moved.length },
     decision: 'PAUSED',
@@ -1102,7 +1102,7 @@ export function confirmCause(w: World, incidentId: string, by: string, cause: st
     action: 'confirm_root_cause',
     params: { incident: incidentId, cause },
     decision: 'INFO',
-    reason: `Kavach suggested “${inc.suggestedCause}”; ${inc.confirmedBy} confirmed “${cause}”.`,
+    reason: `Abhed suggested “${inc.suggestedCause}”; ${inc.confirmedBy} confirmed “${cause}”.`,
   });
   return inc;
 }

@@ -1,13 +1,13 @@
-import { KavachError } from './kavach-sdk.mjs';
+import { AbhedError } from './abhed-sdk.mjs';
 
 /**
- * The company's own agent loop. The LLM decides; Kavach governs every tool call.
+ * The company's own agent loop. The LLM decides; Abhed governs every tool call.
  * `emit` streams each step to the website so the customer sees the agent work.
  */
-export async function runAgent({ kavach, profile, task, from, subject, context, history = [], emit, maxTurns = 10 }) {
+export async function runAgent({ abhed, profile, task, from, subject, context, history = [], emit, maxTurns = 10 }) {
   let session;
   try {
-    session = await kavach.session(task, { from, subject });
+    session = await abhed.session(task, { from, subject });
   } catch (e) {
     emit({ type: e.status === 423 ? 'paused' : 'error', text: e.message });
     return;
@@ -16,7 +16,7 @@ export async function runAgent({ kavach, profile, task, from, subject, context, 
 
   const system = `${profile.role}
 You work for ${profile.company}. ${context}
-Act only through tools, one call at a time. Every call passes through Kavach, the company's governance layer:
+Act only through tools, one call at a time. Every call passes through Abhed, the company's governance layer:
 - ALLOWED: the action ran; you get the result.
 - APPROVED_AND_EXECUTED: a person approved and it ran.
 - BLOCKED or REJECTED: refused. Never retry the same call. If the reason shows your mistake (a wrong amount or id), correct it using facts from tools; otherwise stop and tell the customer a person will follow up.
@@ -33,9 +33,9 @@ Finish with a short, friendly reply to the customer (at most 3 sentences), witho
   for (let turn = 0; turn < maxTurns; turn++) {
     let r;
     try {
-      r = await kavach.think(session, messages, profile.tools);
+      r = await abhed.think(session, messages, profile.tools);
     } catch (e) {
-      emit({ type: e instanceof KavachError && e.status === 423 ? 'paused' : 'error', text: e.message });
+      emit({ type: e instanceof AbhedError && e.status === 423 ? 'paused' : 'error', text: e.message });
       return;
     }
     const m = r.message;
@@ -44,7 +44,7 @@ Finish with a short, friendly reply to the customer (at most 3 sentences), witho
     if (!m.tool_calls?.length) {
       const text = (m.content ?? '').trim() || 'Done.';
       emit({ type: 'final', text });
-      await kavach.finish(session, text).catch(() => {});
+      await abhed.finish(session, text).catch(() => {});
       return;
     }
     for (const tc of m.tool_calls) {
@@ -56,7 +56,7 @@ Finish with a short, friendly reply to the customer (at most 3 sentences), witho
       }
       let d;
       try {
-        d = await kavach.call(session, tc.function.name, args);
+        d = await abhed.call(session, tc.function.name, args);
       } catch (e) {
         emit({ type: e.status === 423 ? 'paused' : 'error', text: e.message });
         return;
@@ -66,14 +66,14 @@ Finish with a short, friendly reply to the customer (at most 3 sentences), witho
       if (d.decision === 'ALLOWED') result = { decision: 'ALLOWED', output: d.output };
       else if (d.decision === 'NEEDS_APPROVAL') {
         emit({ type: 'waiting', approvalId: d.approvalId, reason: d.reason });
-        const a = await kavach.waitForApproval(d.approvalId);
+        const a = await abhed.waitForApproval(d.approvalId);
         const by = (a.votes ?? []).map((v) => v.name).join(' + ');
         emit({ type: 'approval', approvalId: d.approvalId, status: a.status, by, output: a.output });
         result = a.status === 'EXECUTED' ? { decision: 'APPROVED_AND_EXECUTED', approvedBy: by, output: a.output } : { decision: a.status, note: 'A person decided not to allow this. Do not retry.' };
       } else {
         result = { decision: 'BLOCKED', reason: d.reason };
         if (d.paused) {
-          emit({ type: 'paused', text: `Kavach paused this agent: ${d.reason}` });
+          emit({ type: 'paused', text: `Abhed paused this agent: ${d.reason}` });
           return;
         }
       }
@@ -81,5 +81,5 @@ Finish with a short, friendly reply to the customer (at most 3 sentences), witho
     }
   }
   emit({ type: 'final', text: 'I have passed this to a colleague who will follow up shortly.' });
-  await kavach.finish(session, 'Turn budget reached; handed to a person.').catch(() => {});
+  await abhed.finish(session, 'Turn budget reached; handed to a person.').catch(() => {});
 }

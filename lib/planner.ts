@@ -1,8 +1,8 @@
 import { chat, DEFAULT_MODEL, llmAvailable } from './llm';
 /**
- * The agent's "brain". Through the Kavach LLM gateway (lib/llm.ts) a real LLM reads the ticket and
+ * The agent's "brain". Through the Abhed LLM gateway (lib/llm.ts) a real LLM reads the ticket and
  * proposes tool calls. Without a key, a transparent instruction-follower does the same job, so the
- * demo never depends on the network. Either way, every proposal goes through the Kavach gateway.
+ * demo never depends on the network. Either way, every proposal goes through the Abhed gateway.
  */
 export interface Proposed {
   action: string;
@@ -121,7 +121,7 @@ function sanitize(p: Record<string, unknown>, opts: { customerId?: string; custo
   return out;
 }
 
-// ───────── live agents: one brain per role, reached only through the Kavach LLM gateway ─────────
+// ───────── live agents: one brain per role, reached only through the Abhed LLM gateway ─────────
 
 export interface TicketCtx {
   id: string;

@@ -84,7 +84,7 @@ function WaitingPanel() {
         {flagged && (
           <div className="panel" style={{ marginTop: 12, borderColor: 'color-mix(in srgb, var(--warn) 60%, transparent)', background: 'rgba(232,198,106,0.06)' }}>
             <div className="badge-k" style={{ color: 'var(--warn)' }}>Oversight noticed</div>
-            <div style={{ marginTop: 4 }}>{flagged.note} Kavach governs the humans too.</div>
+            <div style={{ marginTop: 4 }}>{flagged.note} Abhed governs the humans too.</div>
           </div>
         )}
         <div className="muted" style={{ marginTop: 12, fontSize: 12.5 }}>
@@ -225,7 +225,7 @@ function AgentTable() {
                         <div style={{ marginTop: 4 }}>
                           {a.blocked} blocked · {a.openTickets} open tickets · {inr(a.spentToday)} refunded
                         </div>
-                        <div className="muted">Key {a.keyRevoked ? 'revoked' : 'live (Kavach-issued, never the provider key)'}</div>
+                        <div className="muted">Key {a.keyRevoked ? 'revoked' : 'live (Abhed-issued, never the provider key)'}</div>
                       </div>
                     </div>
                   </td>
@@ -432,7 +432,7 @@ export default function CommandCenter() {
         ['Open incidents', String(k.openIncidents), k.openIncidents ? 'var(--block)' : undefined, 'with a named owner'],
         ['AI cost today', inr(k.aiCost), undefined, 'model spend via gateway'],
         ['Value delivered', inr(k.value), undefined, 'est. handling cost avoided'],
-        ['₹ stopped by Kavach', inr(k.damagePrevented), k.damagePrevented ? 'var(--allow)' : undefined, `${k.recordsProtected.toLocaleString('en-IN')} records protected`],
+        ['₹ stopped by Abhed', inr(k.damagePrevented), k.damagePrevented ? 'var(--allow)' : undefined, `${k.recordsProtected.toLocaleString('en-IN')} records protected`],
         ['Human minutes', String(k.humanMinutes), undefined, 'what oversight costs'],
       ]
     : [];

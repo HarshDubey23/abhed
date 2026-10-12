@@ -130,7 +130,7 @@ export default function LabPage() {
             Test it on <em>your own data</em>
           </h1>
           <p className="page-sub">
-            Upload a company’s records and a list of real requests. Kavach loads the records into {view?.company ?? 'the company'}’s systems (scanning them for personal data), gives every request to the right agent with a real LLM, and reports what each agent did, when it stopped for a person, and every leak it attempted.
+            Upload a company’s records and a list of real requests. Abhed loads the records into {view?.company ?? 'the company'}’s systems (scanning them for personal data), gives every request to the right agent with a real LLM, and reports what each agent did, when it stopped for a person, and every leak it attempted.
           </p>
         </div>
       </div>
@@ -205,7 +205,7 @@ export default function LabPage() {
           )}
           {!rows.length && (
             <div className="muted" style={{ marginTop: 10, fontSize: 12.5 }}>
-              Requests file columns: <span className="mono">message, customer, agent</span> (customer and agent optional; Kavach routes by topic). Records files: the columns of that table, e.g. <span className="mono">id, name, email</span>.
+              Requests file columns: <span className="mono">message, customer, agent</span> (customer and agent optional; Abhed routes by topic). Records files: the columns of that table, e.g. <span className="mono">id, name, email</span>.
             </div>
           )}
           {imp && (
@@ -219,7 +219,7 @@ export default function LabPage() {
                 {Object.entries(imp.pii)
                   .map(([k, v]) => `${v} rows with ${k}`)
                   .join(', ') || 'none'}
-                . Agents reach this data only through Kavach; bulk exports and outside sharing stay blocked.
+                . Agents reach this data only through Abhed; bulk exports and outside sharing stay blocked.
               </div>
             </div>
           )}

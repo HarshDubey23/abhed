@@ -1,6 +1,6 @@
 {
-  "name": "Kavach Approver",
-  "short_name": "Kavach",
+  "name": "Abhed Approver",
+  "short_name": "Abhed",
   "description": "Approve or reject high-risk AI agent actions. Your name goes into the ledger.",
   "start_url": "/approver",
   "scope": "/",

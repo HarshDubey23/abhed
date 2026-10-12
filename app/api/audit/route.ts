@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     return null;
   }, tenant);
   const bytes = await auditPdf(world, { requestedBy: by });
-  const name = `kavach-audit-${packFor(world.sector).id}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const name = `abhed-audit-${packFor(world.sector).id}-${new Date().toISOString().slice(0, 10)}.pdf`;
   return new Response(Buffer.from(bytes), {
     headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="${name}"`, 'cache-control': 'no-store' },
   });

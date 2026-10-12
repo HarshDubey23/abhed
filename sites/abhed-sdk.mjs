@@ -1,22 +1,22 @@
 /**
- * Kavach SDK: everything an AI company needs to put its agent under governance.
- * Zero dependencies. The company keeps its own agent code; Kavach sees every thought and tool call.
+ * Abhed SDK: everything an AI company needs to put its agent under governance.
+ * Zero dependencies. The company keeps its own agent code; Abhed sees every thought and tool call.
  *
- *   const kavach = new Kavach({ url: 'https://kavach-os.vercel.app', key: process.env.KAVACH_AGENT_KEY });
- *   const me = await kavach.profile();                  // role, tool schemas, delegations
- *   const s = await kavach.session(task, { from });     // scanned for prompt injection
- *   const r = await kavach.think(s, messages, me.tools); // LLM via the Kavach gateway (metered)
- *   const d = await kavach.call(s, tool, args);          // ALLOWED → output · NEEDS_APPROVAL → wait · BLOCKED
- *   if (d.decision === 'NEEDS_APPROVAL') await kavach.waitForApproval(d.approvalId);
+ *   const abhed = new Abhed({ url: 'https://kavach-os.vercel.app', key: process.env.KAVACH_AGENT_KEY });
+ *   const me = await abhed.profile();                  // role, tool schemas, delegations
+ *   const s = await abhed.session(task, { from });     // scanned for prompt injection
+ *   const r = await abhed.think(s, messages, me.tools); // LLM via the Abhed gateway (metered)
+ *   const d = await abhed.call(s, tool, args);          // ALLOWED → output · NEEDS_APPROVAL → wait · BLOCKED
+ *   if (d.decision === 'NEEDS_APPROVAL') await abhed.waitForApproval(d.approvalId);
  */
-export class KavachError extends Error {
+export class AbhedError extends Error {
   constructor(message, status) {
     super(message);
     this.status = status;
   }
 }
 
-export class Kavach {
+export class Abhed {
   constructor({ url, key, site }) {
     if (!key) throw new Error('KAVACH_AGENT_KEY missing');
     this.url = (url ?? 'https://kavach-os.vercel.app').replace(/\/$/, '');
@@ -31,14 +31,14 @@ export class Kavach {
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new KavachError(data.error ?? `Kavach ${res.status}`, res.status);
+    if (!res.ok) throw new AbhedError(data.error ?? `Abhed ${res.status}`, res.status);
     return data;
   }
 
   profile() {
     return this.req('/api/v1/agent');
   }
-  /** subject = the customer this task is for; Kavach refuses any action on anyone else. */
+  /** subject = the customer this task is for; Abhed refuses any action on anyone else. */
   async session(task, { from, subject } = {}) {
     return this.req('/api/v1/sessions', { task, from, subject, site: this.site });
   }

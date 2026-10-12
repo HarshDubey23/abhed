@@ -1,5 +1,5 @@
 /**
- * Kavach LLM gateway. Every agent thinks through here, so Kavach can meter tokens and cost per agent.
+ * Abhed LLM gateway. Every agent thinks through here, so Abhed can meter tokens and cost per agent.
  * Route: GROQ_API_KEY set → Groq directly. Otherwise → the `kavach-llm` Supabase Edge Function, which
  * holds the provider keys in Supabase Vault (they never reach this app, git, or a browser).
  */

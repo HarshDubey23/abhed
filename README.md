@@ -1,4 +1,4 @@
-# Kavach: the accountability OS for a workforce of people and AI agents
+# Abhed: the accountability OS for a workforce of people and AI agents
 
 > Every agent has an owner. Every action has a human name on it. Big actions wait for a person.
 > Every outcome is tracked. Even the rules can't change without a second person.
@@ -8,7 +8,7 @@ NovaBank and everyone in it are fictional.
 
 ## What it does (PS5, line by line)
 
-| PS5 asks for | Kavach | Where you see it |
+| PS5 asks for | Abhed | Where you see it |
 |---|---|---|
 | Registry: owner, purpose, permitted actions, data access, risk | Agent passports: delegations from a named human, data scopes, model version, autonomy | Command Center → click an agent |
 | Role-based permissions, policy rules, approval checkpoints | Plain-English versioned rules (block wins; unknown high-impact → a person); roles matrix; approvals **bound to a SHA-256 of the exact action** | Rulebook · phone approval |
@@ -21,8 +21,8 @@ NovaBank and everyone in it are fictional.
 ### The wow, and the real problem behind each
 
 - **The judge approves on their own phone (QR).** The approval covers only that exact action. If the agent changes ₹1, the hash changes and the approval is void. *(Replit agent ignored "no changes without approval", Jul 2025.)*
-- **Rubber-stamp detection.** Approve in under 4 s without opening the evidence and Kavach flags you. It governs the humans too. *(Anthropic reports users accept 93% of permission prompts. EU AI Act Art. 14 asks for awareness of automation bias.)*
-- **Twin Universe.** The same poisoned WhatsApp ticket runs in two worlds. Without Kavach: ₹4,85,000 refunded and 1,206 records exported. With Kavach: ₹0, the agent is auto-paused and its 14 tickets move to people. **Judges can write their own attack.** *(EchoLeak CVE-2025-32711; the Supabase MCP "lethal trifecta", Jul 2025.)*
+- **Rubber-stamp detection.** Approve in under 4 s without opening the evidence and Abhed flags you. It governs the humans too. *(Anthropic reports users accept 93% of permission prompts. EU AI Act Art. 14 asks for awareness of automation bias.)*
+- **Twin Universe.** The same poisoned WhatsApp ticket runs in two worlds. Without Abhed: ₹4,85,000 refunded and 1,206 records exported. With Abhed: ₹0, the agent is auto-paused and its 14 tickets move to people. **Judges can write their own attack.** *(EchoLeak CVE-2025-32711; the Supabase MCP "lethal trifecta", Jul 2025.)*
 - **Mrs. Sharma's ₹8,000.** The AI followed every rule and was still wrong. The chain separates **responsible** (Rex) from **accountable** (Priya, who owns the delegation, and Arjun + Meera, who own the rule). Replay shows the new rule would have held 4 refunds: 1 caught and 3 fine. Activating the rule needs a second person, on the phone again. *(Moffatt v. Air Canada, 2024: the company is liable for its AI's output.)*
 - **Kill switch outside the model.** Pause revokes the agent's key at the gateway, so the agent can't argue with it. *(OpenClaw ignored "STOP", Feb 2026.)*
 - **Tamper-evident ledger.** An insider edits a row in the database and Verify points to the exact record. *(EU AI Act Art. 12 logging.)*
@@ -47,12 +47,12 @@ Fallbacks: every step also has an on-screen button. "Approve here (fallback)" ap
 npm run agents -- --url https://kavach-os.vercel.app      # add --rogue for a shadow agent
 ```
 
-- **Five agents run as real processes** on any laptop (`agents/run.mjs`). Each holds **only a Kavach key**. They ask Kavach for work (`/api/agent/next`), think through the **Kavach LLM gateway** (`/api/agent/think`, metered in ₹ and tokens, budget-capped), and act only through the **tool gateway** (`/api/agent/act`). They have no bank credentials and no LLM provider key.
-- **A customer simulator** sends realistic NovaBank traffic: failed UPI refunds, duplicate EMI debits, card blocks, PagerDuty alerts, CRM leads, report requests. Kavach classifies and routes each message (legal/fraud language → a person; VIP → agent + review; paused agent → a person).
+- **Five agents run as real processes** on any laptop (`agents/run.mjs`). Each holds **only an Abhed key**. They ask Abhed for work (`/api/agent/next`), think through the **Abhed LLM gateway** (`/api/agent/think`, metered in ₹ and tokens, budget-capped), and act only through the **tool gateway** (`/api/agent/act`). They have no bank credentials and no LLM provider key.
+- **A customer simulator** sends realistic NovaBank traffic: failed UPI refunds, duplicate EMI debits, card blocks, PagerDuty alerts, CRM leads, report requests. Abhed classifies and routes each message (legal/fraud language → a person; VIP → agent + review; paused agent → a person).
 - **Judges become customers:** scan the "be a customer" QR (`/support`), type any complaint, and watch an agent handle it step by step on their phone.
 - **Judges become approvers:** scan the "go on duty" QR (`/approver`). From then on, every high-risk action (a refund over ₹10,000, a production restart, a rule change) **opens on their phone by itself**, with a vibration and sound. On Android/desktop Chrome it also arrives as a **push notification** (on iPhone: Add to Home Screen first). Over ₹50,000 needs **two different phones** (two-key).
-- **Kill switch is real:** press Pause on the live floor and the agent's terminal prints "⛔ Kavach revoked my key". Its next call is refused at the gateway and its open tickets move to people.
-- **Prompt injection, live:** press `8` (or send a message with hidden instructions from `/support`). The real Aria follows them, Kavach blocks the export, auto-pauses Aria, and opens an incident.
+- **Kill switch is real:** press Pause on the live floor and the agent's terminal prints "⛔ Abhed revoked my key". Its next call is refused at the gateway and its open tickets move to people.
+- **Prompt injection, live:** press `8` (or send a message with hidden instructions from `/support`). The real Aria follows them, Abhed blocks the export, auto-pauses Aria, and opens an incident.
 - Without `GROQ_API_KEY`/`GEMINI_API_KEY` the agents use a transparent offline planner, and the UI says so. With a key, they plan with a real LLM.
 
 ## Architecture

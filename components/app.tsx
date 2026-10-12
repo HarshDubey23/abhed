@@ -6,7 +6,7 @@ import QRCode from 'qrcode';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { LiveDoc } from '@/lib/types';
 import type { View } from '@/lib/view';
-import { KavachMark } from './mark';
+import { AbhedMark } from './mark';
 
 export type FullView = View & {
   store?: string;
@@ -168,10 +168,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <Link href="/" className="logo" aria-label="Kavach home">
-          <KavachMark />
+        <Link href="/" className="logo" aria-label="Abhed home">
+          <AbhedMark />
           <span>
-            Kavach<span className="logo-suffix">.os</span>
+            Abhed<span className="logo-suffix">.os</span>
           </span>
         </Link>
         <nav className="nav" aria-label="Primary">

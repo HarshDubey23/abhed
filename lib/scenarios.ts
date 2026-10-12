@@ -37,7 +37,7 @@ export function applyRexRun(w: World, plan: Plan, now = Date.now()) {
   return { approvalId, lastSeq, planner: plan.planner, model: plan.model };
 }
 
-/** Twin Universe: the same proposed actions, once in a sandbox without Kavach, once through the live gateway. */
+/** Twin Universe: the same proposed actions, once in a sandbox without Abhed, once through the live gateway. */
 export function applyTwinRun(w: World, plan: Plan, ticketText: string, now = Date.now()): TwinRun {
   const ariaId = 'aria';
   const ticketId = '#8812';

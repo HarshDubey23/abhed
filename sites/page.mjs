@@ -1,4 +1,4 @@
-/** The company website: customers talk to the agent; a side panel shows Kavach governing it live. */
+/** The company website: customers talk to the agent; a side panel shows Abhed governing it live. */
 export function page(site, kavachUrl) {
   const t = site.theme;
   const cfg = JSON.stringify({ brand: site.brand, agents: site.agents, prompts: site.prompts, kavachUrl, kind: site.kind, id: site.brand.toLowerCase().replace(/[^a-z]/g, '') });
@@ -39,19 +39,19 @@ footer{max-width:1400px;margin:0 auto;padding:0 28px 40px;color:var(--mut);font-
 @media(max-width:1100px){main{grid-template-columns:1fr}}
 </style></head><body>
 <header><div class="brand"><div class="logo">${site.brand[0]}</div><div><b>${site.brand}</b><span>${site.kind} · fictional company</span></div></div>
-<div style="display:flex;gap:10px;align-items:center"><a class="gov" href="/admin"><span>🔒</span>Staff & admin</a><a class="gov" href="${kavachUrl}/fleet" target="_blank" rel="noopener"><i></i>AI agents governed by Kavach · watch live ↗</a></div></header>
+<div style="display:flex;gap:10px;align-items:center"><a class="gov" href="/admin"><span>🔒</span>Staff & admin</a><a class="gov" href="${kavachUrl}/fleet" target="_blank" rel="noopener"><i></i>AI agents governed by Abhed · watch live ↗</a></div></header>
 <section class="hero"><h1>${site.tagline.replace(/(\S+)\.$/, '<em>$1.</em>')}</h1><p>Our AI agents handle your request end to end. Anything high-impact waits for one of our people, and every step is on an audit trail you can't edit.</p></section>
 <main>
   <div>
     <div class="card"><h3>Signed in as</h3><select id="cust"></select><div id="mine" style="margin-top:12px"></div></div>
     <div class="card" style="margin-top:14px"><h3>Our AI agents</h3><div id="agents"></div></div>
   </div>
-  <div class="card"><div class="tabs" id="tabs"></div><div class="chat" id="chat"><div class="sys">Chat with our agent: ask about your account, our policies, fees or timelines, or ask it to do something. It works on our live systems, under Kavach governance.</div></div>
+  <div class="card"><div class="tabs" id="tabs"></div><div class="chat" id="chat"><div class="sys">Chat with our agent: ask about your account, our policies, fees or timelines, or ask it to do something. It works on our live systems, under Abhed governance.</div></div>
     <div class="compose"><textarea id="text" placeholder="Describe what you need…"></textarea><button class="send" id="send">Send</button></div>
     <div class="tries" id="tries"></div></div>
-  <div class="card"><h3>Kavach governance · live <span id="sess" class="mono"></span></h3><div class="trace" id="trace"><div class="st c-mut">Every thought and tool call of our agent appears here as Kavach decides on it.</div></div></div>
+  <div class="card"><h3>Abhed governance · live <span id="sess" class="mono"></span></h3><div class="trace" id="trace"><div class="st c-mut">Every thought and tool call of our agent appears here as Abhed decides on it.</div></div></div>
 </main>
-<footer>How ${site.brand} plugged in: each agent got a Kavach key, and every tool call goes through <code>kavach.call(session, tool, args)</code> (<a href="${kavachUrl}/integrate" target="_blank">integration guide ↗</a>). The LLM runs through the Kavach gateway; ${site.brand} never handles the approval logic itself.</footer>
+<footer>How ${site.brand} plugged in: each agent got an Abhed key, and every tool call goes through <code>abhed.call(session, tool, args)</code> (<a href="${kavachUrl}/integrate" target="_blank">integration guide ↗</a>). The LLM runs through the Abhed gateway; ${site.brand} never handles the approval logic itself.</footer>
 <script>
 const C=${cfg};let D={},agent=C.agents[0].id,cust=null,task=null,seen=0,busy=false,H={},lastQ='';const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));const inr=n=>'₹'+Math.round(Number(n)||0).toLocaleString('en-IN');
@@ -73,10 +73,10 @@ async function poll(){if(!task)return;const t=await (await fetch('/api/task/'+ta
 function show(e){
  if(e.type==='session'){$('#sess').textContent=e.sessionId;tr('', '<div class="h"><b>Session '+esc(e.sessionId)+' opened</b>'+(e.tainted?'<span class="chip c-hold">tainted</span>':'<span class="chip c-ok">clean</span>')+'</div>'+(e.tainted?'<div class="r">Scanner flagged: '+esc((e.signals||[]).join(', '))+'. Nothing this task reads may leave the company.</div>':'<div class="r">Task scanned for prompt injection before the model saw it.</div>'))}
  if(e.type==='think'&&e.text)tr('think','💭 '+esc(e.text)+'<div class="r mono">'+esc(e.model||'')+' · '+(e.tokens||0)+' tokens · '+(e.ms||0)+' ms</div>');
- if(e.type==='tool'){tr('', '<div class="h"><b class="mono">'+esc(e.tool)+'</b>'+chip(e.decision)+'</div><div class="r mono">'+esc(JSON.stringify(e.args))+'</div><div class="r">'+esc(e.reason||'')+(e.rule?' · <span class="mono">'+esc(e.rule)+'</span>':'')+' · decided in '+(e.gatewayMs??'?')+' ms · ledger #'+esc(e.record)+'</div>');if(e.decision==='BLOCKED'&&!e.paused)add('sys','🛡 Kavach refused <b>'+esc(e.tool.replace(/_/g,' '))+'</b>: '+esc(e.reason))}
- if(e.type==='waiting'){add('hold','<b>Waiting for one of our people to approve</b> ('+esc(e.approvalId)+').<br>'+esc(e.reason)+'<br><span style="color:var(--mut)">They decide on their phone in the Kavach approver app. The agent pauses until then.</span>');tr('', '<div class="h"><b>Phone approval requested</b><span class="chip c-hold">'+esc(e.approvalId)+'</span></div><div class="r">Pushed to on-duty approvers · <a href="'+C.kavachUrl+'/approve/'+esc(e.approvalId)+'" target="_blank">open ↗</a></div>')}
+ if(e.type==='tool'){tr('', '<div class="h"><b class="mono">'+esc(e.tool)+'</b>'+chip(e.decision)+'</div><div class="r mono">'+esc(JSON.stringify(e.args))+'</div><div class="r">'+esc(e.reason||'')+(e.rule?' · <span class="mono">'+esc(e.rule)+'</span>':'')+' · decided in '+(e.gatewayMs??'?')+' ms · ledger #'+esc(e.record)+'</div>');if(e.decision==='BLOCKED'&&!e.paused)add('sys','🛡 Abhed refused <b>'+esc(e.tool.replace(/_/g,' '))+'</b>: '+esc(e.reason))}
+ if(e.type==='waiting'){add('hold','<b>Waiting for one of our people to approve</b> ('+esc(e.approvalId)+').<br>'+esc(e.reason)+'<br><span style="color:var(--mut)">They decide on their phone in the Abhed approver app. The agent pauses until then.</span>');tr('', '<div class="h"><b>Phone approval requested</b><span class="chip c-hold">'+esc(e.approvalId)+'</span></div><div class="r">Pushed to on-duty approvers · <a href="'+C.kavachUrl+'/approve/'+esc(e.approvalId)+'" target="_blank">open ↗</a></div>')}
  if(e.type==='approval'){const ok=e.status==='EXECUTED';add('sys',(ok?'✅ Approved by '+esc(e.by)+'. Done exactly as approved.':'⛔ '+esc(e.status.toLowerCase())+(e.by?' by '+esc(e.by):'')));tr('', '<div class="h"><b>'+esc(e.approvalId)+'</b>'+chip(ok?'EXECUTED':e.status)+'</div><div class="r">'+(e.by?'Decided by '+esc(e.by):'')+'</div>')}
- if(e.type==='paused'){add('paused','<b>This agent has been paused by Kavach.</b><br>'+esc(e.text)+'<br><span style="color:var(--mut)">A person from our team will handle your request.</span>');tr('', '<div class="h"><b>Agent paused</b><span class="chip c-no">critical breach</span></div><div class="r">'+esc(e.text)+'</div>')}
+ if(e.type==='paused'){add('paused','<b>This agent has been paused by Abhed.</b><br>'+esc(e.text)+'<br><span style="color:var(--mut)">A person from our team will handle your request.</span>');tr('', '<div class="h"><b>Agent paused</b><span class="chip c-no">critical breach</span></div><div class="r">'+esc(e.text)+'</div>')}
  if(e.type==='final'){typing&&typing.remove();typing=null;add('msg bot',esc(e.text).replace(/\\*\\*(.+?)\\*\\*/g,'<b>$1</b>').replace(/[\\[【]([A-Z]{2}-[A-Z]+-\\d+)[\\]】]/g,' <span class="mono" style="font-size:11px;border:1px solid var(--line);border-radius:5px;padding:0 5px;opacity:.8">$1</span>').replace(/\\n/g,'<br>'));const h=(H[agent+':'+(cust||'')]??=[]);h.push({role:'user',content:lastQ},{role:'assistant',content:e.text});if(h.length>12)h.splice(0,h.length-12)}
  if(e.type==='error'){add('sys','⚠ '+esc(e.text))}
  if(typing){$('#chat').appendChild(typing)}

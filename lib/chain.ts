@@ -6,10 +6,10 @@ import { canonical, sha256 } from './util';
 /**
  * Blockchain layer on top of the hash-chained ledger.
  * - Records are sealed into blocks. Each block commits to its records with a Merkle root and to the
- *   previous block by hash, and is signed with Kavach's Ed25519 key (public key is published).
+ *   previous block by hash, and is signed with Abhed's Ed25519 key (public key is published).
  * - Each block hash is submitted to OpenTimestamps, which aggregates it into a Bitcoin transaction:
  *   a public, third-party proof that this exact history existed at that time. Nobody inside the
- *   company, including Kavach's operators, can rewrite a sealed record without it showing.
+ *   company, including Abhed's operators, can rewrite a sealed record without it showing.
  */
 
 export const BLOCK_EVERY = 25; // auto-seal once this many records are unsealed
@@ -112,7 +112,7 @@ export function verifyChain(w: World): { valid: boolean; blocks: number; sealedR
       return fail(`Merkle root of block ${b.height} no longer matches${bad ? `: record #${bad.seq} was edited after it was sealed` : ''}.`);
     }
     if (blockHash(b) !== b.hash) return fail(`Block ${b.height} header was changed.`);
-    if (!verify(null, Buffer.from(b.hash, 'hex'), pub, Buffer.from(b.signature, 'base64'))) return fail(`Signature on block ${b.height} is not Kavach's.`);
+    if (!verify(null, Buffer.from(b.hash, 'hex'), pub, Buffer.from(b.signature, 'base64'))) return fail(`Signature on block ${b.height} is not Abhed's.`);
     prev = b.hash;
   }
   const last = blocks[blocks.length - 1];

@@ -1,4 +1,4 @@
-/* Kavach approver: receives push when an AI agent's high-risk action needs a person. */
+/* Abhed approver: receives push when an AI agent's high-risk action needs a person. */
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
@@ -7,12 +7,12 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: 'Kavach', body: event.data ? event.data.text() : 'An approval is waiting' };
+    data = { title: 'Abhed', body: event.data ? event.data.text() : 'An approval is waiting' };
   }
   event.waitUntil(
     self.registration.showNotification(data.title || 'Approval needed', {
       body: data.body || 'An AI agent is waiting for a person.',
-      tag: data.tag || 'kavach',
+      tag: data.tag || 'abhed',
       renotify: true,
       requireInteraction: true,
       vibrate: [220, 90, 220, 90, 320],

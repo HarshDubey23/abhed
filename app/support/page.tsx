@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { KavachMark } from '@/components/mark';
+import { AbhedMark } from '@/components/mark';
 import GazeVideo from '../approve/gaze-video';
 import '../approve/approve.css';
 
@@ -125,9 +125,9 @@ export default function SupportPage() {
         )}
       </div>
 
-      <div className="ap-logo" role="img" aria-label="Kavach">
+      <div className="ap-logo" role="img" aria-label="Abhed">
         <span className="ap-wordmark">
-          <KavachMark /> kavach
+          <AbhedMark /> abhed
         </span>
       </div>
 

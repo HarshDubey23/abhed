@@ -20,11 +20,11 @@ const tools: Record<string, ToolDef> = {
 };
 
 function agents(): Agent[] {
-  const base = { tasksToday: 0, autoHandledToday: 0, costToday: 0, valueToday: 0, keyRevoked: false, spentToday: 0, status: 'ACTIVE' as const, framework: 'Kavach SDK · tool-calling loop' };
+  const base = { tasksToday: 0, autoHandledToday: 0, costToday: 0, valueToday: 0, keyRevoked: false, spentToday: 0, status: 'ACTIVE' as const, framework: 'Abhed SDK · tool-calling loop' };
   return [
-    { ...base, id: 'shoppy', name: 'Shoppy', owner: 'tanya', purpose: 'Customer support: refunds, cancellations', model: 'gpt-oss-120b via Kavach LLM gateway', modelVersion: 'v2026-08', risk: 'HIGH', autonomy: 'L3', budgetInr: 500, dataScopes: ['orders', 'payments (masked)'], delegations: [{ action: 'issue_refund', maxPerAction: 5000, maxPerDay: 200000, grantedBy: 'tanya', expiresDays: 30 }, { action: 'cancel_order', grantedBy: 'tanya', expiresDays: 30 }, { action: 'apply_discount', grantedBy: 'tanya', expiresDays: 30 }] },
-    { ...base, id: 'pricer', name: 'Pricer', owner: 'vivek', purpose: 'Dynamic pricing', model: 'gpt-oss-120b via Kavach LLM gateway', modelVersion: 'v2026-09', risk: 'HIGH', autonomy: 'L2', budgetInr: 400, dataScopes: ['catalogue'], delegations: [{ action: 'change_price', grantedBy: 'vivek', expiresDays: 14 }] },
-    { ...base, id: 'promo', name: 'Promo', owner: 'zoya', purpose: 'Marketing campaigns', model: 'gpt-oss-120b via Kavach LLM gateway', modelVersion: 'v2026-07', risk: 'MEDIUM', autonomy: 'L2', budgetInr: 300, dataScopes: ['customer segments'], delegations: [{ action: 'send_campaign', grantedBy: 'zoya', expiresDays: 14 }] },
+    { ...base, id: 'shoppy', name: 'Shoppy', owner: 'tanya', purpose: 'Customer support: refunds, cancellations', model: 'gpt-oss-120b via Abhed LLM gateway', modelVersion: 'v2026-08', risk: 'HIGH', autonomy: 'L3', budgetInr: 500, dataScopes: ['orders', 'payments (masked)'], delegations: [{ action: 'issue_refund', maxPerAction: 5000, maxPerDay: 200000, grantedBy: 'tanya', expiresDays: 30 }, { action: 'cancel_order', grantedBy: 'tanya', expiresDays: 30 }, { action: 'apply_discount', grantedBy: 'tanya', expiresDays: 30 }] },
+    { ...base, id: 'pricer', name: 'Pricer', owner: 'vivek', purpose: 'Dynamic pricing', model: 'gpt-oss-120b via Abhed LLM gateway', modelVersion: 'v2026-09', risk: 'HIGH', autonomy: 'L2', budgetInr: 400, dataScopes: ['catalogue'], delegations: [{ action: 'change_price', grantedBy: 'vivek', expiresDays: 14 }] },
+    { ...base, id: 'promo', name: 'Promo', owner: 'zoya', purpose: 'Marketing campaigns', model: 'gpt-oss-120b via Abhed LLM gateway', modelVersion: 'v2026-07', risk: 'MEDIUM', autonomy: 'L2', budgetInr: 300, dataScopes: ['customer segments'], delegations: [{ action: 'send_campaign', grantedBy: 'zoya', expiresDays: 14 }] },
   ];
 }
 

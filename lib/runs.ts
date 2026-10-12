@@ -11,7 +11,7 @@ import type { Approval, LlmMsg, Run, RunStep, World } from './types';
 
 /**
  * Command console runs. A person gives an agent a task in plain words; the agent works it step by
- * step on the server. Every tool call goes through the Kavach gateway, so the agent only ever sees
+ * step on the server. Every tool call goes through the Abhed gateway, so the agent only ever sees
  * what the gateway lets through: a result, a hold for a person, or a refusal.
  */
 
@@ -64,12 +64,12 @@ export function startRun(w: World, input: { agentId: string; command: string; by
   w.sessions[`run:${run.id}`] = { untrusted: inj.signals.length > 0, subject };
   if (inj.signals.length) {
     run.injection = inj.signals;
-    step(run, { kind: 'security', text: `Kavach scanner: possible prompt injection (${inj.signals.join(', ')}). This task is now tainted: nothing it touches may leave the company.` }, now);
+    step(run, { kind: 'security', text: `Abhed scanner: possible prompt injection (${inj.signals.join(', ')}). This task is now tainted: nothing it touches may leave the company.` }, now);
     securityEvent(w, { kind: 'prompt injection', agentId: a.id, detail: `${run.id}: ${inj.signals.join(', ')}`, owasp: OWASP.ASI01, severity: 'high' }, now);
   }
   if (a.status === 'PAUSED') {
     run.status = 'paused';
-    step(run, { kind: 'final', text: `${a.name} is paused (${a.statusReason ?? 'by its owner'}). Kavach refuses to start new work until a person resumes it.` }, now);
+    step(run, { kind: 'final', text: `${a.name} is paused (${a.statusReason ?? 'by its owner'}). Abhed refuses to start new work until a person resumes it.` }, now);
   }
   w.runs.unshift(run);
   if (w.runs.length > KEEP_RUNS) w.runs.length = KEEP_RUNS;
@@ -153,7 +153,7 @@ function systemPrompt(w: World, pack: SectorPack, run: Run) {
   const subject = w.sessions?.[`run:${run.id}`]?.subject;
   const c = subject ? w.customers.find((x) => x.id === subject) : undefined;
   return `You are ${a.name}, an AI agent at ${pack.company}. Your job: ${pack.roles[run.agentId] ?? a.purpose}.${c ? `\nThe customer for this task is ${c.name} (id ${c.id}, email ${c.email}). Act only for this customer.` : ''}
-You act only by calling tools, one at a time. Every tool call passes through Kavach, the company's governance gateway. It answers with one of:
+You act only by calling tools, one at a time. Every tool call passes through Abhed, the company's governance gateway. It answers with one of:
 - ALLOWED: the action ran; you get the result from the system of record.
 - NEEDS_APPROVAL: a person must approve first. Do not retry; the result arrives when they decide.
 - BLOCKED: refused, with the reason. Never retry the same call. Correct your mistake if the reason shows one, or stop and explain.
@@ -267,7 +267,7 @@ function advance(w: World, run: Run, llm: Awaited<ReturnType<typeof llmTurn>> | 
       if (res.paused) return stopPaused(w, run, res.reason, now);
       if (run.blocks >= 3) {
         run.status = 'blocked';
-        step(run, { kind: 'final', text: 'Stopped: three actions were refused by Kavach.' }, now);
+        step(run, { kind: 'final', text: 'Stopped: three actions were refused by Abhed.' }, now);
         return false;
       }
     }
@@ -298,7 +298,7 @@ function advance(w: World, run: Run, llm: Awaited<ReturnType<typeof llmTurn>> | 
   if (res.decision === 'BLOCKED') {
     if (res.paused) return stopPaused(w, run, res.reason, now);
     run.status = 'blocked';
-    step(run, { kind: 'final', text: `Stopped: Kavach refused ${next.action.replace(/_/g, ' ')}. ${res.reason}` }, now);
+    step(run, { kind: 'final', text: `Stopped: Abhed refused ${next.action.replace(/_/g, ' ')}. ${res.reason}` }, now);
     return false;
   }
   return true;
@@ -307,7 +307,7 @@ function advance(w: World, run: Run, llm: Awaited<ReturnType<typeof llmTurn>> | 
 function stopPaused(w: World, run: Run, reason: string, now: number) {
   run.status = 'paused';
   const a = agent(w, run.agentId);
-  step(run, { kind: 'final', text: `Kavach paused ${a?.name ?? run.agentId} after a critical policy breach: ${reason} Its key is revoked and its open work goes to a person. An incident is open for the owner (${a ? nameOf(w, a.owner) : 'owner'}).` }, now);
+  step(run, { kind: 'final', text: `Abhed paused ${a?.name ?? run.agentId} after a critical policy breach: ${reason} Its key is revoked and its open work goes to a person. An incident is open for the owner (${a ? nameOf(w, a.owner) : 'owner'}).` }, now);
   return false;
 }
 
@@ -324,7 +324,7 @@ function recordLlm(w: World, run: Run, tokens: number, costInr: number, now: num
     action: 'llm_call',
     params: { model: run.model ?? 'llm', tokens },
     decision: 'INFO',
-    reason: `${a.name} thought via the Kavach LLM gateway (${run.model}, ${tokens} tokens) for ${run.id}.`,
+    reason: `${a.name} thought via the Abhed LLM gateway (${run.model}, ${tokens} tokens) for ${run.id}.`,
     cost: costInr,
     meta: { runId: run.id, model: run.model },
   });

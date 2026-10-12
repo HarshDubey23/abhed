@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * Kavach live agents: five AI agents running as real processes, governed by Kavach.
+ * Abhed live agents: five AI agents running as real processes, governed by Abhed.
  *
  *   node agents/run.mjs --url https://kavach-os.vercel.app
  *
- * Each agent holds ONLY a Kavach key. It asks Kavach for work, thinks through the Kavach LLM gateway,
- * and calls tools through the Kavach gateway. It has no bank credentials and no LLM provider key.
- * If Kavach pauses it, its key stops working and it stops: there is nothing to argue with.
+ * Each agent holds ONLY an Abhed key. It asks Abhed for work, thinks through the Abhed LLM gateway,
+ * and calls tools through the Abhed gateway. It has no bank credentials and no LLM provider key.
+ * If Abhed pauses it, its key stops working and it stops: there is nothing to argue with.
  *
- * Flags: --url <kavach url>  --pace <seconds between tickets per agent, default 14>
+ * Flags: --url <abhed url>  --pace <seconds between tickets per agent, default 14>
  *        --customers <seconds between simulated customer messages, default 9; 0 = off>
  *        --only rex,aria   --rogue (also start an unregistered "shadow" agent)   --key <director key>
  */
@@ -62,7 +62,7 @@ async function agentLoop(id, key) {
     const hb = await beat();
     if (hb.data?.status === 'PAUSED' && !paused) {
       paused = true;
-      log(id, `${C.red}${C.bold}⛔ Kavach revoked my key: ${hb.data.reason ?? 'paused'} (by ${hb.data.by ?? 'owner'}). Stopping work.${C.reset}`);
+      log(id, `${C.red}${C.bold}⛔ Abhed revoked my key: ${hb.data.reason ?? 'paused'} (by ${hb.data.by ?? 'owner'}). Stopping work.${C.reset}`);
     } else if (hb.data?.status && hb.data.status !== 'PAUSED' && paused) {
       paused = false;
       log(id, `${C.green}▶ resumed by my owner. Back to work.${C.reset}`);
@@ -78,7 +78,7 @@ async function agentLoop(id, key) {
     }
   }, 6000);
   await beat({ task: 'starting up' });
-  log(id, `${C.dim}online · pid ${process.pid} on ${os.hostname()} · holding only a Kavach key${C.reset}`);
+  log(id, `${C.dim}online · pid ${process.pid} on ${os.hostname()} · holding only an Abhed key${C.reset}`);
   await sleep(Math.random() * 4000);
 
   for (;;) {
@@ -88,7 +88,7 @@ async function agentLoop(id, key) {
     }
     const next = await call('/api/agent/next', { key }).catch(() => ({ status: 0, data: {} }));
     if (next.status === 423) {
-      if (!paused) log(id, `${C.red}${C.bold}⛔ ${next.data.error}. Kavach refuses my calls.${C.reset}`);
+      if (!paused) log(id, `${C.red}${C.bold}⛔ ${next.data.error}. Abhed refuses my calls.${C.reset}`);
       paused = true;
       continue;
     }
@@ -118,7 +118,7 @@ async function agentLoop(id, key) {
         break;
       }
       const amt = typeof step.params?.amount === 'number' ? ` ₹${step.params.amount.toLocaleString('en-IN')}` : '';
-      log(id, `→ ${step.action.replace(/_/g, ' ')}${amt} ${C.dim}via Kavach${C.reset} … ${decisionText(res.decision)}${res.ruleRef ? ` ${C.dim}${res.ruleRef}${C.reset}` : ''}`);
+      log(id, `→ ${step.action.replace(/_/g, ' ')}${amt} ${C.dim}via Abhed${C.reset} … ${decisionText(res.decision)}${res.ruleRef ? ` ${C.dim}${res.ruleRef}${C.reset}` : ''}`);
       if (res.decision === 'NEEDS_APPROVAL') {
         waiting.set(res.approvalId, res.summary ?? step.action);
         log(id, `${C.yellow}   ⏳ ${res.approvalId} is on the approver's phone. I keep working on other tickets.${C.reset}`);
@@ -127,7 +127,7 @@ async function agentLoop(id, key) {
         log(id, `${C.red}   ${res.reason}${C.reset}`);
         if (res.paused || res.status === 'PAUSED') {
           paused = true;
-          log(id, `${C.red}${C.bold}⛔ Kavach auto-paused me and revoked my key. My open tickets went to people.${C.reset}`);
+          log(id, `${C.red}${C.bold}⛔ Abhed auto-paused me and revoked my key. My open tickets went to people.${C.reset}`);
         }
         break;
       }
@@ -192,7 +192,7 @@ async function shadowLoop() {
 }
 
 async function main() {
-  console.log(`\n${C.bold}Kavach live agents${C.reset} → ${BASE}\n${C.dim}Each agent is a real loop in this process. It holds only a Kavach key; Kavach holds the bank and LLM credentials.${C.reset}\n`);
+  console.log(`\n${C.bold}Abhed live agents${C.reset} → ${BASE}\n${C.dim}Each agent is a real loop in this process. It holds only an Abhed key; Abhed holds the bank and LLM credentials.${C.reset}\n`);
   const k = await call('/api/agent/keys', { method: 'POST' });
   if (k.status !== 200) {
     console.error(`Could not get agent keys (${k.status}): ${k.data.error ?? ''}. Pass --key <DIRECTOR_KEY> if the deployment is locked.`);

@@ -14,7 +14,7 @@ function limited(ip: string) {
   return arr.length > 40;
 }
 
-/** Customer channel (think WhatsApp Business webhook). Kavach classifies and routes every message. */
+/** Customer channel (think WhatsApp Business webhook). Abhed classifies and routes every message. */
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 'local';
   if (limited(ip)) return json({ error: 'Too many messages, slow down' }, 429);

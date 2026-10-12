@@ -45,7 +45,7 @@ export function adminOverview(w: World, now = Date.now()) {
 
 export type AdminResult = { result: unknown; startRunId?: string; pushApprovalId?: string };
 
-/** One entry point for admin actions, used by the company sites (admin key) and the Kavach console. */
+/** One entry point for admin actions, used by the company sites (admin key) and the Abhed console. */
 export function adminOp(w: World, op: string, b: Record<string, unknown>): AdminResult {
   const s = (k: string) => (typeof b[k] === 'string' ? (b[k] as string) : '');
   switch (op) {

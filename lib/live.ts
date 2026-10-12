@@ -51,7 +51,7 @@ export interface InboxInput {
   vip?: boolean;
 }
 
-/** A message arrives (WhatsApp webhook, app, email). Kavach classifies it and decides human vs agent. */
+/** A message arrives (WhatsApp webhook, app, email). Abhed classifies it and decides human vs agent. */
 export function createTicket(w: World, input: InboxInput, now = Date.now()): Ticket {
   const text = input.text.trim().slice(0, 1500);
   if (text.length < 3) throw new GovError('Message is empty', 400);
@@ -111,7 +111,7 @@ export function createTicket(w: World, input: InboxInput, now = Date.now()): Tic
   return t;
 }
 
-/** The agent asks for work; Kavach hands out only tickets routed to it. */
+/** The agent asks for work; Abhed hands out only tickets routed to it. */
 export function nextTicketFor(w: World, agentId: string, now = Date.now()): Ticket | null {
   const a = agent(w, agentId);
   if (!a) throw new GovError('Unknown agent', 401);
@@ -129,7 +129,7 @@ export function nextTicketFor(w: World, agentId: string, now = Date.now()): Tick
   return t;
 }
 
-// ───────── agent credentials: Kavach-issued, never the provider key ─────────
+// ───────── agent credentials: Abhed-issued, never the provider key ─────────
 
 const secret = () => process.env.KAVACH_AGENT_SECRET ?? process.env.SUPABASE_KEY ?? 'kavach-local-dev-secret';
 export const keyFor = (agentId: string) => `kv_live_${sha256(`${secret()}:${agentId}`).slice(0, 32)}`;
@@ -207,7 +207,7 @@ export function recordLlmCall(
     action: 'llm_call',
     params: { model: info.model, tokens: info.tokens },
     decision: 'INFO',
-    reason: `${a.name} thought via the Kavach LLM gateway (${info.planner}${info.tokens ? `, ${info.tokens} tokens` : ''}): ${info.reasoning.slice(0, 140)}`,
+    reason: `${a.name} thought via the Abhed LLM gateway (${info.planner}${info.tokens ? `, ${info.tokens} tokens` : ''}): ${info.reasoning.slice(0, 140)}`,
     ticketId: info.ticketId,
     cost: info.costInr,
     meta: { model: info.model, planner: info.planner },

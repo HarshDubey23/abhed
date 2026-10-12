@@ -8,7 +8,7 @@ function configure() {
   const pub = process.env.VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;
   if (!pub || !priv) return false;
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? 'mailto:kavach-demo@example.com', pub, priv);
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? 'mailto:abhed-demo@example.com', pub, priv);
   configured = true;
   return true;
 }

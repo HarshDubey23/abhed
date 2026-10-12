@@ -23,8 +23,8 @@ export async function auditPdf(w: World, opts: { requestedBy: string }) {
   const pack = packFor(w.sector);
   const ins = buildInsights(w);
   const doc = await PDFDocument.create();
-  doc.setTitle(`Kavach audit report - ${pack.company}`);
-  doc.setAuthor('Kavach governance gateway');
+  doc.setTitle(`Abhed audit report - ${pack.company}`);
+  doc.setAuthor('Abhed governance gateway');
   doc.setCreationDate(new Date());
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -91,7 +91,7 @@ export async function auditPdf(w: World, opts: { requestedBy: string }) {
   };
 
   // ───── cover ─────
-  text('KAVACH · AI AGENT GOVERNANCE', { f: bold, size: 9, color: grey });
+  text('ABHED · AI AGENT GOVERNANCE', { f: bold, size: 9, color: grey });
   y -= 4;
   text('Audit report', { f: bold, size: 24 });
   text(`${pack.company} · ${pack.label}`, { size: 12, color: grey });
@@ -103,7 +103,7 @@ export async function auditPdf(w: World, opts: { requestedBy: string }) {
     cv = ins.integrity.chain;
   text(`Hash chain: ${lv.valid ? `VALID - all ${lv.checked} records re-hashed and linked.` : `BROKEN at record #${lv.firstBadSeq}.`}`, { color: lv.valid ? green : red, f: bold });
   text(`Signed blocks: ${cv.valid ? `VALID - ${cv.blocks} Ed25519-signed blocks seal records #1-#${cv.sealedRecords} (Merkle roots recomputed from record content).` : `BROKEN at block ${cv.firstBadHeight}: ${cv.reason}`}`, { color: cv.valid ? green : red, f: bold });
-  text(`Kavach public key (Ed25519): ${cv.publicKey}`, { f: mono, size: 7.5 });
+  text(`Abhed public key (Ed25519): ${cv.publicKey}`, { f: mono, size: 7.5 });
   for (const b of (w.blocks ?? []).slice(-8)) text(`Block ${b.height}: records #${b.fromSeq}-#${b.toSeq} · root ${b.merkleRoot.slice(0, 16)}… · hash ${b.hash.slice(0, 16)}… · ${b.anchor ? `${b.anchor.service}: ${b.anchor.status}` : 'not anchored yet'}`, { f: mono, size: 7 });
 
   h1('2. Speed vs control');
@@ -207,7 +207,7 @@ export async function auditPdf(w: World, opts: { requestedBy: string }) {
 
   const pages = doc.getPages();
   pages.forEach((p, i) =>
-    p.drawText(safe(`Kavach audit · ${pack.company} · ledger head ${w.ledger[w.ledger.length - 1]?.hash.slice(0, 16) ?? '-'} · page ${i + 1}/${pages.length}`), { x: M, y: 22, size: 7, font, color: grey }),
+    p.drawText(safe(`Abhed audit · ${pack.company} · ledger head ${w.ledger[w.ledger.length - 1]?.hash.slice(0, 16) ?? '-'} · page ${i + 1}/${pages.length}`), { x: M, y: 22, size: 7, font, color: grey }),
   );
   return doc.save();
 }

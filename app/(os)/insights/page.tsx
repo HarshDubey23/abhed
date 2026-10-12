@@ -190,7 +190,7 @@ export default function InsightsPage() {
           </tbody>
         </table>
         <div className="dim" style={{ fontSize: 11.5, marginTop: 8 }}>
-          Cost = metered LLM tokens through the Kavach gateway + per-action compute. Value = the work each executed action replaces (a fixed per-action estimate) minus anything later disputed. Risk = critical breaches ×40 + refusals ×8 + risk tier.
+          Cost = metered LLM tokens through the Abhed gateway + per-action compute. Value = the work each executed action replaces (a fixed per-action estimate) minus anything later disputed. Risk = critical breaches ×40 + refusals ×8 + risk tier.
         </div>
       </div>
 

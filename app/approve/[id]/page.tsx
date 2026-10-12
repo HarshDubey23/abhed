@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useRef, useState } from 'react';
-import { KavachMark } from '@/components/mark';
+import { AbhedMark } from '@/components/mark';
 import type { Approval } from '@/lib/types';
 import { authHeader, saveToken } from '@/lib/approver-client';
 import GazeVideo from '../gaze-video';
@@ -237,7 +237,7 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
       <GazeVideo />
 
       <div className="ap-jobs">
-        <span className="ap-tag">{!ap ? 'kavach approval' : done ? 'recorded in the ledger' : `waiting for you · ${clock}`}</span>
+        <span className="ap-tag">{!ap ? 'abhed approval' : done ? 'recorded in the ledger' : `waiting for you · ${clock}`}</span>
         <span className="ap-headline ap-job-title">{title}</span>
 
         {ap && !done && (
@@ -313,9 +313,9 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
         )}
       </div>
 
-      <div className="ap-logo" role="img" aria-label="Kavach">
+      <div className="ap-logo" role="img" aria-label="Abhed">
         <span className="ap-wordmark">
-          <KavachMark /> kavach
+          <AbhedMark /> abhed
         </span>
       </div>
 
@@ -387,7 +387,7 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
             </div>
             <p className="ap-note">
               {ap?.votes.some((v) => !v.evidenceViewed && v.decisionMs < 4000)
-                ? '*kavach noticed a fast approval without evidence. it governs humans too.'
+                ? '*abhed noticed a fast approval without evidence. it governs humans too.'
                 : '*every action has a human name on it. yours is now one of them.'}
             </p>
           </>
@@ -399,7 +399,7 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
           </div>
         )}
         <div className="ap-socials">
-          <span aria-label="Kavach">
+          <span aria-label="Abhed">
             <Icon kind="shield" />
           </span>
           <span aria-label="Expires">

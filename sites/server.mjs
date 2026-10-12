@@ -1,14 +1,14 @@
 import { createServer } from 'node:http';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { adminPage } from './admin.mjs';
-import { Kavach } from './kavach-sdk.mjs';
+import { Abhed } from './abhed-sdk.mjs';
 import { runAgent } from './agent.mjs';
 import { SITES } from './sites.mjs';
 import { page } from './page.mjs';
 
 /**
  * A company website with its own AI agents. The agents are this company's code; they plug into
- * Kavach with one key each (env KAVACH_KEYS = {"agentId":"kv_live_…"}) and the SDK in kavach-sdk.mjs.
+ * Abhed with one key each (env KAVACH_KEYS = {"agentId":"kv_live_…"}) and the SDK in abhed-sdk.mjs.
  */
 const SITE = SITES[process.env.SITE ?? 'novabank'];
 if (!SITE) throw new Error(`Unknown SITE ${process.env.SITE}`);
@@ -38,11 +38,11 @@ async function kavachAdmin(path, body) {
     headers: { authorization: `Bearer ${ADMIN_KEY}`, 'content-type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
-  return { status: res.status, data: await res.json().catch(() => ({ error: 'Kavach unreachable' })) };
+  return { status: res.status, data: await res.json().catch(() => ({ error: 'Abhed unreachable' })) };
 }
 const pinTries = { n: 0, until: 0 };
 
-const clients = Object.fromEntries(SITE.agents.filter((a) => KEYS[a.id]).map((a) => [a.id, new Kavach({ url: KAVACH_URL, key: KEYS[a.id], site: SITE.brand })]));
+const clients = Object.fromEntries(SITE.agents.filter((a) => KEYS[a.id]).map((a) => [a.id, new Abhed({ url: KAVACH_URL, key: KEYS[a.id], site: SITE.brand })]));
 const profiles = new Map();
 async function profileOf(id) {
   if (!profiles.has(id) || Date.now() - profiles.get(id).at > 60_000) profiles.set(id, { at: Date.now(), p: await clients[id].profile() });
@@ -104,7 +104,7 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/admin/api/')) {
       if (!isAdmin(req)) return send(res, 401, { error: 'Admin sign-in required' });
-      if (!ADMIN_KEY) return send(res, 503, { error: 'This site has no Kavach admin key configured' });
+      if (!ADMIN_KEY) return send(res, 503, { error: 'This site has no Abhed admin key configured' });
       const sub = url.pathname.slice('/admin/api/'.length);
       if (sub === 'overview') {
         const r = await kavachAdmin('/api/v1/admin');
@@ -130,17 +130,17 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/task') {
       const b = await readBody(req);
       const agent = SITE.agents.find((a) => a.id === b.agent) ?? SITE.agents[0];
-      if (!clients[agent.id]) return send(res, 503, { error: `${agent.name} has no Kavach key` });
+      if (!clients[agent.id]) return send(res, 503, { error: `${agent.name} has no Abhed key` });
       const text = String(b.text ?? '').trim().slice(0, 1200);
       if (text.length < 3) return send(res, 400, { error: 'Type a message' });
       const t = newTask(agent.id);
-      const kavach = clients[agent.id];
+      const abhed = clients[agent.id];
       const emit = (e) => t.events.push({ at: Date.now(), ...e });
       (async () => {
         try {
           const profile = await profileOf(agent.id);
           const context = SITE.context(b.customer ?? null, agent.id);
-          await runAgent({ kavach, profile, task: text, from: b.customerName || SITE.brand, subject: b.customer?.id, context, history: Array.isArray(b.history) ? b.history : [], emit });
+          await runAgent({ abhed, profile, task: text, from: b.customerName || SITE.brand, subject: b.customer?.id, context, history: Array.isArray(b.history) ? b.history : [], emit });
         } catch (e) {
           emit({ type: 'error', text: e.message });
         } finally {

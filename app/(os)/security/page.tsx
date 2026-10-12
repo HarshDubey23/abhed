@@ -24,7 +24,7 @@ interface Proof {
 }
 
 const LAYERS = [
-  ['Identity', 'Kavach-issued agent keys; unregistered agents fail closed (shadow AI is detected and logged).', 'ASI03'],
+  ['Identity', 'Abhed-issued agent keys; unregistered agents fail closed (shadow AI is detected and logged).', 'ASI03'],
   ['Least privilege', 'Delegations per action with per-action and daily caps; unused grants are flagged for revocation.', 'ASI03'],
   ['Prompt injection', 'Pattern scanner + Llama Prompt Guard 2 on every task; tainted sessions can never send data out.', 'ASI01'],
   ['Hallucination', 'Grounding: amounts, ids, drugs and prices are checked against the system of record before execution.', 'LLM09'],
@@ -155,7 +155,7 @@ export default function SecurityPage() {
               </div>
               <div>DLP: {scan.dlp.length ? scan.dlp.join(', ') : 'nothing sensitive'}</div>
               <div className="dim" style={{ fontSize: 11.5, marginTop: 4 }}>
-                Live sessions also run Llama Prompt Guard 2 (86M) through the Kavach LLM gateway.
+                Live sessions also run Llama Prompt Guard 2 (86M) through the Abhed LLM gateway.
               </div>
             </div>
           )}
@@ -196,7 +196,7 @@ export default function SecurityPage() {
         </div>
         {c && !c.verify.valid && <div style={{ color: 'var(--block)', marginBottom: 8 }}>{c.verify.reason}</div>}
         <div className="mono dim" style={{ fontSize: 11, marginBottom: 10, wordBreak: 'break-all' }}>
-          Kavach public key (Ed25519): {c?.publicKey}
+          Abhed public key (Ed25519): {c?.publicKey}
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="table">

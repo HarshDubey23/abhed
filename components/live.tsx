@@ -151,7 +151,7 @@ export function PhonesPanel() {
           <div className="dim" style={{ fontSize: 10.5, marginTop: 4, textAlign: 'center' }}>scan → be a customer</div>
         </div>
         <div className="muted" style={{ fontSize: 12.5 }}>
-          Judges can message NovaBank like a customer. Kavach routes the message, a live agent picks it up, and anything risky comes back to a human phone.
+          Judges can message NovaBank like a customer. Abhed routes the message, a live agent picks it up, and anything risky comes back to a human phone.
           <div style={{ marginTop: 6 }}>
             Inbox today: <b style={{ color: '#fff' }}>{view.live?.inboxCount ?? 0}</b> messages
           </div>

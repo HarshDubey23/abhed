@@ -4,7 +4,7 @@ import { sha256 } from './util';
 
 /**
  * People: who may decide what. Approvers sign in on their phone with a PIN set by their company admin;
- * Kavach issues a short-lived signed token, and every decision carries that verified identity.
+ * Abhed issues a short-lived signed token, and every decision carries that verified identity.
  */
 
 export const APPROVER_ROLES: Role[] = ['approver_l1', 'approver_l2', 'executive', 'rule_approver'];

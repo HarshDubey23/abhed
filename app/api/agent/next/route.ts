@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const agentId = agentFromKey(req.headers.get('authorization'));
-  if (!agentId) return json({ error: 'Unregistered agent: no Kavach key' }, 401);
+  if (!agentId) return json({ error: 'Unregistered agent: no Abhed key' }, 401);
   // cheap read first: don't write the world when there's nothing to hand out
   const w0 = await getWorld();
   const a = w0.agents.find((x) => x.id === agentId)!;

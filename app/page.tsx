@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { KavachMark } from '@/components/mark';
+import { AbhedMark } from '@/components/mark';
 import { LandingMotion } from './landing-motion';
 import './landing.css';
 
@@ -18,10 +18,10 @@ export default function Landing() {
       <div className="lp-page">
         <div className="lp-backdrop" />
         <header className="lp-header">
-          <Link href="/" className="lp-logo appear appear--scale" style={d('0.08s')} aria-label="Kavach">
-            <KavachMark />
+          <Link href="/" className="lp-logo appear appear--scale" style={d('0.08s')} aria-label="Abhed">
+            <AbhedMark />
             <span>
-              Kavach<span className="logo-suffix">.os</span>
+              Abhed<span className="logo-suffix">.os</span>
             </span>
           </Link>
           <nav id="site-nav" className="lp-nav" aria-label="Primary">

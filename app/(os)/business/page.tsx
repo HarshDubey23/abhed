@@ -16,7 +16,7 @@ const PROBLEMS = [
 
 const COMPETITORS: [string, string, string, string, string, string, string][] = [
   // name, focus, runtime action gate, human approval on phone, grounding/hallucination, tamper-proof trail, vendor-neutral
-  ['Kavach', 'Runtime governance for agent actions', '✓ every tool call', '✓ hash-bound, two-key, escalation', '✓ vs system of record', '✓ signed Merkle + Bitcoin anchor', '✓ any model / framework'],
+  ['Abhed', 'Runtime governance for agent actions', '✓ every tool call', '✓ hash-bound, two-key, escalation', '✓ vs system of record', '✓ signed Merkle + Bitcoin anchor', '✓ any model / framework'],
   ['IBM watsonx.governance', 'Model lifecycle, risk & compliance', 'partial', '—', 'model evaluation', 'factsheets', 'mostly IBM stack'],
   ['AWS Bedrock AgentCore', 'Agent runtime, identity, policy on AWS', '✓ policy on tool calls', '—', '—', 'CloudTrail', 'AWS'],
   ['Microsoft Entra Agent ID / Agent 365', 'Identity and management of agents', 'identity & access', '—', '—', 'Purview audit', 'Microsoft 365'],
@@ -72,7 +72,7 @@ export default function BusinessPage() {
           <h1 className="page-title">
             The problem, the price, <em>the field</em>
           </h1>
-          <p className="page-sub">Kavach is sold as a hybrid: a platform subscription for predictability, plus usage that grows with the number of agents, how risky they are, and how much high-impact work they do.</p>
+          <p className="page-sub">Abhed is sold as a hybrid: a platform subscription for predictability, plus usage that grows with the number of agents, how risky they are, and how much high-impact work they do.</p>
         </div>
       </div>
 
@@ -213,7 +213,7 @@ export default function BusinessPage() {
       <div className="panel" style={{ overflowX: 'auto' }}>
         <div className="panel-title">
           <span>
-            <b>How Kavach compares</b> · positioning from public product descriptions
+            <b>How Abhed compares</b> · positioning from public product descriptions
           </span>
         </div>
         <table className="table">
@@ -241,7 +241,7 @@ export default function BusinessPage() {
           </tbody>
         </table>
         <p className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
-          The large platforms govern models, identities or their own cloud. Guardrail libraries filter text. Kavach governs the business action itself, for any model and any framework: the refund, the prescription, the price. It names the person who allowed it, and the proof sits outside the company’s own database. That is the gap.
+          The large platforms govern models, identities or their own cloud. Guardrail libraries filter text. Abhed governs the business action itself, for any model and any framework: the refund, the prescription, the price. It names the person who allowed it, and the proof sits outside the company’s own database. That is the gap.
         </p>
       </div>
     </main>

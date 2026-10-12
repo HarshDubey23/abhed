@@ -7,10 +7,10 @@ import { getWorld, liveEvent, mutate, mutateLive } from '@/lib/store';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-/** The Kavach LLM gateway: agents think only through here, with a metered, budgeted, logged model call. */
+/** The Abhed LLM gateway: agents think only through here, with a metered, budgeted, logged model call. */
 export async function POST(req: Request) {
   const agentId = agentFromKey(req.headers.get('authorization'));
-  if (!agentId) return json({ error: 'Unregistered agent: no Kavach key' }, 401);
+  if (!agentId) return json({ error: 'Unregistered agent: no Abhed key' }, 401);
   const b = (await req.json().catch(() => ({}))) as { ticketId?: string };
   const w = await getWorld();
   const a = w.agents.find((x) => x.id === agentId)!;

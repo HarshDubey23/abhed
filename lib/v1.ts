@@ -6,7 +6,7 @@ import { withTenant, type Tenant } from './store';
 /** Wrap a v1 handler: authenticate the agent key, pin the tenant, map errors to HTTP. */
 export async function v1(req: Request, fn: (ctx: { agentId: string; tenant: Tenant; body: Record<string, unknown> }) => Promise<unknown>) {
   const who = resolveAgent(req.headers.get('authorization'));
-  if (!who) return json({ error: 'Missing or unknown Kavach agent key. Unregistered agents are refused (fail-closed).' }, 401);
+  if (!who) return json({ error: 'Missing or unknown Abhed agent key. Unregistered agents are refused (fail-closed).' }, 401);
   const body = req.method === 'GET' ? {} : ((await req.json().catch(() => ({}))) as Record<string, unknown>);
   try {
     const out = await withTenant(who.tenant, () => fn({ ...who, body }));

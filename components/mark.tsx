@@ -1,5 +1,5 @@
 /** Two pills, one human and one agent, joined at a tilt. */
-export function KavachMark({ size = 22 }: { size?: number }) {
+export function AbhedMark({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <g transform="rotate(-30 12 12)">

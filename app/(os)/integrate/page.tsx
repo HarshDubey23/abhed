@@ -1,15 +1,15 @@
-const SNIPPET = `import { Kavach } from './kavach-sdk.mjs';          // 69 lines, zero dependencies
+const SNIPPET = `import { Abhed } from './abhed-sdk.mjs';          // 69 lines, zero dependencies
 
-const kavach = new Kavach({ url: 'https://kavach-os.vercel.app', key: process.env.KAVACH_AGENT_KEY });
-const me = await kavach.profile();                     // role, tool schemas, delegations
-const session = await kavach.session(task, { from });  // scanned for prompt injection first
+const abhed = new Abhed({ url: 'https://kavach-os.vercel.app', key: process.env.KAVACH_AGENT_KEY });
+const me = await abhed.profile();                     // role, tool schemas, delegations
+const session = await abhed.session(task, { from });  // scanned for prompt injection first
 
 while (true) {
-  const r = await kavach.think(session, messages, me.tools);   // LLM via the Kavach gateway
+  const r = await abhed.think(session, messages, me.tools);   // LLM via the Abhed gateway
   const call = r.message.tool_calls?.[0];
   if (!call) break;                                            // the agent's answer
-  let d = await kavach.call(session, call.function.name, JSON.parse(call.function.arguments));
-  if (d.decision === 'NEEDS_APPROVAL') d = await kavach.waitForApproval(d.approvalId); // a person, on their phone
+  let d = await abhed.call(session, call.function.name, JSON.parse(call.function.arguments));
+  if (d.decision === 'NEEDS_APPROVAL') d = await abhed.waitForApproval(d.approvalId); // a person, on their phone
   messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(d) });
 }`;
 
@@ -24,7 +24,7 @@ const CURL = `curl -X POST https://kavach-os.vercel.app/api/v1/tools/call \\
 const API = [
   ['GET', '/api/v1/agent', 'Who am I: role, delegations, OpenAI-format tool schemas to hand the LLM'],
   ['POST', '/api/v1/sessions', 'Open a governed task. Scanned by pattern rules + Llama Prompt Guard 2 before any model sees it'],
-  ['POST', '/api/v1/llm', 'Think through the Kavach LLM gateway: metered tokens and ₹ cost per agent, logged to the ledger'],
+  ['POST', '/api/v1/llm', 'Think through the Abhed LLM gateway: metered tokens and ₹ cost per agent, logged to the ledger'],
   ['POST', '/api/v1/tools/call', 'Every tool call: identity → delegation → grounding → DLP → rules → checkpoint → execute → hash-chained record'],
   ['GET', '/api/v1/approvals/:id', 'Wait while a person decides on their phone; the result comes back executed exactly as approved'],
   ['POST', '/api/v1/sessions/:id/finish', 'Close the task with the agent’s answer'],
@@ -45,7 +45,7 @@ export default function IntegratePage() {
             Plug any agent in, <em>in an afternoon</em>
           </h1>
           <p className="page-sub">
-            Kavach sits between an AI company’s agents and its systems, like a governed tool gateway. The company keeps its own agent code and model choice. It swaps direct tool calls for <span className="mono">kavach.call()</span>, and gets rules, phone approvals, pause, grounding and an audit trail it cannot edit.
+            Abhed sits between an AI company’s agents and its systems, like a governed tool gateway. The company keeps its own agent code and model choice. It swaps direct tool calls for <span className="mono">abhed.call()</span>, and gets rules, phone approvals, pause, grounding and an audit trail it cannot edit.
           </p>
         </div>
       </div>
@@ -58,7 +58,7 @@ export default function IntegratePage() {
               {what}
             </div>
             <div className="mono dim" style={{ fontSize: 11, marginTop: 8 }}>
-              {url.replace('https://', '')} · separate deployment · own agents · 1 Kavach key each
+              {url.replace('https://', '')} · separate deployment · own agents · 1 Abhed key each
             </div>
           </a>
         ))}
@@ -115,11 +115,11 @@ export default function IntegratePage() {
               </span>
             </div>
             <ol style={{ paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-              <li>Register each agent: owner, purpose, model, risk tier → Kavach issues a <span className="mono">kv_live_</span> key (the company never shares its LLM keys).</li>
+              <li>Register each agent: owner, purpose, model, risk tier → Abhed issues a <span className="mono">kv_live_</span> key (the company never shares its LLM keys).</li>
               <li>Connect tools: read-only tools pass through; write tools get a risk level and a data class.</li>
               <li>Pick a sector pack (banking, healthcare, e-commerce) and add company rules in plain English on the Rulebook. Each rule is replayed on 30 days of history and needs a second person.</li>
               <li>Owners delegate: “Rex may refund up to ₹10,000 per action, ₹5,00,000 a day.” Anything above goes to a person.</li>
-              <li>Approvers install the Kavach approver PWA on their phones. Done: the agent is governed and on the fleet dashboard.</li>
+              <li>Approvers install the Abhed approver PWA on their phones. Done: the agent is governed and on the fleet dashboard.</li>
             </ol>
           </div>
           <div className="panel">

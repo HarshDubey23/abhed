@@ -16,7 +16,7 @@ const SITES: Record<string, string> = {
   ecommerce: process.env.SITE_URL_ECOMMERCE ?? 'https://bazaar-agents.onrender.com',
 };
 
-/** Every company Kavach governs, live: agents, sessions, approvals, decisions, speed. */
+/** Every company Abhed governs, live: agents, sessions, approvals, decisions, speed. */
 export async function GET() {
   const now = Date.now();
   const [worlds, phones] = await Promise.all([Promise.all(TENANTS.map((t) => getWorld(t))), getLive('banking')]);

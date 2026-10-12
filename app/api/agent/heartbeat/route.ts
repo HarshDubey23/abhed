@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   const agentId = agentFromKey(req.headers.get('authorization'));
-  if (!agentId) return json({ error: 'Unregistered agent: no Kavach key' }, 401);
+  if (!agentId) return json({ error: 'Unregistered agent: no Abhed key' }, 401);
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const now = Date.now();
   await mutateLive((l) => {
