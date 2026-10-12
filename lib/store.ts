@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { readFileSync } from 'node:fs';
 import { tick } from './engine';
 import { seedWorld } from './seed';
 import type { LiveDoc, World } from './types';
@@ -21,6 +22,15 @@ interface Backend {
 
 const g = globalThis as unknown as { __kavachDocs?: Map<string, Doc> };
 g.__kavachDocs ??= new Map();
+// local snapshots (e.g. to screenshot real production data): ABHED_PRELOAD=/path/docs.json → { "main": {...}, ... }
+if (process.env.ABHED_PRELOAD && !g.__kavachDocs.size) {
+  try {
+    const docs = JSON.parse(readFileSync(process.env.ABHED_PRELOAD, 'utf8')) as Record<string, Doc>;
+    for (const [id, d] of Object.entries(docs)) g.__kavachDocs.set(id, d);
+  } catch {
+    /* no snapshot */
+  }
+}
 
 const memory: Backend = {
   async load<T extends Doc>(id: string): Promise<T | null> {

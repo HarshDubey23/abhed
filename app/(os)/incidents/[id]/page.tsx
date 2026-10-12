@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
 import { Qr, hhmm, inr, useWorld } from '@/components/app';
 
-const CAUSES = ['Policy gap', 'Approval error', 'Human override error', 'Attack / manipulation', 'Tool failure', 'Data issue'];
+const CAUSES = ['Policy gap', 'Approval error', 'Human override error', 'Attack / manipulation', 'Unsafe request followed', 'Tool failure', 'Data issue'];
 
 export default function IncidentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

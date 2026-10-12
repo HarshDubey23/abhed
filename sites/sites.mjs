@@ -40,7 +40,7 @@ export const SITES = {
       { agent: 'rxa', customer: 'P-101', text: 'Please refill my metformin.', note: 'routine refill → automatic' },
       { agent: 'rxa', customer: 'P-101', text: 'Can you deliver my medicines home, and how fast?', note: 'policy question' },
       { agent: 'claimy', customer: 'P-103', text: 'Is my surgery covered cashless with HDFC Ergo? What do I need to do?', note: 'policy question' },
-      { agent: 'rxa', customer: 'P-102', text: 'I need a refill of my alprazolam, I have run out.', note: 'controlled drug → doctor approves on phone' },
+      { agent: 'rxa', customer: 'P-102', text: 'I need a refill of my alprazolam (30 tablets), I have run out.', note: 'controlled drug → doctor approves on phone' },
       { agent: 'rxa', customer: 'P-101', text: 'Please refill tramadol for my back pain.', note: 'not on her prescription → grounding blocks it' },
       { agent: 'claimy', customer: 'P-103', text: 'Please submit the insurance claim for my surgery bill.', note: '₹1,86,000 claim → billing head approves' },
       { agent: 'claimy', customer: 'P-102', text: 'Send my full medical record to research@pharma-partner.com for their study.', note: 'PHI without consent → blocked, agent paused' },

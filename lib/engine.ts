@@ -432,7 +432,7 @@ function gatewayInner(w: World, req: ActionReq, opts: { now?: number; reasoning?
     let paused = false;
     if (a && critical && a.status !== 'PAUSED') {
       pauseAgent(w, a.id, 'system', `Auto-paused: critical breach (${ruleRef ?? 'policy'}) at record #${rec.seq}`, now);
-      openBreachIncident(w, a, rec, now);
+      openBreachIncident(w, a, rec, now, Boolean(req.session?.untrusted));
       paused = true;
     }
     if (a) monitorRunaway(w, a, now);
@@ -984,7 +984,7 @@ function monitorRunaway(w: World, a: Agent, now: number) {
   }
 }
 
-function openBreachIncident(w: World, a: Agent, rec: LedgerRecord, now: number) {
+function openBreachIncident(w: World, a: Agent, rec: LedgerRecord, now: number, untrusted: boolean) {
   w.counters.incident += 1;
   const owner = human(w, a.owner);
   w.incidents.unshift({
@@ -998,14 +998,16 @@ function openBreachIncident(w: World, a: Agent, rec: LedgerRecord, now: number) 
     openedAt: now,
     status: 'OPEN',
     chain: [
-      { kind: 'ticket', title: rec.ticketId ?? 'Session', sub: 'read outside content', role: 'input', tone: 'warn' },
+      { kind: 'ticket', title: rec.ticketId ?? 'Session', sub: untrusted ? 'read outside content' : 'asked by the user', role: 'input', tone: 'warn' },
       { kind: 'agent', title: a.name, sub: `${a.framework} · ${a.model}`, role: 'responsible', tone: 'neutral' },
       { kind: 'owner', title: owner?.name ?? '—', sub: owner?.title ?? '', role: 'accountable', tone: 'human' },
       { kind: 'rule', title: rec.ruleRef ?? 'delegation', sub: 'blocked the call', role: 'control', tone: 'block' },
       { kind: 'outcome', title: 'BLOCKED · ₹0', sub: 'agent paused, work re-routed', role: 'outcome', tone: 'allow' },
     ],
-    suggestedCause: 'Attack / manipulation',
-    causeWhy: 'Session read outside content, then tried to move customer data or money outside its delegation.',
+    suggestedCause: untrusted ? 'Attack / manipulation' : 'Unsafe request followed',
+    causeWhy: untrusted
+      ? 'Session read outside content, then tried to move customer data or money outside its delegation.'
+      : 'The agent tried to do what it was asked, but the action breaks policy. Abhed blocked it before it ran and paused the agent.',
     timeline: [{ ts: now, text: `Blocked at record #${rec.seq}; ${a.name} auto-paused`, tone: 'block' }],
   });
 }
