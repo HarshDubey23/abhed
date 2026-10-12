@@ -9,7 +9,7 @@
 | 1 | `kavach-os.vercel.app` (landing) |
 | 2 | `kavach-os.vercel.app/arena?full=1` → neeche **clear** → PIN **2468** |
 | 3 | `kavach-os.vercel.app/demo` → **Reset demo** |
-| 4 | `novabank-agents.onrender.com` (pehle khol do, jaagne mein 40 s lagte hain) |
+| 4 | `bazaar-agents.onrender.com` aur `/admin` (pehle khol do, jaagne mein 40 s) · Abhed → **Connect** pe Bazaar **Not connected** ho |
 | Phone | `kavach-os.vercel.app/approver` → NovaBank → **Guest Judge** → PIN **1234** → go on duty |
 
 ## 1 · Opening — Landing (30 s)
@@ -46,15 +46,19 @@ Jab card aaye, sirf **3 cheezein** batao:
 
 > **BOLO:** "Ek rupaya badla — approval khatam. Yeh blank cheque nahi hai."
 
-## 4 · Asli website (1 min)
+## 4 · ⭐ Website ko LIVE connect karo (2 min) — detail: `CONNECT_GUIDE.md`
 
-**DIKHAO:** Tab 4 (NovaBank). Upar right ka panel **"Why our AI agents need Abhed"**.
+**DIKHAO:** Bazaar website (`bazaar-agents.onrender.com`). Peela banner: **"AI assistants are switched off"**.
 
-> **BOLO:** "Yeh bank ki asli website hai. Yeh panel live hai — Abhed ne abhi tak kya roka, sab yahan."
+> **BOLO:** "Is company ke apne AI agents hain, par Abhed se connect nahi — isliye band hain."
 
-**DIKHAO:** Chat mein suggestion **"My UPI payment of ₹2,000 failed…"** → Send. Right side mein steps aate hain.
+**DIKHAO:** Abhed → **Connect** → Bazaar.in → **Generate pairing code**. Bazaar `/admin` (PIN **2468**) → code daalo → **Connect to Abhed**.
 
-> **BOLO:** "Chhota refund turant — agent slow nahi hota. Har step yahan dikh raha hai."
+> **BOLO:** "Ek one-time code. Koi key copy-paste nahi."
+
+**DIKHAO:** Abhed Connect page: green flash, **"Shoppy came online"**, **"Pricer came online"**. Bazaar site: banner gayab, chat on. Suggestion **"OD-5512 arrived damaged…"** → ₹1,499 turant. **"OD-5530 never arrived…"** → ₹38,990 phone pe approve.
+
+> **BOLO:** "10 second mein connect, aur ab inka har action Abhed se ho ke jaata hai."
 
 ## 5 · Galti pakdi (1 min)
 
