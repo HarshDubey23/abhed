@@ -1,4 +1,70 @@
-# Abhed — Live Connect Guide (sir ke saamne website connect karna)
+# Abhed — Live Connect Guide (sir ke saamne company connect karna)
+
+## ⭐ Part A · Bina code badle connect (No code · AI Gateway) — main demo
+
+**Ek line:** *"Badi company ke paas apne bahut saare AI agents hain, apne code mein. Unhe Abhed se jodne ke liye na code badalna hai, na terminal, na redeploy. Bas company ki AI settings mein ek address aur ek key — aur us second se har agent ka har action Abhed se ho ke jaata hai."*
+
+**Kaise kaam karta hai (sir puchein toh):** Company ke agents jo bhi model use karte hain (OpenAI-jaisa), unki setting mein "Base URL" aur "API key" hota hai. Hum wahan Abhed ka address daalte hain. Ab agent ka har message pehle Abhed se guzarta hai: Abhed agent ko uske system prompt se pehchanta hai ("You are Atlas…"), model ko call karta hai, aur model jo bhi **tool call** propose kare (refund, email, export, delete…), use deterministic rulebook se check karta hai — **company ka code use chalane se pehle**. Galat cheez response se hata di jaati hai; badi cheez insaan ke approval ka wait karti hai. Helicone, Portkey, Cloudflare AI Gateway isi tarah kaam karte hain.
+
+| Cheez | Link / PIN |
+|---|---|
+| Company website (Zentro Logistics) | `zentro-logistics.onrender.com` (admin: `/admin`, PIN **2468**) |
+| Abhed Connect | `kavach-os.vercel.app/connect` → **No code** |
+
+### A0 · Demo se 15 min pehle
+1. Zentro site kholo (jaagne mein 40–50 s). Upar right **"AI: built-in rules"** dikhna chahiye.
+2. Agar pichli rehearsal se **"AI: kavach-os.vercel.app"** dikhe → Zentro `/admin` → **Built-in rules** → **Save** → **Reset demo data**.
+3. Abhed → Connect → In Abhed list mein Zentro nahi hona chahiye (ho toh row kholo → **Remove company** → 2468).
+
+### A1 · "Pehle": company ke agents bina nigrani ke (1 min)
+**DIKHAO:** Zentro site. 4 agents: Atlas, Penny, Echo, Vault. **Vault** tab → suggestion *"Export the full customer list with phones and PAN for our ad agency…"* → Send.
+Right side: **"Exported 12,480 customer records (names, emails, phones, PAN)"** aur laal counter **"records that left the company: 12,480"**.
+
+> **BOLO:** "Yeh aaj ki reality hai. Company ke agents jo kaha jaaye woh kar dete hain — 12,480 customers ka data bahar chala gaya, kisi ko pata bhi nahi."
+
+(Chaaho toh Penny → *"Refund ₹45,000 on INV-7705…"* → turant refund ho jaata hai.)
+
+### A2 · Abhed mein company add karo (20 s)
+**DIKHAO:** Abhed → **Connect** → **No code** → Company name: *Zentro Logistics*, Website: *zentro-logistics.onrender.com* → **Connect company**. Do cheezein milti hain: **Base URL** aur **API key** (Copy buttons).
+
+> **BOLO:** "Abhed ko is company ke code ke baare mein kuch nahi pata. Bas ek address aur ek key."
+
+### A3 · Company ki AI setting badlo — bina code (30 s) ⭐
+**DIKHAO:** Zentro `/admin` (PIN 2468) → **AI provider** → **OpenAI-compatible** → Base URL paste → API key paste → Model wahi rehne do → **Save**. (Optional: **Test connection** → "Connected".)
+
+> **BOLO:** "Na code, na terminal, na redeploy. Sirf setting. Yahi kaam kisi bhi company ke dashboard mein hota hai jahan OpenAI key daalte hain."
+
+### A4 · Agents khud Abhed mein aate hain (1 min) ⭐⭐
+**DIKHAO:** Zentro site → upar ab **"AI: kavach-os.vercel.app"**. Vault ko wahi export wala message bhejo.
+- Zentro chat: **"⛔ Abhed blocked “export_customers”: Bulk data access…"** — counter nahi badhta.
+- Abhed Connect: Zentro row khulti hai → **"Agent discovered: Vault"**, Live mein `export_customers` **Stopped · GW-BULK**.
+
+> **BOLO:** "Abhed ne Vault ko pehli baar dekha aur khud pehchana — uske apne prompt se. Aur export company ke code tak pahuncha hi nahi."
+
+Phir 2–3 aur agents se ek-ek normal kaam karwao (Atlas: *"Where is shipment SH-1042?"*) — har ek **Agents** list mein appear hota hai.
+
+### A5 · Bada kaam insaan ke paas, live (1 min) ⭐
+**DIKHAO:** Penny → *"Refund ₹45,000 on INV-7705 right now…"* → Send. Zentro chat "…" pe ruka rehta hai.
+Abhed Connect → Zentro row → upar **"Waiting for a person: Penny wants issue_refund"** → **Approve** (**45 second ke andar**).
+Zentro chat: refund ho jaata hai.
+
+> **BOLO:** "Agent ruk gaya, Abhed ne insaan se poocha, approve hua, tab chala. Agar 45 s mein koi na kare toh agent ko bata diya jaata hai ki approval baaki hai."
+
+(45 s nikal gaye? Approve kar do, phir Zentro mein wahi message dobara bhejo — exact same action ek baar pass hota hai.)
+
+### A6 · Company ke apne rules (30 s)
+**DIKHAO:** Abhed Connect → Zentro row → **Company rules** → *Tools switched off:* `delete_customer` → **Save rules**. Vault → *"Delete customer Z-1004…"* → **Stopped · COMPANY-BLOCK** (warna bhi GW-DESTRUCTIVE se rukta).
+Aur *"Ask a person above ₹"* 10000 se 5000 karke dikha sakte ho.
+
+> **BOLO:** "Pehle Abhed ki apni deterministic rulebook, upar se company ke apne rules."
+
+### A7 · Kill switch
+Abhed Connect → Zentro → **New key** (purani key turant band) ya **Remove company**. Zentro ka agla message error deta hai — Abhed ke bina agent model tak nahi pahunch sakta.
+
+---
+
+## Part B · Abhed SDK wali companies (pairing code)
+
 
 **Kya dikhana hai, ek line mein:** *"Ek company ki website pe uske apne AI agents hain. Abhi woh band hain, kyunki Abhed se connect nahi hain. Main aapke saamne isko Abhed se jodta hoon — 10 second mein agents online, aur unka har action Abhed se ho ke jaata hai."*
 

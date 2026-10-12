@@ -9,7 +9,7 @@
 | 1 | `kavach-os.vercel.app` (landing) |
 | 2 | `kavach-os.vercel.app/arena?full=1` → neeche **clear** → PIN **2468** |
 | 3 | `kavach-os.vercel.app/demo` → **Reset demo** |
-| 4 | `bazaar-agents.onrender.com` aur `/admin` (pehle khol do, jaagne mein 40 s) · Abhed → **Connect** → **Reset demo** (2468) → sirf NovaBank |
+| 4 | `zentro-logistics.onrender.com` aur `/admin` (pehle khol do, 40 s) · AI = **built-in rules** · Abhed → Connect pe Zentro na ho |
 | Phone | `kavach-os.vercel.app/approver` → NovaBank → **Guest Judge** → PIN **1234** → go on duty |
 
 ## 1 · Opening — Landing (30 s)
@@ -46,19 +46,19 @@ Jab card aaye, sirf **3 cheezein** batao:
 
 > **BOLO:** "Ek rupaya badla — approval khatam. Yeh blank cheque nahi hai."
 
-## 4 · ⭐ Website ko LIVE connect karo (2 min) — detail: `CONNECT_GUIDE.md`
+## 4 · ⭐ Badi company, bina code badle connect (2.5 min) — detail: `CONNECT_GUIDE.md` Part A
 
-**DIKHAO:** Bazaar website (`bazaar-agents.onrender.com`). Peela banner: **"AI assistants are switched off"**.
+**DIKHAO:** Zentro site (`zentro-logistics.onrender.com`) → Vault → *"Export the full customer list…"* → **12,480 records left the company**.
 
-> **BOLO:** "Is company ke apne AI agents hain, par Abhed se connect nahi — isliye band hain."
+> **BOLO:** "Company ke apne agents. Koi nigrani nahi — poora data bahar."
 
-**DIKHAO:** Abhed → **Connect** (sirf NovaBank hai) → **Generate pairing code**. Bazaar `/admin` (PIN **2468**) → code daalo → **Connect to Abhed**.
+**DIKHAO:** Abhed → **Connect** → **No code** → *Zentro Logistics* → **Connect company** → Base URL + key. Zentro `/admin` (2468) → **AI provider** → OpenAI-compatible → paste → **Save**.
 
-> **BOLO:** "Ek one-time code. Koi key copy-paste nahi."
+> **BOLO:** "Na code, na terminal, na redeploy. Sirf company ki AI setting."
 
-**DIKHAO:** Abhed Connect: **"Joined just now · Bazaar.in"** — rulebook applied (11 rules), Shoppy + Pricer online. Bazaar ab Fleet aur switcher mein bhi. Bazaar site: banner gayab, chat on. Suggestion **"OD-5512 arrived damaged…"** → ₹1,499 turant. **"OD-5530 never arrived…"** → ₹38,990 phone pe approve.
+**DIKHAO:** Vault ko wahi message → **⛔ Abhed blocked export_customers**. Abhed Connect: **"Agent discovered: Vault"**. Penny → *"Refund ₹45,000…"* → Abhed mein **Approve** (45 s ke andar) → refund chalta hai.
 
-> **BOLO:** "10 second mein connect, aur ab inka har action Abhed se ho ke jaata hai."
+> **BOLO:** "Abhed ne agent ko khud pehchana, export rok diya, bada refund insaan se poocha. Company ne ek line code nahi likha."
 
 ## 5 · Galti pakdi (1 min)
 

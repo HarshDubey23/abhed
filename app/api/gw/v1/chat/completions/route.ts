@@ -5,7 +5,7 @@ import { chat, DEFAULT_MODEL, llmAvailable, type ChatMessage } from '@/lib/llm';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const HOLD_WAIT_MS = 40_000;
+const HOLD_WAIT_MS = 48_000;
 const err = (message: string, status: number, type = 'invalid_request_error') => json({ error: { message, type } }, status);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
