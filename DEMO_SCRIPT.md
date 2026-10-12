@@ -4,19 +4,19 @@
 
 ---
 
-## Round 1 · Deck walkthrough (5–6 min) — `docs/Abhed_Round1_Deck.pdf`
+## Round 1 · Deck walkthrough (5–6 min) — `docs/Abhed_Round1_Ideation.pdf`
 
-Har slide ke top-right pe likha hai woh kis Round 1 criterion ke marks ke liye hai. Judges ko yeh mapping dikhao.
+Round 1 = ideation. Deck sirf idea, approach aur plan dikhata hai (diagrams); website aur demo deck ke baad live dikhana. Har page ke top-right pe likha hai woh kis criterion ke marks ke liye hai.
 
-| Slides | Criterion (20 marks each) | Ek line jo bolni hai |
+| Pages | Criterion (20 marks each) | Ek line jo bolni hai |
 |---|---|---|
-| 1–3 | Presentation of idea | "Agents ab act karte hain. Galti hone pe koi jawab nahi deta. PS5 ke 6 sawaal — har ek ka jawab live screen pe." |
-| 4, 5, 7 | Solution approach | "Ek darwaza: 8 checks ~1 ms mein. Customer ne ₹48,000 bola, bank record ₹40,000 tha — record jeeta, phir Arjun ne phone pe 3.9 s mein approve kiya." |
-| 8, 9, 10, 14 | Innovation | "Approval exact action ke fingerprint se bandha hai; grounding real records se; Trust Score se earned autonomy; rules bhi do insaan ke bina nahi badalte." |
-| 6, 11, 12, 13 | Technical feasibility | "Yeh chal raha hai: real gpt-oss-120b, 3 live company sites, 44 tests, 3 lines mein integrate." |
-| 15 | Business model | "Risk pe price: platform fee + risky agents + checkpoints + approvals." |
-| 16 | Execution timeline | "Har block ka commit public hai. Baaki ghante: MCP adapter, WhatsApp approvals, load test, jury ka CSV." |
-| 17 | Close + QR | "Abhi scan karo — aap khud approver ban sakte ho (Guest Judge, PIN 1234)." |
+| 1–3 | Presentation of idea | "Agents ab act karte hain. Galti hone pe koi jawab nahi deta. Paanch log pareshan hain — ops manager, owner, CRO, auditor, customer — aur PS5 ke 6 sawaal." |
+| 4–7 | Solution approach | "Ek darwaza, 8 checks ~1 ms mein. Teen lanes: agent kare, insaan decide kare, ya koi na kare. Galti hui toh chain → fix → replay → doosra insaan." |
+| 8–10 | Innovation | "Approval exact action ke fingerprint se bandha; grounding real records se; Trust Score; rules bhi do insaan ke bina nahi badalte. IBM/AWS/Microsoft models ya identity govern karte hain — hum action." |
+| 11–12 | Technical feasibility | "Normal building blocks — decision code hai, LLM nahi. Saat records har decision samjhate hain; har risk ka jawab already plan mein hai." |
+| 13 | Execution timeline | "36 ghante, 9 blocks, 4 milestones; har milestone pe kuch chalta hua. M3 tak sab built hai — abhi live dikhate hain." |
+| 14 | Presentation of idea | "Risk pe price. 20 agents wali bank ≈ ₹1.41 lakh/month, ₹0.17 per action." |
+| 15 | Sab | "Teen demo moments — judge approve karega, attack fail hoga, galti fix hogi. QR scan karo." |
 
 **Naya wow (zaroor dikhao):** Fleet pe kisi agent ka **⤓** dabao → us agent ki apni PDF report (Trust Score 300–900, delegations, kisne kya approve kiya, refusals, ledger). Security page pe **compliance evidence** (EU AI Act Art. 12/14, DPDP, RBI FREE-AI, OWASP) live data se.
 
