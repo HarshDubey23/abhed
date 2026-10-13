@@ -1623,7 +1623,7 @@ html { scrollbar-gutter: stable; }
 .ft-cols a { display: inline-flex; align-items: center; gap: 7px; padding: 5px 0; font-size: 14.5px; color: var(--f-sub); transition: color 0.2s; }
 .ft-cols a:hover { color: #fff; }
 .ft-lock { width: 12px; height: 12px; color: var(--f-mute); flex: none; }
-.ft-word { font-size: clamp(88px, 21.5vw, 330px); line-height: 0.74; font-weight: 600; letter-spacing: -0.06em; text-align: center; white-space: nowrap; margin: 8px -0.02em -0.08em; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14); background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0)); -webkit-background-clip: text; background-clip: text; user-select: none; }
+.ft-word { height: 0.7em; overflow: hidden; font-size: clamp(80px, 20vw, 300px); line-height: 0.92; font-weight: 600; letter-spacing: -0.06em; text-align: center; white-space: nowrap; margin-top: 8px; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14); background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0)); -webkit-background-clip: text; background-clip: text; user-select: none; }
 .ft-base { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 14px 28px; flex-wrap: wrap; padding: 20px 0 26px; border-top: 1px solid var(--f-line); font-size: 13px; color: var(--f-mute); background: #070707; }
 .ft-base-r { display: inline-flex; align-items: center; gap: 18px; }
 .ft-top { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--f-line); background: none; color: var(--f-sub); font: inherit; font-size: 13px; cursor: pointer; transition: color 0.2s, border-color 0.2s; }
@@ -1691,4 +1691,13 @@ html { scrollbar-gutter: stable; }
   .ig-trouble dt { border-bottom: 0; padding-bottom: 4px; }
   .ig-seg { width: 100%; }
   .ig-seg button { flex: 1; padding: 0 8px; }
+}
+
+/* very small phones: the online count moves under the company name */
+@media (max-width: 420px) {
+  .cn-row { grid-template-columns: 40px minmax(0, 1fr) 18px; row-gap: 6px; padding: 16px; }
+  .cn-on { grid-column: 2; grid-row: 2; justify-self: start; }
+  .cn-chev { grid-column: 3; grid-row: 1 / span 2; }
+  .cn-av { grid-row: 1 / span 2; width: 40px; height: 40px; }
+  .ig-seg button { white-space: normal; line-height: 1.25; padding: 8px 6px; }
 }
