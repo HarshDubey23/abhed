@@ -1729,3 +1729,13 @@ html { scrollbar-gutter: stable; }
 .st-did li::before { content: ""; position: absolute; left: 2px; top: 0.62em; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); opacity: 0.55; }
 :root[data-theme="light"] .ft-logo svg { background: #0a0a0a; border-radius: 8px; padding: 4px; width: 30px; height: 30px; }
 .ft-word { line-height: 1.12; padding-top: 0; margin-bottom: -0.06em; }
+
+/* pricing hero: at least one screen tall, but it grows with its content, so the cards are never cut off */
+.cv-hero, :root[data-theme="light"] .cv-hero { height: auto; min-height: calc(100svh - var(--topbar-h, 72px) - 24px); display: flex; flex-direction: column; }
+:root[data-theme="light"] .cv-hero { min-height: calc(100svh - var(--topbar-h, 58px) - 52px); }
+.cv-fg { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 16px; }
+@media (min-width: 640px) {
+  .cv-hero { min-height: calc(100svh - var(--topbar-h, 72px) - 32px); }
+  :root[data-theme="light"] .cv-hero { min-height: calc(100svh - var(--topbar-h, 58px) - 60px); }
+  .cv-fg { padding-bottom: 24px; }
+}
