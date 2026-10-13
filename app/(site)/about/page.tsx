@@ -108,6 +108,7 @@ export default function AboutPage() {
 
       <section className="st-sec">
         <p className="st-kicker">The team</p>
+        <h2 className="st-h2 st-team-h">Five people, one gate.</h2>
         <div className="st-team">
           {TEAM.map((p) => (
             <article key={p.name} className="st-person">
@@ -122,6 +123,11 @@ export default function AboutPage() {
                 <h3>{p.name}</h3>
                 <p className="st-person-role">{p.role}</p>
                 <p>{p.note}</p>
+                <ul className="st-areas" aria-label={`${p.name} worked on`}>
+                  {p.areas.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
               </div>
             </article>
           ))}
