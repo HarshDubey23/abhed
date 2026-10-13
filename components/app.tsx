@@ -8,6 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { LiveDoc } from '@/lib/types';
 import type { View } from '@/lib/view';
 import { AbhedMark } from './mark';
+import { initials, useAccount } from './site';
 
 export type FullView = View & {
   store?: string;
@@ -131,6 +132,8 @@ const MORE = [
   { href: '/lab', label: 'Test on your data' },
   { href: '/integrate', label: 'Integrate' },
   { href: '/business', label: 'Pricing & market' },
+  { href: '/about', label: 'About Abhed' },
+  { href: '/account', label: 'Your account' },
 ];
 
 const COMPANIES: [string, string][] = [
@@ -199,6 +202,21 @@ function useSpotlight() {
     document.addEventListener('pointermove', move, { passive: true });
     return () => document.removeEventListener('pointermove', move);
   }, []);
+}
+
+/** Signed in: your initials, linking to your account. Signed out: a quiet "Sign in". */
+function AccountChip() {
+  const [account] = useAccount();
+  if (account === undefined) return <span className="acct-chip acct-wait" aria-hidden="true" />;
+  return account ? (
+    <Link href="/account" className="acct-chip" title={`${account.name} · your account`} aria-label="Your account">
+      {initials(account.name)}
+    </Link>
+  ) : (
+    <Link href="/login" className="acct-signin">
+      Sign in
+    </Link>
+  );
 }
 
 /** Dark by default; the choice is remembered on this device. The navigation bar stays dark in both. */
@@ -303,6 +321,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             <span className="top-led-t">{view ? (view.verify.valid ? `ledger intact · ${view.ledgerTotal}` : `ledger broken at #${view.verify.firstBadSeq}`) : 'connecting…'}</span>
           </span>
           <TenantSwitch current={view?.sector} />
+          <AccountChip />
           <ThemeToggle />
           <Link href="/approver" className="top-pill">
             Approver app
