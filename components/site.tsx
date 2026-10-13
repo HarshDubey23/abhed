@@ -271,7 +271,7 @@ export function SiteFooter({ signedIn = false }: { signedIn?: boolean }) {
         </div>
 
         <div className="ft-word" aria-hidden="true">
-          ABHED
+          अभेद
         </div>
 
         <div className="ft-base">
