@@ -4,6 +4,13 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
+// what a visitor was trying to open, in words, for the "sign in to continue" note
+const FEATURE: Record<string, string> = {
+  '/demo': 'the live demo', '/fleet': 'the fleet dashboard', '/connect': 'Connect', '/ledger': 'the ledger', '/arena': 'Break Abhed',
+  '/readiness': 'the roadmap', '/business': 'pricing', '/command': 'the command center', '/incidents': 'incidents', '/insights': 'insights',
+  '/integrate': 'Integrate', '/lab': 'the test lab', '/rules': 'the rulebook', '/security': 'security', '/twin': 'the twin demo', '/account': 'your account',
+};
+
 const ROLES = ['Operator', 'Approver', 'Developer', 'Compliance', 'Founder or executive', 'Student or researcher'];
 
 function strength(pw: string) {
@@ -45,7 +52,8 @@ function Password({ value, onChange, autoComplete, meter }: { value: string; onC
 export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const router = useRouter();
   const next = useSearchParams().get('next');
-  const dest = next && next.startsWith('/') && !next.startsWith('//') ? next : '/account';
+  const dest = next && next.startsWith('/') && !next.startsWith('//') && !/^\/(login|signup)/.test(next) ? next : '/fleet';
+  const wanted = next ? FEATURE[next.split(/[?#]/)[0].split('/').slice(0, 2).join('/')] : undefined;
   const [f, setF] = useState({ name: '', email: '', company: '', role: ROLES[0], password: '', agree: false });
   const [state, setState] = useState<{ busy?: boolean; error?: string }>({});
   const signup = mode === 'signup';
@@ -68,6 +76,15 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
 
   return (
     <form className="au-form" onSubmit={submit} noValidate>
+      {wanted && (
+        <p className="au-need" role="status">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+            <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+          </svg>
+          {signup ? `Create an account to open ${wanted}.` : `Sign in to open ${wanted}.`} You’ll go straight there.
+        </p>
+      )}
       <p className="au-k">{signup ? 'Create your account' : 'Welcome back'}</p>
       <h1>{signup ? 'Put your agents on the record.' : 'Sign in to Abhed.'}</h1>
       <p className="au-sub">

@@ -52,6 +52,7 @@ export default function AccountPage() {
   const signOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => null);
     setAccount(null);
+    router.replace('/');
     router.refresh();
   };
 

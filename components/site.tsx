@@ -32,19 +32,57 @@ export const initials = (name: string) =>
     .join('');
 
 const LINKS = [
-  ['/about', 'About'],
+  ['/about', 'About us'],
   ['/story', 'How it works'],
-  ['/business', 'Pricing'],
   ['/faq', 'FAQ'],
-  ['/contact', 'Contact'],
+  ['/contact', 'Contact us'],
 ] as const;
 
-export function SiteNav() {
+/** Dark by default; the choice is remembered on this device. Works before and after sign-in. */
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  useEffect(() => {
+    setTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  }, []);
+  const flip = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('abhed-theme', next);
+    } catch {
+      /* private mode */
+    }
+  };
+  return (
+    <button className="theme-btn" onClick={flip} aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} title={theme === 'dark' ? 'Light theme' : 'Dark theme'}>
+      {theme === 'dark' ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" />
+          <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+
+/** The bar everyone sees before signing in: the same on every public page. */
+export function PublicNav() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
-  const [account] = useAccount();
   const ref = useRef<HTMLElement>(null);
-  useEffect(() => setOpen(false), [path]);
+  // On the sign-in pages, keep where the visitor was heading when they switch between the two.
+  const [carry, setCarry] = useState('');
+  useEffect(() => {
+    setOpen(false);
+    const next = new URLSearchParams(window.location.search).get('next');
+    setCarry(next && /^\/(login|signup)$/.test(path) ? `?next=${encodeURIComponent(next)}` : '');
+  }, [path]);
   useEffect(() => {
     const close = (e: Event) => {
       if (open && ref.current && !(e.target instanceof Node && ref.current.contains(e.target))) setOpen(false);
@@ -72,17 +110,12 @@ export function SiteNav() {
           ))}
         </nav>
         <div className="st-right">
-          {account ? (
-            <Link href="/account" className="st-avatar" title={`${account.name} · your account`} aria-label="Your account">
-              {initials(account.name)}
-            </Link>
-          ) : (
-            <Link href="/login" className="st-signin">
-              Sign in
-            </Link>
-          )}
-          <Link href="/fleet" className="st-pill">
-            Open Abhed
+          <ThemeToggle />
+          <Link href={`/login${carry}`} className={`st-signin ${path === '/login' ? 'on' : ''}`}>
+            Sign in
+          </Link>
+          <Link href={`/signup${carry}`} className="st-pill">
+            Get started
           </Link>
           <button className="st-burger" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="st-menu" onClick={() => setOpen((v) => !v)}>
             <i />
@@ -97,14 +130,24 @@ export function SiteNav() {
           </Link>
         ))}
         <div className="st-menu-foot">
-          {account ? <Link href="/account">Your account</Link> : <Link href="/login">Sign in</Link>}
-          {!account && <Link href="/signup">Create an account</Link>}
-          <Link href="/fleet" className="st-pill">
-            Open Abhed
+          <Link href={`/login${carry}`}>Sign in</Link>
+          <Link href={`/signup${carry}`} className="st-pill">
+            Get started
           </Link>
         </div>
       </div>
     </header>
+  );
+}
+
+/** Every public page: the same bar, the page, the same footer. */
+export function PublicChrome({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="st">
+      <PublicNav />
+      {children}
+      <SiteFooter />
+    </div>
   );
 }
 

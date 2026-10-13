@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   async rewrites() {
-    // the cinematic landing is a single self-contained HTML file
-    return { beforeFiles: [{ source: '/', destination: '/landing.html' }, { source: '/story', destination: '/story.html' }], afterFiles: [], fallback: [] };
+    // home and "how it works" are app pages now, with the same bars and footer as every other page
+    return { beforeFiles: [], afterFiles: [], fallback: [] };
   },
 };
 

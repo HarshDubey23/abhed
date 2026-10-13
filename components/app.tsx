@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { LiveDoc } from '@/lib/types';
 import type { View } from '@/lib/view';
 import { AbhedMark } from './mark';
-import { initials, useAccount } from './site';
+import { initials, SiteFooter, ThemeToggle, type SiteAccount } from './site';
 
 export type FullView = View & {
   store?: string;
@@ -180,10 +180,11 @@ function TenantSwitch({ current }: { current?: string }) {
   );
 }
 
-export function Shell({ children }: { children: React.ReactNode }) {
+/** The app after sign-in: the same bar on every page, the page, the same footer. */
+export function Shell({ children, account }: { children: React.ReactNode; account: SiteAccount }) {
   return (
     <WorldProvider>
-      <ShellInner>{children}</ShellInner>
+      <ShellInner account={account}>{children}</ShellInner>
     </WorldProvider>
   );
 }
@@ -204,54 +205,16 @@ function useSpotlight() {
   }, []);
 }
 
-/** Signed in: your initials, linking to your account. Signed out: a quiet "Sign in". */
-function AccountChip() {
-  const [account] = useAccount();
-  if (account === undefined) return <span className="acct-chip acct-wait" aria-hidden="true" />;
-  return account ? (
+/** Your initials, linking to your account. */
+function AccountChip({ account }: { account: SiteAccount }) {
+  return (
     <Link href="/account" className="acct-chip" title={`${account.name} · your account`} aria-label="Your account">
       {initials(account.name)}
     </Link>
-  ) : (
-    <Link href="/login" className="acct-signin">
-      Sign in
-    </Link>
   );
 }
 
-/** Dark by default; the choice is remembered on this device. The navigation bar stays dark in both. */
-function ThemeToggle() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  useEffect(() => {
-    setTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
-  }, []);
-  const flip = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem('abhed-theme', next);
-    } catch {
-      /* private mode */
-    }
-  };
-  return (
-    <button className="theme-btn" onClick={flip} aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} title={theme === 'dark' ? 'Light theme' : 'Dark theme'}>
-      {theme === 'dark' ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="4.2" />
-          <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
-function ShellInner({ children }: { children: React.ReactNode }) {
+function ShellInner({ children, account }: { children: React.ReactNode; account: SiteAccount }) {
   const path = usePathname();
   const { view } = useWorld();
   useSpotlight();
@@ -321,7 +284,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             <span className="top-led-t">{view ? (view.verify.valid ? `ledger intact · ${view.ledgerTotal}` : `ledger broken at #${view.verify.firstBadSeq}`) : 'connecting…'}</span>
           </span>
           <TenantSwitch current={view?.sector} />
-          <AccountChip />
+          <AccountChip account={account} />
           <ThemeToggle />
           <Link href="/approver" className="top-pill">
             Approver app
@@ -329,6 +292,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       {children}
+      <SiteFooter />
       <DemoDock />
     </div>
   );
