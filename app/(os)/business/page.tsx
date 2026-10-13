@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Visitor } from '@/components/visitor';
 import { PricingHero } from './hero';
 
 const PROBLEMS = [
@@ -231,7 +230,6 @@ export default function BusinessPage() {
         </p>
       </div>
     </main>
-    <Visitor first={9000} />
     </>
   );
 }

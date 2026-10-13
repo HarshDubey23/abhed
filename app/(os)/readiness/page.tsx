@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { inr, useWorld } from '@/components/app';
-import { Visitor } from '@/components/visitor';
 import StudioFooter from './studio-footer';
 
 type Health = { ok: boolean; store: string; llm: boolean; tenants: { sector: string; company: string; ledger: number; agents: number }[] };
@@ -222,7 +221,6 @@ const r = await s.call('issue_refund', { amount: 40000 })   // ALLOWED · NEEDS_
       </section>
     </main>
     <StudioFooter />
-    <Visitor />
     </>
   );
 }
