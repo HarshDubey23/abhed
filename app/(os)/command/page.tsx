@@ -274,49 +274,79 @@ function LiveFeed() {
 }
 
 const LANES = [
-  ['AGENT', 'Agent', 'var(--allow)'],
-  ['AGENT_REVIEW', 'Agent + review', 'var(--warn)'],
-  ['HUMAN', 'Human', 'var(--info)'],
-  ['ESCALATED', 'Escalated', 'var(--human)'],
-  ['EXCEPTION', 'Exceptions', 'var(--block)'],
+  ['AGENT', 'Agent', 'var(--allow)', 'Inside its limits'],
+  ['AGENT_REVIEW', 'Agent + review', 'var(--warn)', 'A person checks after'],
+  ['HUMAN', 'Human', 'var(--info)', 'People only'],
+  ['ESCALATED', 'Escalated', 'var(--human)', 'Waiting on a decision'],
+  ['EXCEPTION', 'Exceptions', 'var(--block)', 'Stopped by a rule'],
 ] as const;
+const SHOWN = 4;
 
 function WorkBoard() {
   const { view } = useWorld();
   if (!view) return null;
-  const name = (id: string) => view.agents.find((a) => a.id === id)?.name ?? view.humans.find((h) => h.id === id)?.name.split(' ')[0] ?? id;
+  const who = (id: string) => {
+    const a = view.agents.find((x) => x.id === id);
+    if (a) return { name: a.name, agent: true };
+    return { name: view.humans.find((h) => h.id === id)?.name ?? id, agent: false };
+  };
+  const open = view.tickets.filter((t) => t.lane !== 'DONE');
   return (
-    <div className="panel">
-      <div className="panel-title">
-        <span>
-          <b>Work board</b> · humans vs agents
-        </span>
-        <span>every card says why it’s in its lane</span>
+    <section className="panel wb" aria-label="Work board">
+      <div className="wb-head">
+        <div>
+          <h2>Work board</h2>
+          <p>Who handles each open ticket, a person or an agent, and the rule that put it there.</p>
+        </div>
+        <div className="wb-total">
+          <b>{open.length}</b>
+          <span>open tickets</span>
+        </div>
       </div>
-      <div className="lanes">
-        {LANES.map(([key, label, color]) => {
-          const ts = view.tickets.filter((t) => t.lane === key);
+      <div className="wb-lanes">
+        {LANES.map(([key, label, color, hint]) => {
+          // oldest first, so cards keep their place as new work arrives
+          const ts = view.tickets.filter((t) => t.lane === key).sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
           return (
-            <div className="lane" key={key}>
-              <h4 style={{ color }}>
-                {label} <span className="dim">{ts.length}</span>
-              </h4>
-              {ts.slice(0, 5).map((t) => (
-                <div className="card-t" key={t.id}>
-                  <b>
-                    {t.id} {t.subject}
-                  </b>
-                  <span>
-                    {name(t.assignee)} · {t.why}
-                  </span>
+            <div className="wb-lane" key={key} style={{ '--lane': color } as React.CSSProperties}>
+              <header>
+                <i aria-hidden="true" />
+                <div>
+                  <h3>{label}</h3>
+                  <p>{hint}</p>
                 </div>
-              ))}
-              {ts.length > 5 && <div className="dim" style={{ fontSize: 11 }}>+{ts.length - 5} more</div>}
+                <b aria-label={`${ts.length} tickets`}>{ts.length}</b>
+              </header>
+              <div className="wb-cards">
+                {ts.slice(0, SHOWN).map((t) => {
+                  const w = who(t.assignee);
+                  return (
+                    <article className="wb-card" key={t.id} title={`${t.subject}\n${w.name} · ${t.why}`}>
+                      <div className="wb-card-top">
+                        <span className="wb-id">{t.id}</span>
+                        <span className="wb-ch">{t.channel}</span>
+                        {t.vip && <span className="wb-vip">VIP</span>}
+                      </div>
+                      <h4>{t.subject}</h4>
+                      <p className="wb-why">{t.why}</p>
+                      <div className="wb-who">
+                        <span className={`wb-av ${w.agent ? 'agent' : ''}`} aria-hidden="true">
+                          {w.name.slice(0, 1)}
+                        </span>
+                        <span>{w.name}</span>
+                        <em>{w.agent ? 'agent' : 'person'}</em>
+                      </div>
+                    </article>
+                  );
+                })}
+                {ts.length === 0 && <div className="wb-empty">Nothing here right now</div>}
+              </div>
+              <footer>{ts.length > SHOWN ? `+${ts.length - SHOWN} more in this lane` : ts.length ? 'All shown' : '\u00a0'}</footer>
             </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -473,15 +503,13 @@ export default function CommandCenter() {
           <PhonesPanel />
         </div>
       </div>
+      <WorkBoard />
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1.4fr) minmax(0,0.9fr)', marginBottom: 14 }}>
         <div className="stack" style={{ gap: 14 }}>
           <LiveWire />
           <LiveFeed />
         </div>
-        <div className="stack" style={{ gap: 14 }}>
-          <WorkBoard />
-          <Heatmap />
-        </div>
+        <Heatmap />
         <SidePanels />
       </div>
     </main>

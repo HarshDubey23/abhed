@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { LiveDoc } from '@/lib/types';
 import type { View } from '@/lib/view';
 import { AbhedMark } from './mark';
-import { initials, SiteFooter, ThemeToggle, type SiteAccount } from './site';
+import { Avatar, SiteFooter, ThemeToggle, type SiteAccount } from './site';
 
 export type FullView = View & {
   store?: string;
@@ -209,7 +209,7 @@ function useSpotlight() {
 function AccountChip({ account }: { account: SiteAccount }) {
   return (
     <Link href="/account" className="acct-chip" title={`${account.name} · your account`} aria-label="Your account">
-      {initials(account.name)}
+      <Avatar account={account} />
     </Link>
   );
 }
@@ -292,7 +292,7 @@ function ShellInner({ children, account }: { children: React.ReactNode; account:
         </div>
       </header>
       {children}
-      <SiteFooter />
+      <SiteFooter signedIn />
       <DemoDock />
     </div>
   );

@@ -1,3 +1,5 @@
+import { ConnectGuide } from './guide';
+
 const SNIPPET = `import { Abhed } from './abhed-sdk.mjs';          // 69 lines, zero dependencies
 
 const abhed = new Abhed({ url: 'https://kavach-os.vercel.app', key: process.env.KAVACH_AGENT_KEY });
@@ -42,12 +44,17 @@ export default function IntegratePage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">
-            Plug any agent in, <em>in an afternoon</em>
+            Connect your website, <em>in minutes</em>
           </h1>
-          <p className="page-sub">
-            Keep your agents. Swap direct tool calls for <span className="mono">abhed.call()</span>.
-          </p>
+          <p className="page-sub">Keep your agents and your code. Point them at Abhed, and every action they take is checked before it runs.</p>
         </div>
+      </div>
+
+      <ConnectGuide />
+
+      <div className="ig-ref">
+        <p className="kicker">Reference</p>
+        <h2>Already running on Abhed: three company websites, and the API they use.</h2>
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginBottom: 14 }}>

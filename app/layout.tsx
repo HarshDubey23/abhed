@@ -9,14 +9,14 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: '#0a0a0a', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#ffffff', width: 'device-width', initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
-        {/* apply the saved theme before first paint, so light mode never flashes dark */}
-        <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('abhed-theme');if(t=='light')document.documentElement.dataset.theme='light'}catch(e){}" }} />
+        {/* light by default; a saved choice of dark is applied before first paint, so nothing flashes */}
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('abhed-theme')=='dark')document.documentElement.dataset.theme='dark'}catch(e){}" }} />
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currentAccount, sendMessage, signIn, signOut, signUp, updateProfile } from '../lib/accounts';
+import { currentAccount, sendMessage, signIn, signOut, signUp, avatarOf, saveProfile } from '../lib/accounts';
 
 describe('Accounts', () => {
   it('signs up, refuses a duplicate, signs in, reads the session, signs out', async () => {
@@ -31,8 +31,18 @@ describe('Accounts', () => {
   it('updates a profile and takes contact messages', async () => {
     const a = await signUp({ email: 'arjun@example.com', password: 'twelve chars', name: 'Arjun Rao' });
     if (!a.ok) throw new Error(a.error);
-    const u = await updateProfile(a.token, { name: 'Arjun R.', company: 'Bazaar', role: 'Developer' });
-    expect(u).toMatchObject({ ok: true, account: { name: 'Arjun R.', company: 'Bazaar', role: 'Developer' } });
+    const u = await saveProfile(a.token, { name: 'Arjun R.', company: 'Bazaar', role: 'Developer', title: 'Platform lead', bio: '  Runs the agents.  ' });
+    expect(u).toMatchObject({ ok: true, account: { name: 'Arjun R.', company: 'Bazaar', role: 'Developer', title: 'Platform lead', bio: 'Runs the agents.' } });
+    // a partial save keeps the other fields; bad photos and websites are refused
+    expect(await saveProfile(a.token, { location: 'Pune' })).toMatchObject({ ok: true, account: { title: 'Platform lead', location: 'Pune' } });
+    expect(await saveProfile(a.token, { avatar: 'data:text/html;base64,PHNjcmlwdD4=' })).toMatchObject({ ok: false, status: 400 });
+    expect(await saveProfile(a.token, { website: 'javascript:alert(1)' })).toMatchObject({ ok: false, status: 400 });
+    const pic = 'data:image/png;base64,iVBORw0KGgo=';
+    const withPic = await saveProfile(a.token, { avatar: pic });
+    expect(withPic.ok && withPic.account.avatar_v).toBeTruthy();
+    expect(await avatarOf(a.token)).toBe(pic);
+    expect(await saveProfile(a.token, { avatar: '' })).toMatchObject({ ok: true, account: { avatar_v: null } });
+    expect(await saveProfile('f'.repeat(64), { name: 'Nobody' })).toMatchObject({ ok: false, status: 401 });
     expect(await sendMessage({ name: 'A', email: 'a@b.co', message: 'hello there, team' })).toMatchObject({ ok: false, status: 400 });
     expect(await sendMessage({ name: 'Arjun', email: 'arjun@example.com', topic: 'Pilot', message: 'We want to pilot Abhed for 40 agents.' })).toMatchObject({ ok: true });
   });
