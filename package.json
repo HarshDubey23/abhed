@@ -9,6 +9,7 @@
     "test": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "eval": "vitest run --config eval/vitest.config.ts",
     "agents": "node agents/run.mjs"
   },
   "engines": {

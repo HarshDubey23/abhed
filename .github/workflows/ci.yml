@@ -36,3 +36,30 @@ jobs:
       # after the build, so next-env.d.ts and the generated route types exist
       - name: Typecheck
         run: npm run typecheck
+
+  # the action-gate evaluation: fixed dataset, stand-in model, in-memory state; writes eval/RESULTS.md
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Evaluate the action gate (SDK path + no-code gateway)
+        run: npm run eval
+      - name: Report gate metrics
+        if: always()
+        run: node -e "const r=require('./eval/results.json');for(const h of r.headline)console.log('::notice title='+h.title+'::'+h.text)"
+      - name: Job summary
+        if: always()
+        run: cat eval/RESULTS.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gate-eval
+          path: |
+            eval/RESULTS.md
+            eval/results.json
