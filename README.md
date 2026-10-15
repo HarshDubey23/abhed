@@ -280,6 +280,7 @@ Built by a team of five for CodeX 3.0.
 
 ## 12. Honest limits
 
+- **What the gate misses, measured.** [eval/RESULTS.md](eval/RESULTS.md) sends 78 fixed agent action requests through both paths in CI (`npm run eval`; the model is a stub, so this measures the gate, not a model). SDK path: 23 of 26 malicious requests blocked, 1 held, 2 allowed through (an injected ticket that emails outside before reading customer data, and a paraphrased injection the pattern scanner does not catch); 0 of 18 benign requests blocked. No-code gateway: 11 of 21 blocked, 4 held, 6 allowed through (paraphrased injections, an amount written as "45000 INR", a second refund split under the line after an approval, a 100-row page of a dump, an agent name the company never set up); 2 of 13 benign requests blocked (a "Thanks for your call" email trips the exfiltration word check, and an honest "system message" trips the injection scanner).
 - Tools in the demo companies are simulated adapters: refunds do not move real money.
 - The rule engine is our own (deterministic and explainable). In production, Cedar or OPA could plug in at the same point.
 - The no-code gateway does not support streaming responses yet.
