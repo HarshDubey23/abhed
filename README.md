@@ -124,6 +124,15 @@ You should get a JSON list of models, and your row on **Connect** now says *key 
 | `400 Streaming is not supported` | Your client sends `stream: true` | Send `stream: false` |
 | The agent shows as "Agent 3F2A" | Abhed could not find a name | Start the system prompt with "You are &lt;Name&gt;" or set the `user` field |
 
+### Path C · From any MCP client (Claude Desktop, Claude Code, Cursor)
+
+[`abhed-mcp`](https://github.com/HarshDubey23/abhed-mcp) exposes an agent's Abhed tools over MCP and
+sends every call through the gate: allowed, held for a person, or blocked. Get a key as in Path B, then:
+
+```bash
+claude mcp add abhed --env ABHED_AGENT_KEY=kv_live_… -- npx -y github:HarshDubey23/abhed-mcp
+```
+
 ### Path B · With the SDK (banking, healthcare or e-commerce)
 
 Use this when each action must wait for a person **before** it runs, and the company's own model keys must stay on its server. It uses one of Abhed's industry rulebooks: `banking`, `healthcare` or `ecommerce`.
