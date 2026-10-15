@@ -17,8 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -26,7 +26,11 @@ jobs:
       - name: Lint
         run: npm run lint
       - name: Tests (in-memory state, offline planner, no keys)
-        run: npm test
+        run: npm test -- --reporter=default --reporter=json --outputFile.json=test-results/vitest.json
+      # logs need a GitHub sign-in; annotations are public, so the counts are checkable by anyone
+      - name: Report test counts
+        if: always()
+        run: node -e "const r=require('./test-results/vitest.json');console.log('::notice title=Tests::'+r.numPassedTests+' passed, '+r.numFailedTests+' failed, '+r.numTotalTests+' total in '+r.numTotalTestSuites+' suites')"
       - name: Build
         run: npm run build
       # after the build, so next-env.d.ts and the generated route types exist
