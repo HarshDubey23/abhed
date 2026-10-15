@@ -1,4 +1,5 @@
 import { after, NextResponse } from 'next/server';
+import { currentAccount, sameOrigin, tokenFrom } from './accounts';
 import { GovError } from './engine';
 import { BLOCK_EVERY, unsealedCount } from './chain';
 import { pushApprovals } from './push';
@@ -43,3 +44,18 @@ export function directorAllowed(req: Request) {
   if (!need) return true;
   return req.headers.get('x-director-key') === need;
 }
+
+/**
+ * Who is calling a console API (demo controls, the company admin panel, connecting companies): the director
+ * (DIRECTOR_KEY header, for scripts) or a signed-in account, the same rule as the feature pages. Null = refuse.
+ * Without this, anyone on the internet could approve held actions or reset an approver's PIN.
+ */
+export async function consoleCaller(req: Request): Promise<{ director: boolean; accountId: string | null } | null> {
+  const need = process.env.DIRECTOR_KEY;
+  if (need && req.headers.get('x-director-key') === need) return { director: true, accountId: null };
+  if (!sameOrigin(req)) return null;
+  const a = await currentAccount(tokenFrom(req));
+  return a ? { director: false, accountId: a.id } : null;
+}
+
+export const signInFirst = () => json({ error: 'Sign in to Abhed first.', needSignIn: true }, 401);

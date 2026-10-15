@@ -34,6 +34,8 @@ export interface GwCompany {
   keyHash: string;
   keyHint: string;
   createdAt: number;
+  /** The account that connected this company. Only it (or the director) may change its key, rules and holds. */
+  ownerId?: string;
   firstCallAt?: number;
   /** Last time the company's system checked its key (e.g. a "Test connection" button). */
   linkedAt?: number;
@@ -92,19 +94,23 @@ export function pushEvent(d: GatewayDoc, e: Omit<GwEvent, 'id' | 'at'> & { at?: 
 }
 
 /** Create a company and its gateway key (the key is shown once; only its hash is stored). */
-export async function addGatewayCompany(name: string, site?: string) {
+export async function addGatewayCompany(name: string, site?: string, ownerId?: string) {
   const key = `kv_gw_${randomBytes(18).toString('hex')}`;
   const domain = site ? site.replace(/^https?:\/\//, '').split('/')[0].replace(/^www\./, '') : undefined;
   const { result } = await mutateGateway((d) => {
     const base = slug(name);
     let id = base;
     for (let i = 2; d.companies.some((c) => c.id === id); i++) id = `${base}-${i}`;
-    d.companies.push({ id, name: name.slice(0, 60), site: site?.slice(0, 120), keyHash: sha(key), keyHint: `${key.slice(0, 10)}…${key.slice(-4)}`, createdAt: Date.now(), rules: DEFAULT_RULES(domain), agents: {} });
+    d.companies.push({ id, name: name.slice(0, 60), site: site?.slice(0, 120), keyHash: sha(key), keyHint: `${key.slice(0, 10)}…${key.slice(-4)}`, createdAt: Date.now(), ...(ownerId ? { ownerId } : {}), rules: DEFAULT_RULES(domain), agents: {} });
     pushEvent(d, { company: id, agent: '', kind: 'joined', text: `${name} added to Abhed. Waiting for its first model call.` });
     return id;
   });
   return { id: result, key };
 }
+
+/** May this caller manage this company? Companies without an owner (the demo ones) stay open to any signed-in account. */
+export const canManage = (c: Pick<GwCompany, 'ownerId'> | undefined, caller: { director: boolean; accountId: string | null }) =>
+  !c?.ownerId || caller.director || c.ownerId === caller.accountId;
 
 export async function rotateKey(id: string) {
   const key = `kv_gw_${randomBytes(18).toString('hex')}`;

@@ -1,9 +1,8 @@
 import { after } from 'next/server';
-import { directorAllowed, govMutate, json } from '@/lib/api';
+import { consoleCaller, directorAllowed, govMutate, json, signInFirst } from '@/lib/api';
 import { decideAndResume, driveRun } from '@/lib/runs';
 import {
   confirmCause,
-  decideApproval,
   disputeRecord,
   GovError,
   pauseAgent,
@@ -25,7 +24,9 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  if (!directorAllowed(req)) return json({ error: 'Director key required' }, 401);
+  if (process.env.DIRECTOR_KEY ? !directorAllowed(req) : !(await consoleCaller(req))) {
+    return process.env.DIRECTOR_KEY ? json({ error: 'Director key required' }, 401) : signInFirst();
+  }
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const s = (k: string, d = '') => (typeof body[k] === 'string' ? (body[k] as string) : d);
   const n = (k: string) => Number(body[k]);

@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Tests (in-memory state, offline planner, no keys)
+        run: npm test
+      - name: Build
+        run: npm run build
+      # after the build, so next-env.d.ts and the generated route types exist
+      - name: Typecheck
+        run: npm run typecheck

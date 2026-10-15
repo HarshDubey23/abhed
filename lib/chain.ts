@@ -8,8 +8,9 @@ import { canonical, sha256 } from './util';
  * - Records are sealed into blocks. Each block commits to its records with a Merkle root and to the
  *   previous block by hash, and is signed with Abhed's Ed25519 key (public key is published).
  * - Each block hash is submitted to OpenTimestamps, which aggregates it into a Bitcoin transaction:
- *   a public, third-party proof that this exact history existed at that time. Nobody inside the
- *   company, including Abhed's operators, can rewrite a sealed record without it showing.
+ *   a public, third-party proof that this exact history existed at that time. A sealed record cannot
+ *   be edited without verification failing. Whoever holds the signing key could re-sign a rewritten
+ *   history, so the outside check is an OpenTimestamps receipt an auditor kept.
  */
 
 export const BLOCK_EVERY = 25; // auto-seal once this many records are unsealed

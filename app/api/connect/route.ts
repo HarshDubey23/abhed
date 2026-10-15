@@ -1,4 +1,4 @@
-import { json } from '@/lib/api';
+import { consoleCaller, json, signInFirst } from '@/lib/api';
 import { activeWorlds, CODE_TTL_MS, conn, getRegistry, issueCode, ONLINE_MS, removeCompany, resetDemo } from '@/lib/connect';
 import { packFor } from '@/lib/sectors';
 import { getLive, getWorld, isTenant } from '@/lib/store';
@@ -61,6 +61,7 @@ const pinOk = (b: Record<string, unknown>) => String(b.pin ?? '') === (process.e
 
 /** code · remove { tenant, pin } · reset { pin } */
 export async function POST(req: Request) {
+  if (!(await consoleCaller(req))) return signInFirst();
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   if (b.action === 'code') return json({ code: await issueCode() });
   if (b.action === 'remove' || b.action === 'disconnect') {

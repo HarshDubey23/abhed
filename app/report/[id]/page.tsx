@@ -5,7 +5,6 @@ import './report.css';
 
 export const dynamic = 'force-dynamic';
 
-const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const ts = (t: number) => new Date(t).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium', hour12: false });
 
 export default async function Report({ params }: { params: Promise<{ id: string }> }) {

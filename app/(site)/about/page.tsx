@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 const PRINCIPLES = [
   ['Rules, not guesses', 'Every action an agent takes is checked by a deterministic rulebook before it runs. Same input, same decision, and the rule that decided is on the record. A model can be talked out of its instructions; a rule cannot.'],
   ['A person for the big moves', 'Small, reversible work runs on its own. Refunds above a limit, data leaving the company or a change to access wait for the right person, who approves on their phone with the evidence in front of them.'],
-  ['Proof no one can edit', 'Each decision is a record chained to the one before it, sealed in signed blocks and timestamped outside the company. If anyone changes the past, the exact record shows it.'],
+  ['Proof that shows any edit', 'Each decision is a record chained to the one before it, sealed in signed blocks and timestamped outside the company. If anyone changes the past, the exact record shows it.'],
 ] as const;
 
 const BUILT = [

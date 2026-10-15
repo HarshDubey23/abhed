@@ -4,7 +4,7 @@ import { Intro, PlayVideo } from './intro';
 
 export const metadata: Metadata = {
   title: 'Abhed · The accountability layer for AI agents',
-  description: 'One gate for every action your AI agents take. The right person approves the big ones, and every action lands on a ledger no one can edit.',
+  description: 'One gate for every action your AI agents take. The right person approves the big ones, and every action lands on a ledger no one can quietly edit.',
 };
 
 const VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260808_112712_da9d53df-6d27-4b12-bdf6-aa9dc2622bdf.mp4';
@@ -21,7 +21,7 @@ export default function Home() {
             <span>The Accountability</span> <span>Layer for AI Agents</span>
           </h1>
           <p className="lh-sub">
-            <span>One gate for every action your AI agents take.</span> <span>The right person signs the big ones, on a ledger no one can edit.</span>
+            <span>One gate for every action your AI agents take.</span> <span>The right person signs the big ones, on a ledger no one can quietly edit.</span>
           </p>
           <div className="lh-actions">
             <Link className="lh-pill" href="/demo">

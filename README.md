@@ -1,6 +1,6 @@
 # Abhed (अभेद): the accountability layer for AI agents
 
-> **One gate for every action an AI agent takes. A person for the big ones. A ledger no one can edit.**
+> **One gate for every action an AI agent takes. A person for the big ones. A ledger no one can quietly edit.**
 
 AI agents now refund customers, change records and send data on their own. When one gets it wrong, a company has to be able to say **who allowed it, why, and prove it**. Abhed sits between an agent's decision and the real action, checks every action against rules before it runs, sends the risky ones to the right person on their phone, and writes every decision to a tamper-evident ledger.
 
@@ -45,7 +45,7 @@ The usual answers are all-or-nothing: approve every action (and the agent become
 |---|---|
 | **Checks the action, not the words** | Every tool call (refund, email, export, delete) is checked by a deterministic rulebook before it runs. Same input, same decision, and the rule that decided is on the record. A model can be talked out of its instructions; a rule cannot. |
 | **A person for the big moves** | Small, reversible work runs on its own in about a millisecond. A refund above a limit, data leaving the company or a change of access waits for the right person, who approves on their phone with the evidence in front of them. The approval is bound to a SHA-256 of the exact action, so the agent cannot change a rupee afterwards. |
-| **Proof no one can edit** | Each decision is a record chained to the one before it and sealed in signed blocks. If anyone edits the past, verification points at the exact record. |
+| **Proof that shows any edit** | Each decision is a record chained to the one before it and sealed in signed blocks. If anyone edits the past, verification points at the exact record. |
 | **Governs the people too** | Approving in under 4 seconds without opening the evidence is flagged as rubber-stamping. Changing a rule needs a second person. |
 | **A kill switch outside the model** | Pause revokes the agent's key at the gateway, so the agent cannot argue with it. Its open work moves to people. |
 | **No-code connection** | A company connects its existing agents by changing two settings: a base URL and an API key. No code, no redeploy. |
@@ -229,11 +229,13 @@ One Next.js app (TypeScript, App Router) on Vercel, with Supabase Postgres for s
 | `proxy.ts` | Sends signed-out visitors from a feature page to sign-in, then back |
 | `sites/` | The demo company websites and the SDK (`abhed-sdk.mjs`) |
 | `agents/run.mjs` | Real agent processes for live mode |
-| `tests/` | 62 tests: approvals, the ₹1 change, twin universe, replay, tamper, two-key, escalation, accounts, gateway |
+| `tests/` | 68 tests: approvals, the ₹1 change, twin universe, replay, tamper, two-key, escalation, accounts, gateway |
 
 ## 9. Security
 
 - **Accounts:** passwords are bcrypt-hashed inside the database; account, session and message tables cannot be read by the public API roles at all and are reached only through a few `SECURITY DEFINER` functions. A session is a random token of which only the SHA-256 is stored. Sign-in locks for 15 minutes after 8 wrong attempts.
+- **Console APIs** (demo controls, the company admin panel, connecting companies) need a signed-in account, or the `DIRECTOR_KEY` when one is set. A no-code company belongs to the account that connected it: only that account can rotate its key, change its rules or decide its held calls.
+- **The ledger is tamper-evident, not tamper-proof.** Editing a sealed record fails verification at that record. The server holds the Ed25519 signing key, so whoever runs Abhed could rewrite and re-sign the whole history; the OpenTimestamps receipt submitted for each block is the outside check, and it only helps an auditor who kept a copy. Records not yet sealed (fewer than 25 since the last block) could be dropped from the end without showing.
 - **Cookies:** `HttpOnly`, `SameSite=Lax`, `Secure` in production; cross-site form posts are refused.
 - **Profile photos** are cropped and resized in the browser, checked again on the server (type and size) and served only to their owner.
 - **Agent keys** are per agent and revocable; the model provider keys never reach the agents or the browser.
@@ -244,7 +246,7 @@ One Next.js app (TypeScript, App Router) on Vercel, with Supabase Postgres for s
 ```bash
 npm install
 npm run dev          # http://localhost:3000
-npm test             # 62 tests
+npm test             # 68 tests
 npm run typecheck
 ```
 
@@ -282,4 +284,7 @@ Built by a team of five for CodeX 3.0.
 - The rule engine is our own (deterministic and explainable). In production, Cedar or OPA could plug in at the same point.
 - The no-code gateway does not support streaming responses yet.
 - The SDK path currently uses one of three industry rulebooks (banking, healthcare, e-commerce); any other website should use the no-code path.
+- The live demo is a shared sandbox. Every seeded approver's PIN is `1234` and the admin PIN is `2468` (both are in the demo script), so anyone can act as an approver there. What Abhed enforces is that an *agent* cannot act past the gate or approve its own action; protecting approver identities in a real company needs per-person PINs or SSO.
+- Without `DIRECTOR_KEY`, `/api/agent/keys` hands the demo agents' keys to anyone who asks. Those keys still go through the gate.
+- The production account functions (`SECURITY DEFINER`, bcrypt) live in the Supabase project and their SQL is not in this repository. The in-memory version that the tests cover follows the same rules with scrypt.
 - Framework mapping (RBI FREE-AI, EU AI Act Art. 12/14, OWASP Agentic Top 10, DPDP) means "maps to", not "certified compliant".

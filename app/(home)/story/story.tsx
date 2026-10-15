@@ -351,7 +351,7 @@ export function Story() {
   const P = [
     { eyebrow: 'How Abhed works · 1 of 3', h: <>Agents act<br />in milliseconds.</>, sub: 'Refunds, emails, exports, record changes. Your AI agents do real work on their own, faster than anyone can watch.', cta: ['/demo', 'Start the live demo'] },
     { eyebrow: 'The gate', h: <>Every action meets the rulebook first.</>, sub: 'Deterministic rules, not another model. Same input, same decision, decided before the agent’s code can act.', cta: ['/rules', 'Read the rulebook'] },
-    { eyebrow: 'The person and the proof', h: <>Big moves wait<br />for a person.</>, sub: 'The right officer approves on their phone. Every decision lands on a ledger no one can edit.', cta: ['/fleet', 'Watch it live'] },
+    { eyebrow: 'The person and the proof', h: <>Big moves wait<br />for a person.</>, sub: 'The right officer approves on their phone. Every decision lands on a ledger no one can quietly edit.', cta: ['/fleet', 'Watch it live'] },
   ] as const;
 
   return (

@@ -28,8 +28,6 @@ interface Pending {
   votes: string[];
 }
 
-const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
-
 function b64ToUint8(base64: string) {
   const pad = '='.repeat((4 - (base64.length % 4)) % 4);
   const b = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
@@ -64,7 +62,6 @@ interface Profile {
   person: { id: string; name: string; title: string; roles: string[] };
   stats: { decisions: number; approved: number; rejected: number; held: number; escalated: number; medianSeconds: number | null; rubberStamps: number; ownsAgents: string[]; recent: { id: string; summary: string; status: string; at: number; seconds: number; device: string }[] };
 }
-const short = (c?: string) => (c ?? '').replace(' (fictional)', '').toLowerCase();
 
 export default function ApproverPage() {
   const router = useRouter();

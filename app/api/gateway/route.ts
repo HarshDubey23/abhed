@@ -1,17 +1,18 @@
-import { json } from '@/lib/api';
-import { addGatewayCompany, getGateway, mutateGateway, pushEvent, removeGatewayCompany, rotateKey } from '@/lib/gateway';
+import { consoleCaller, json, signInFirst } from '@/lib/api';
+import { addGatewayCompany, canManage, getGateway, mutateGateway, pushEvent, removeGatewayCompany, rotateKey } from '@/lib/gateway';
 
 export const dynamic = 'force-dynamic';
 
 const ONLINE_MS = 60_000;
 
 /** Every no-code company: its discovered agents, the live decision stream and anything waiting for a person. */
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await consoleCaller(req))) return signInFirst();
   const d = await getGateway();
   const now = Date.now();
   return json({
     now,
-    companies: d.companies.map(({ keyHash: _k, ...c }) => ({
+    companies: d.companies.map(({ keyHash: _k, ownerId: _o, ...c }) => ({
       ...c,
       agents: Object.values(c.agents)
         .sort((a, b) => a.firstSeen - b.firstSeen)
@@ -25,14 +26,22 @@ export async function GET() {
 const pinOk = (b: Record<string, unknown>) => String(b.pin ?? '') === (process.env.ADMIN_PIN ?? '2468');
 
 export async function POST(req: Request) {
+  const caller = await consoleCaller(req);
+  if (!caller) return signInFirst();
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const id = String(b.id ?? '');
+  // a company someone connected is theirs: nobody else may take its key, change its rules or decide its holds
+  if (b.action !== 'add') {
+    const d = await getGateway();
+    const companyId = b.action === 'decide' ? d.holds.find((h) => h.id === String(b.holdId ?? ''))?.company : id;
+    if (!canManage(d.companies.find((c) => c.id === companyId), caller)) return json({ error: 'Only the account that connected this company can do that.' }, 403);
+  }
   switch (b.action) {
     case 'add': {
       const name = String(b.name ?? '').trim();
       if (name.length < 2) return json({ error: 'Give the company a name' }, 400);
       const site = String(b.site ?? '').trim();
-      return json(await addGatewayCompany(name, site ? (/^https?:\/\//.test(site) ? site : `https://${site}`) : undefined));
+      return json(await addGatewayCompany(name, site ? (/^https?:\/\//.test(site) ? site : `https://${site}`) : undefined, caller.accountId ?? undefined));
     }
     case 'rotate': {
       const key = await rotateKey(id);
