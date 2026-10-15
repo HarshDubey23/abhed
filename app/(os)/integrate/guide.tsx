@@ -83,7 +83,7 @@ export function ConnectGuide() {
       t: 'Send any agent a message',
       body: (
         <>
-          Use your app as normal. Abhed recognises each agent by the OpenAI <span className="mono">user</span> field, or by its system prompt (“You are Atlas…”), and lists it under your company. Actions must be OpenAI <b>tool calls</b> for Abhed to check them.
+          Use your app as normal. Abhed recognises each agent by the OpenAI <span className="mono">user</span> field, or by its system prompt (“You are Atlas…”), and lists it under your company. Actions must be OpenAI <b>tool calls</b> for Abhed to check them. A new agent’s money and email actions wait for a person until you press <b>Confirm agent</b> next to it, so a name you never set up cannot move money on your key.
         </>
       ),
       see: 'Your row on Connect turns Connected and shows “Agent discovered: <name>” for each agent, with every call in its live log.',

@@ -5,7 +5,7 @@ import { POST as gwPOST } from '@/app/api/gw/v1/chat/completions/route';
 import { adminKeyFor } from '@/lib/agentapi';
 import { forgetConnection } from '@/lib/connect';
 import { decideApproval } from '@/lib/engine';
-import { addGatewayCompany, getGateway, mutateGateway, removeGatewayCompany } from '@/lib/gateway';
+import { addGatewayCompany, confirmAgent, getGateway, mutateGateway, removeGatewayCompany } from '@/lib/gateway';
 import { keyFor } from '@/lib/live';
 import { SECTORS } from '@/lib/sectors';
 import { mutate, resetWorld } from '@/lib/store';
@@ -179,9 +179,13 @@ async function gwCall(c: GwCase, company: string, key: string | undefined, call:
   return { status: 200, verdict: { decision, rule: ev.rule, text: ev.text, ms: ev.ms }, kept, held, handlerMs };
 }
 
+/** The agents Zentro Logistics set up and confirmed in Abhed. Any other name on its key is one it never set up (gw-m17's “Shadow”). */
+const ZENTRO_AGENTS = ['Atlas', 'Penny', 'Vault'];
+
 async function runGw(c: GwCase): Promise<Outcome> {
   const { id: company, key } = await addGatewayCompany(`Eval ${c.id}`, 'https://zentro.example');
   try {
+    for (const name of ZENTRO_AGENTS) await confirmAgent(company, name, 'eval setup');
     for (const st of c.setup ?? []) {
       const r = await gwCall(c, company, key, st, st.person);
       if (r.error) return fail(c, `setup ${st.tool}: ${r.error}`);

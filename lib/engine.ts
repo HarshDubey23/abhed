@@ -177,6 +177,9 @@ export function ctxFor(w: World, req: ActionReq): Ctx {
   const extra = pack.enrich(w, req);
   const flags = [...(extra.flags ?? [])];
   if (isHighImpact(w, req.action)) flags.push('__high_impact');
+  // an address the company has nobody on record for (not a customer, not a CRM lead): typically one the agent was handed
+  const knownLead = (w.biz.leads ?? []).some((l) => String(l.email ?? '').toLowerCase() === to);
+  if (req.action === 'send_email' && to && !to.endsWith('@' + pack.domain) && to !== ticketCustomerEmail && !knownCustomer && !knownLead) flags.push('recipient_not_on_record');
   return {
     action: req.action,
     amount: extra.amount ?? amount,

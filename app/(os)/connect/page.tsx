@@ -19,7 +19,7 @@ type Company = {
   rules: { id: string; says: string }[];
 };
 type State = { pending: { code: string; exp: number } | null; log: Note[]; companies: Company[] };
-type GwAgent = { id: string; name: string; calls: number; toolCalls: number; blocked: number; held: number; online: boolean; lastSeen: number };
+type GwAgent = { id: string; name: string; calls: number; toolCalls: number; blocked: number; held: number; online: boolean; lastSeen: number; confirmed?: boolean };
 type GwEvent = { id: number; at: number; agent: string; kind: string; text: string; tool?: string; args?: string; decision?: string; rule?: string; ms?: number };
 type GwHold = { id: string; agent: string; tool: string; args: string; reason: string; rule: string; at: number };
 type GwCompany = { id: string; name: string; site?: string; keyHint: string; createdAt: number; firstCallAt?: number; linkedAt?: number; rules: { holdAbove: number; blockAbove: number; allowedDomains: string[]; blockTools: string[] }; agents: GwAgent[]; events: GwEvent[]; holds: GwHold[] };
@@ -426,7 +426,13 @@ function GwRow({ c, open, toggle, fresh, busy, post, withPin, onKey }: { c: GwCo
                 <b>{a.name}</b>
                 <span className="dim">
                   {a.calls} calls · {a.toolCalls} actions · {a.blocked} stopped · {a.held} held
+                  {a.confirmed === false && ' · new: money and email wait for a person'}
                 </span>
+                {a.confirmed === false && (
+                  <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void post({ action: 'confirm-agent', id: c.id, agent: a.name, by: 'Guest Judge' })}>
+                    Confirm agent
+                  </button>
+                )}
                 <span className="cn-hb">
                   <i />
                   {a.online ? 'active' : 'idle'}

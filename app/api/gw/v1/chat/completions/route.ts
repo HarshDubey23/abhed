@@ -1,5 +1,5 @@
 import { json } from '@/lib/api';
-import { companyForKey, decideTool, fingerprint, getGateway, identify, mutateGateway, pushEvent, taint, type GwVerdict } from '@/lib/gateway';
+import { companyForKey, decideTool, fingerprint, getGateway, identify, moneyOf, mutateGateway, payoutKey, pushEvent, taint, type GwVerdict } from '@/lib/gateway';
 import { chat, DEFAULT_MODEL, llmAvailable, type ChatMessage } from '@/lib/llm';
 
 export const dynamic = 'force-dynamic';
@@ -26,19 +26,21 @@ export async function POST(req: Request) {
   const lastUser = [...body.messages].reverse().find((m) => m.role === 'user');
   const now = Date.now();
   // first sight of this agent, and the call itself, appear live in Abhed
-  await mutateGateway((d) => {
+  const { result: seen } = await mutateGateway((d) => {
     const c = d.companies.find((x) => x.id === company.id);
-    if (!c) return;
+    if (!c) return null;
     c.firstCallAt ??= now;
     const a = c.agents[who.id];
     if (!a) {
-      c.agents[who.id] = { id: who.id, name: who.name, firstSeen: now, lastSeen: now, calls: 0, toolCalls: 0, blocked: 0, held: 0, tokens: 0 };
-      pushEvent(d, { company: c.id, agent: who.name, kind: 'agent', text: `New agent discovered: ${who.name}` });
+      // a name nobody set up: its money and outward actions wait for a person until someone confirms it
+      c.agents[who.id] = { id: who.id, name: who.name, firstSeen: now, lastSeen: now, calls: 0, toolCalls: 0, blocked: 0, held: 0, tokens: 0, confirmed: false };
+      pushEvent(d, { company: c.id, agent: who.name, kind: 'agent', text: `New agent discovered: ${who.name}. Its money and outward actions wait for a person until someone confirms it.` });
     }
     c.agents[who.id].lastSeen = now;
     c.agents[who.id].calls += 1;
     if (lastUser && body.messages!.at(-1)?.role === 'user') pushEvent(d, { company: c.id, agent: who.name, kind: 'call', text: String(lastUser.content ?? '').slice(0, 200) });
     if (tainted.length) pushEvent(d, { company: c.id, agent: who.name, kind: 'flag', text: `Suspected prompt injection in the input: ${tainted.join(', ')}` });
+    return { unconfirmed: c.agents[who.id].confirmed === false, paidOut: { ...(c.paidOut ?? {}) } };
   });
 
   let result;
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
       /* unparseable arguments are judged as empty */
     }
     const t0 = performance.now();
-    const v: GwVerdict = decideTool(tc.function.name, args, company.rules, { tainted });
+    const v: GwVerdict = decideTool(tc.function.name, args, company.rules, { tainted, paidOut: seen?.paidOut, unconfirmed: seen?.unconfirmed });
     const ms = Number((performance.now() - t0).toFixed(2));
     const argStr = JSON.stringify(args).slice(0, 400);
     let final: GwVerdict['decision'] | 'APPROVED' | 'REJECTED' = v.decision;
@@ -105,6 +107,16 @@ export async function POST(req: Request) {
         c.agents[who.id].toolCalls += 1;
         if (final === 'BLOCKED' || final === 'REJECTED') c.agents[who.id].blocked += 1;
         if (v.decision === 'NEEDS_APPROVAL') c.agents[who.id].held += 1;
+      }
+      // money that went out is added to its invoice, so the next payout on it is judged on the running total
+      const key = payoutKey(tc.function.name, args);
+      const { amount } = moneyOf(args);
+      if (c && key && amount > 0 && (final === 'ALLOWED' || final === 'APPROVED')) {
+        c.paidOut ??= {};
+        c.paidOut[key] = (c.paidOut[key] ?? 0) + amount;
+        if (seen) seen.paidOut[key] = c.paidOut[key];
+        const keys = Object.keys(c.paidOut);
+        if (keys.length > 500) delete c.paidOut[keys[0]];
       }
       if (v.decision !== 'NEEDS_APPROVAL' || final !== 'NEEDS_APPROVAL') pushEvent(d, { company: company.id, agent: who.name, kind: 'tool', tool: tc.function.name, args: argStr, decision: final, rule: v.rule || undefined, ms, text: final === 'APPROVED' ? 'Approved by a person; executed once.' : final === 'REJECTED' ? 'Rejected by a person.' : v.reason });
     });

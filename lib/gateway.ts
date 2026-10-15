@@ -26,6 +26,9 @@ export interface GwAgent {
   blocked: number;
   held: number;
   tokens: number;
+  /** false until a person confirms the agent in Abhed; until then its money and outward actions wait for a person.
+   *  Agents recorded before confirmation existed carry no flag and count as confirmed. */
+  confirmed?: boolean;
 }
 export interface GwCompany {
   id: string;
@@ -41,6 +44,8 @@ export interface GwCompany {
   linkedAt?: number;
   rules: GwRules;
   agents: Record<string, GwAgent>;
+  /** money paid out so far per invoice/order (calls that went through), so a refund cannot be split under the line */
+  paidOut?: Record<string, number>;
 }
 export type GwDecision = 'ALLOWED' | 'BLOCKED' | 'NEEDS_APPROVAL' | 'APPROVED' | 'REJECTED';
 export interface GwEvent {
@@ -141,6 +146,20 @@ export async function resetGateway() {
   });
 }
 
+/** A person confirms an agent (or sets one up before its first call): its money and outward actions stop waiting for a person. */
+export async function confirmAgent(companyId: string, name: string, by: string) {
+  const { result } = await mutateGateway((d) => {
+    const c = d.companies.find((x) => x.id === companyId);
+    if (!c || !name.trim()) return false;
+    const id = slug(name);
+    const a = (c.agents[id] ??= { id, name: name.trim().slice(0, 40), firstSeen: Date.now(), lastSeen: 0, calls: 0, toolCalls: 0, blocked: 0, held: 0, tokens: 0 });
+    a.confirmed = true;
+    pushEvent(d, { company: c.id, agent: a.name, kind: 'flag', text: `${by} confirmed ${a.name} as one of the company’s agents.` });
+    return true;
+  });
+  return result;
+}
+
 export async function companyForKey(auth: string | null) {
   const key = (auth ?? '').replace(/^Bearer\s+/i, '').trim();
   if (!key.startsWith('kv_gw_')) return null;
@@ -169,13 +188,52 @@ export function identify(body: { user?: unknown; messages?: { role: string; cont
   return { id: `agent-${h}`, name: `Agent ${h.toUpperCase()}` };
 }
 
-const num = (v: unknown) => (typeof v === 'number' ? v : typeof v === 'string' && /^\s*[₹$]?\s*[\d,]+(\.\d+)?\s*$/.test(v) ? Number(v.replace(/[^\d.]/g, '')) : NaN);
+/** A number, or a string such as "45,000", "₹45,000", "Rs. 45000", "45000 INR" or "45,000/-". Anything else is NaN. */
+const num = (v: unknown) => {
+  if (typeof v === 'number') return v;
+  if (typeof v !== 'string') return NaN;
+  const s = v.trim().replace(/^(?:₹|rs\.?|inr|\$)\s*/i, '').replace(/\s*(?:\/-|inr|rupees|rs\.?)$/i, '');
+  return /^\d[\d,]*(\.\d+)?$/.test(s) ? Number(s.replace(/,/g, '')) : NaN;
+};
 const MONEY_KEY = /amount|price|value|refund|total|sum|inr|rupees|payment/i;
 const COUNT_KEY = /^(limit|count|records|rows|max|size|n)$/i;
 const OUTWARD = /(email|mail|send|share|upload|post|webhook|forward|transfer|export)/i;
 const DESTRUCTIVE = /(^|_|\b)(delete|drop|truncate|wipe|destroy|purge|erase)/i;
 const BULK = /(export|dump|bulk|download_all|list_all|all_customers)/i;
 const PRIVILEGE = /(grant|role|permission|admin|password|credential|api_key|secret)/i;
+const PAYOUT = /(refund|payout|reimburs|cashback|compensat|credit|transfer|^pay|_pay)/i;
+const tokens = (k: string) => k.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase().split(/[^a-z0-9]+/);
+// a money-named key that holds an identifier or a label, not an amount (refund_id, payment_method, currency)
+const NOT_AMOUNT = new Set(['id', 'ref', 'reference', 'no', 'number', 'code', 'method', 'mode', 'type', 'status', 'reason', 'note', 'notes', 'currency', 'account', 'upi', 'vpa', 'date', 'time']);
+const INVOICE = new Set(['invoice', 'order', 'txn', 'transaction', 'booking', 'bill', 'ref', 'reference']);
+const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+
+/** The money in a tool call: the largest readable amount, and any amount Abhed cannot read as a number. Nested objects count ({ amount: { value: 45000 } }). */
+export function moneyOf(args: Record<string, unknown>) {
+  let amount = 0;
+  const unreadable: string[] = [];
+  const walk = (o: unknown, money: boolean, depth: number) => {
+    if (depth > 3 || o === null || typeof o !== 'object') return;
+    for (const [k, v] of Object.entries(o)) {
+      const m = money || MONEY_KEY.test(k);
+      if (v !== null && typeof v === 'object') walk(v, m, depth + 1);
+      else if (m) {
+        const n = num(v);
+        if (Number.isFinite(n)) amount = Math.max(amount, n);
+        else if (typeof v === 'string' && /\d/.test(v) && !tokens(k).some((t) => NOT_AMOUNT.has(t))) unreadable.push(v.slice(0, 40));
+      }
+    }
+  };
+  walk(args, false, 0);
+  return { amount, unreadable };
+}
+
+/** The invoice/order a payout is made against, so payouts on it can be added up. Null for anything that does not pay money out. */
+export function payoutKey(tool: string, args: Record<string, unknown>) {
+  if (!PAYOUT.test(tool)) return null;
+  const hit = Object.entries(args).find(([k, v]) => (typeof v === 'string' || typeof v === 'number') && String(v).trim() && tokens(k).some((t) => INVOICE.has(t)));
+  return hit ? String(hit[1]).trim().toUpperCase().slice(0, 60) : null;
+}
 
 export interface GwVerdict {
   decision: 'ALLOWED' | 'BLOCKED' | 'NEEDS_APPROVAL';
@@ -183,8 +241,11 @@ export interface GwVerdict {
   reason: string;
 }
 
-/** The deterministic rulebook every tool call is checked against. No model is involved in this decision. */
-export function decideTool(tool: string, args: Record<string, unknown>, rules: GwRules, ctx: { tainted: string[] }): GwVerdict {
+/**
+ * The deterministic rulebook every tool call is checked against. No model is involved in this decision.
+ * ctx.paidOut: what the company has already paid out per invoice/order; ctx.unconfirmed: nobody has confirmed this agent yet.
+ */
+export function decideTool(tool: string, args: Record<string, unknown>, rules: GwRules, ctx: { tainted: string[]; paidOut?: Record<string, number>; unconfirmed?: boolean }): GwVerdict {
   const values = Object.values(args);
   const text = values.map((v) => (typeof v === 'string' ? v : JSON.stringify(v))).join(' ');
   if (rules.blockTools.some((t) => t && t.toLowerCase() === tool.toLowerCase())) return { decision: 'BLOCKED', rule: 'COMPANY-BLOCK@1', reason: `The company has switched off “${tool}” for its agents.` };
@@ -196,13 +257,24 @@ export function decideTool(tool: string, args: Record<string, unknown>, rules: G
   if (OUTWARD.test(tool) && pii.length) return { decision: 'BLOCKED', rule: 'GW-DLP@1', reason: `Personal data leaving the company: ${pii.join(', ')}.` };
   const recipient = values.filter((v): v is string => typeof v === 'string').find((v) => /@|https?:\/\//.test(v));
   const domain = recipient ? (recipient.includes('@') ? recipient.split('@')[1] : recipient.replace(/^https?:\/\//, '').split('/')[0]).toLowerCase() : null;
-  const dataish = /(all|every|list|export|records|csv|database|dump|customers|patients)/i.test(text);
+  // whole words only: "call" is not "all", "listen" is not "list"
+  const dataish = /\b(all|every|list|export|records|csv|database|dump|customers|patients)\b/i.test(text);
   if (OUTWARD.test(tool) && domain && dataish && !rules.allowedDomains.some((d) => domain.endsWith(d.toLowerCase()))) return { decision: 'BLOCKED', rule: 'GW-EXFIL@1', reason: `Company data addressed to an outside domain (${domain}).` };
   if (ctx.tainted.length && (OUTWARD.test(tool) || Object.keys(args).some((k) => MONEY_KEY.test(k)))) return { decision: 'BLOCKED', rule: 'GW-INJECTION@1', reason: `The conversation contains a suspected prompt injection (${ctx.tainted.join(', ')}); outward and money actions are refused.` };
-  const amount = Math.max(0, ...Object.entries(args).filter(([k]) => MONEY_KEY.test(k)).map(([, v]) => num(v)).filter((n) => Number.isFinite(n)));
-  if (amount > rules.blockAbove) return { decision: 'BLOCKED', rule: 'GW-LIMIT@1', reason: `₹${amount.toLocaleString('en-IN')} is above the company’s hard limit of ₹${rules.blockAbove.toLocaleString('en-IN')}.` };
-  if (amount > rules.holdAbove) return { decision: 'NEEDS_APPROVAL', rule: 'GW-APPROVAL@1', reason: `₹${amount.toLocaleString('en-IN')} is above ₹${rules.holdAbove.toLocaleString('en-IN')}: a person must approve.` };
+  const { amount, unreadable } = moneyOf(args);
+  if (amount > rules.blockAbove) return { decision: 'BLOCKED', rule: 'GW-LIMIT@1', reason: `${inr(amount)} is above the company’s hard limit of ${inr(rules.blockAbove)}.` };
+  if (amount > rules.holdAbove) return { decision: 'NEEDS_APPROVAL', rule: 'GW-APPROVAL@1', reason: `${inr(amount)} is above ${inr(rules.holdAbove)}: a person must approve.` };
+  if (unreadable.length) return { decision: 'NEEDS_APPROVAL', rule: 'GW-AMOUNT@1', reason: `Abhed cannot read the amount “${unreadable[0]}” as a number, so a person must check it.` };
+  // payouts on one invoice add up: a second refund cannot slip under the line
+  const key = payoutKey(tool, args);
+  const before = key ? (ctx.paidOut?.[key] ?? 0) : 0;
+  if (before > 0 && amount > 0) {
+    const total = before + amount;
+    if (total > rules.blockAbove) return { decision: 'BLOCKED', rule: 'GW-CUMULATIVE@1', reason: `${inr(amount)} more on ${key} would make ${inr(total)} paid out, above the company’s hard limit of ${inr(rules.blockAbove)}.` };
+    if (total > rules.holdAbove) return { decision: 'NEEDS_APPROVAL', rule: 'GW-CUMULATIVE@1', reason: `${key} already had ${inr(before)} paid out; ${inr(amount)} more makes ${inr(total)}, above ${inr(rules.holdAbove)}: a person must approve.` };
+  }
   if (PRIVILEGE.test(tool)) return { decision: 'NEEDS_APPROVAL', rule: 'GW-PRIVILEGE@1', reason: `“${tool}” changes access. A person must approve.` };
+  if (ctx.unconfirmed && (amount > 0 || PAYOUT.test(tool) || OUTWARD.test(tool))) return { decision: 'NEEDS_APPROVAL', rule: 'GW-NEW-AGENT@1', reason: 'Nobody has confirmed this agent in Abhed yet, so its money and outward actions wait for a person. Confirm it on the Connect page.' };
   return { decision: 'ALLOWED', rule: '', reason: 'Inside the company’s rules.' };
 }
 

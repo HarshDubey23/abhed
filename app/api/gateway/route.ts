@@ -1,5 +1,5 @@
 import { consoleCaller, json, signInFirst } from '@/lib/api';
-import { addGatewayCompany, canManage, getGateway, mutateGateway, pushEvent, removeGatewayCompany, rotateKey } from '@/lib/gateway';
+import { addGatewayCompany, canManage, confirmAgent, getGateway, mutateGateway, pushEvent, removeGatewayCompany, rotateKey } from '@/lib/gateway';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +64,10 @@ export async function POST(req: Request) {
         return true;
       });
       return result ? json({ ok: true }) : json({ error: 'Nothing waiting with that id' }, 404);
+    }
+    case 'confirm-agent': {
+      const ok = await confirmAgent(id, String(b.agent ?? ''), String(b.by ?? 'Guest Judge').slice(0, 40));
+      return ok ? json({ ok: true }) : json({ error: 'Unknown company or agent' }, 404);
     }
     case 'rules': {
       const { result } = await mutateGateway((d) => {
