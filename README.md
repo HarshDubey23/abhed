@@ -127,7 +127,7 @@ You should get a JSON list of models, and your row on **Connect** now says *key 
 ### Path C · From any MCP client (Cursor, VS Code, Windsurf)
 
 [`abhed-mcp`](https://github.com/HarshDubey23/abhed-mcp) exposes an agent's Abhed tools over MCP and
-sends every call through the gate: allowed, held for a person, or blocked. Get a key as in Path B, then add this to the client's MCP config:
+sends every call through the gate: allowed, held for a person, or blocked. Get a key as in Path B, then add this to the MCP config of Claude Desktop, Cursor or Windsurf (VS Code uses a `servers` key and Claude Code uses `claude mcp add`; both are in the [abhed-mcp README](https://github.com/HarshDubey23/abhed-mcp#use-it)):
 
 ```json
 {
