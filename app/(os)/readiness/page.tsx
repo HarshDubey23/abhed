@@ -15,7 +15,7 @@ const READY: [string, string][] = [
   ['Secrets kept out of reach', 'LLM keys live in a vault and never reach a browser, a company site or the repository.'],
   ['Red-team and test lab', 'A company uploads its own requests, or swaps in a compromised agent, and reads the report.'],
   ['Audit on demand', 'One-click PDF for a company or a single agent, with compliance evidence mapped to regulations.'],
-  ['Tested and deployed', '44 automated tests. Vercel for Abhed, Render for the company sites, a database in Mumbai.'],
+  ['Tested and deployed', '44 automated tests. Abhed and the company sites both on Render, a database in Mumbai.'],
 ];
 
 const ROADMAP: { when: string; title: string; items: string[] }[] = [

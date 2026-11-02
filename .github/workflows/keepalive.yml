@@ -1,0 +1,18 @@
+name: Keep the database awake
+
+# Free Supabase projects pause after a week without traffic, and a paused project
+# breaks sign-in and shared state. /api/health reads the store, so one ping a week
+# is enough. Weekly, not more: every ping also wakes the free Render instance.
+on:
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 180 https://abhed.onrender.com/api/health || true)
+          echo "abhed health -> $code"
