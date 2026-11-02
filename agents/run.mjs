@@ -2,7 +2,7 @@
 /**
  * Abhed live agents: five AI agents running as real processes, governed by Abhed.
  *
- *   node agents/run.mjs --url https://kavach-os.vercel.app
+ *   node agents/run.mjs --url https://abhed.onrender.com
  *
  * Each agent holds ONLY an Abhed key. It asks Abhed for work, thinks through the Abhed LLM gateway,
  * and calls tools through the Abhed gateway. It has no bank credentials and no LLM provider key.

@@ -44,7 +44,7 @@ function Code({ blocks }: { blocks: { label: string; text: string }[] }) {
 }
 
 export function ConnectGuide() {
-  const [origin, setOrigin] = useState('https://kavach-os.vercel.app');
+  const [origin, setOrigin] = useState('https://abhed.onrender.com');
   const [path, setPath] = useState<'nocode' | 'sdk'>('nocode');
   useEffect(() => setOrigin(window.location.origin), []);
   const base = `${origin}/api/gw/v1`;

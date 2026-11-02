@@ -2,7 +2,7 @@
  * Abhed SDK: everything an AI company needs to put its agent under governance.
  * Zero dependencies. The company keeps its own agent code; Abhed sees every thought and tool call.
  *
- *   const abhed = new Abhed({ url: 'https://kavach-os.vercel.app', key: process.env.KAVACH_AGENT_KEY });
+ *   const abhed = new Abhed({ url: 'https://abhed.onrender.com', key: process.env.KAVACH_AGENT_KEY });
  *   const me = await abhed.profile();                  // role, tool schemas, delegations
  *   const s = await abhed.session(task, { from });     // scanned for prompt injection
  *   const r = await abhed.think(s, messages, me.tools); // LLM via the Abhed gateway (metered)
@@ -19,7 +19,7 @@ export class AbhedError extends Error {
 export class Abhed {
   constructor({ url, key, site }) {
     if (!key) throw new Error('KAVACH_AGENT_KEY missing');
-    this.url = (url ?? 'https://kavach-os.vercel.app').replace(/\/$/, '');
+    this.url = (url ?? 'https://abhed.onrender.com').replace(/\/$/, '');
     this.key = key;
     this.site = site;
   }

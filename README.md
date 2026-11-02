@@ -6,7 +6,7 @@ AI agents now refund customers, change records and send data on their own. When 
 
 *Abhed* (अभेद) is Hindi for "impenetrable".
 
-**Live:** [kavach-os.vercel.app](https://kavach-os.vercel.app) · Built for **CodeX 3.0 · Hack Arena · PS5: AI Agent Governance and Human Accountability Operating System**. The companies in the demo (NovaBank, Bazaar.in, Zentro Logistics and the rest) are fictional.
+**Live:** [abhed.onrender.com](https://abhed.onrender.com) (free Render instance: the first visit after a quiet spell takes about a minute to wake) · Built for **CodeX 3.0 · Hack Arena · PS5: AI Agent Governance and Human Accountability Operating System**. The companies in the demo (NovaBank, Bazaar.in, Zentro Logistics and the rest) are fictional.
 
 **Documents:** [Connect guide (PDF)](docs/Abhed_Connect_Guide.pdf) · [How the gateway works, 2 pages (PDF)](docs/Abhed_Gateway_Explained.pdf) · [Solution brief](docs/Abhed_Solution_Brief.pdf) · [Pricing note](docs/Abhed_Pricing_Note.pdf) · [Round 1 deck](docs/Abhed_Round1_Deck.pdf) · [Demo script](DEMO_SCRIPT.md)
 
@@ -74,7 +74,7 @@ There are two ways. **Most websites should use No code.** The same guide, with c
 Use this if your agents call OpenAI, Groq, Together, or anything built on them (LangChain, CrewAI, OpenAI Agents SDK, n8n…). You change two settings and no code.
 
 **Step 1. Create an account and add your company.**
-Open [kavach-os.vercel.app](https://kavach-os.vercel.app), click **Get started**, create an account, then open **Connect** → keep **No code** selected → type your company name and website → **Connect company**.
+Open [abhed.onrender.com](https://abhed.onrender.com), click **Get started**, create an account, then open **Connect** → keep **No code** selected → type your company name and website → **Connect company**.
 You get two things: a **Base URL** and an **API key** starting with `kv_gw_`.
 > The key is shown **once**. Copy it now. "New key" replaces it and switches the old one off.
 
@@ -82,20 +82,20 @@ You get two things: a **Base URL** and an **API key** starting with `kv_gw_`.
 
 ```bash
 # .env
-OPENAI_BASE_URL=https://kavach-os.vercel.app/api/gw/v1
+OPENAI_BASE_URL=https://abhed.onrender.com/api/gw/v1
 OPENAI_API_KEY=kv_gw_your_key_here
 ```
 
 ```js
 // Node (openai package)
 import OpenAI from 'openai';
-const ai = new OpenAI({ baseURL: 'https://kavach-os.vercel.app/api/gw/v1', apiKey: process.env.ABHED_KEY });
+const ai = new OpenAI({ baseURL: 'https://abhed.onrender.com/api/gw/v1', apiKey: process.env.ABHED_KEY });
 ```
 
 ```python
 # Python (openai package)
 from openai import OpenAI
-ai = OpenAI(base_url="https://kavach-os.vercel.app/api/gw/v1", api_key=os.environ["ABHED_KEY"])
+ai = OpenAI(base_url="https://abhed.onrender.com/api/gw/v1", api_key=os.environ["ABHED_KEY"])
 ```
 
 If your product has an admin screen with "AI provider / Base URL / API key" fields, paste the two values there instead.
@@ -103,7 +103,7 @@ If your product has an admin screen with "AI provider / Base URL / API key" fiel
 **Step 3. Check the key.**
 
 ```bash
-curl https://kavach-os.vercel.app/api/gw/v1/models -H "Authorization: Bearer kv_gw_your_key_here"
+curl https://abhed.onrender.com/api/gw/v1/models -H "Authorization: Bearer kv_gw_your_key_here"
 ```
 
 You should get a JSON list of models, and your row on **Connect** now says *key verified · waiting for the first agent message*.
@@ -120,7 +120,7 @@ You should get a JSON list of models, and your row on **Connect** now says *key 
 | You see | It means | Do this |
 |---|---|---|
 | `401 Unknown Abhed gateway key` | The key is wrong, or "New key" replaced it | Make a new key in your row on Connect and paste that one |
-| `fetch failed` / timeout | The base URL is wrong | Use exactly `https://kavach-os.vercel.app/api/gw/v1`, without `/chat/completions` |
+| `fetch failed` / timeout | The base URL is wrong | Use exactly `https://abhed.onrender.com/api/gw/v1`, without `/chat/completions` |
 | `400 Streaming is not supported` | Your client sends `stream: true` | Send `stream: false` |
 | The agent shows as "Agent 3F2A" | Abhed could not find a name | Start the system prompt with "You are &lt;Name&gt;" or set the `user` field |
 
@@ -148,14 +148,14 @@ Use this when each action must wait for a person **before** it runs, and the com
 1. **Get a pairing code.** In Abhed: **Connect** → **Abhed SDK** → **Generate pairing code**. It is 6 characters and valid for 10 minutes.
 2. **Redeem it from your server.** Abhed answers with a `kv_live_` key for each agent. Keep them as server secrets.
    ```bash
-   curl -X POST https://kavach-os.vercel.app/api/connect/pair -H "content-type: application/json" \
+   curl -X POST https://abhed.onrender.com/api/connect/pair -H "content-type: application/json" \
      -d '{"code":"ABC123","site":{"url":"https://your-site.com","name":"Your Company","sector":"banking","agents":[{"id":"rex","name":"Rex"}]}}'
    # → {"ok":true,"company":"Your Company","keys":{"rex":"kv_live_…"},"record":412}
    ```
 3. **Add the SDK.** Copy [`sites/abhed-sdk.mjs`](sites/abhed-sdk.mjs) (about 70 lines, no dependencies) into your project.
    ```js
    import { Abhed } from './abhed-sdk.mjs';
-   const abhed = new Abhed({ url: 'https://kavach-os.vercel.app', key: process.env.KAVACH_AGENT_KEY });
+   const abhed = new Abhed({ url: 'https://abhed.onrender.com', key: process.env.KAVACH_AGENT_KEY });
    const me = await abhed.profile();                 // role, delegated limits, tool schemas
    ```
 4. **Send every action through Abhed.**
@@ -179,7 +179,7 @@ Use this when each action must wait for a person **before** it runs, and the com
 
 ## 5. Try the live demo
 
-1. Open [kavach-os.vercel.app](https://kavach-os.vercel.app) and create an account (feature pages need one; About, How it works, FAQ and Contact are open to everyone).
+1. Open [abhed.onrender.com](https://abhed.onrender.com) and create an account (feature pages need one; About, How it works, FAQ and Contact are open to everyone).
 2. **Live demo** walks through the main story: an agent asks for ₹40,000, a person approves on their phone, a poisoned message is blocked, the agent is paused.
 3. **Break Abhed** lets anyone write their own attack against the agents and watch the gate respond.
 4. **Approver app** (`/approver`) on your phone: from then on, high-risk actions open on your phone with the evidence.
@@ -225,7 +225,7 @@ The demo dock on Command Center has keys `1`–`8` (each step of the story) and 
 
 ## 8. Architecture
 
-One Next.js app (TypeScript, App Router) on Vercel, with Supabase Postgres for shared state and accounts. The demo company websites are small Node servers on Render.
+One Next.js app (TypeScript, App Router) on Render, with Supabase Postgres for shared state and accounts. The demo company websites are small Node servers on Render.
 
 ```
  Company website / agents ──► /api/gw/v1  (no-code, OpenAI-compatible)  ─┐
@@ -278,7 +278,7 @@ Optional environment (see `.env.example`):
 **Live mode with real agent processes:**
 
 ```bash
-npm run agents -- --url https://kavach-os.vercel.app      # add --rogue for an unregistered "shadow" agent
+npm run agents -- --url https://abhed.onrender.com      # add --rogue for an unregistered "shadow" agent
 ```
 
 Five agents run as separate processes, each holding only an Abhed key. They ask for work, think through the Abhed LLM gateway and act only through the tool gateway. Press Pause in the app and the agent's terminal prints "⛔ Abhed revoked my key".
