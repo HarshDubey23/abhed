@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "eval": "vitest run --config eval/vitest.config.ts",
-    "agents": "node agents/run.mjs"
+    "eval:abstain": "node -e \"process.env.ABHED_RUN_ABSTAIN='1';require('child_process').execSync('npx vitest run --config eval/vitest.config.ts eval/agentabstain.eval.ts',{stdio:'inherit'})\"",
+    "agents": "node agents/run.mjs",
+    "demo": "node scripts/demo.mjs"
   },
   "engines": {
     "node": ">=20"
