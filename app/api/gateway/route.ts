@@ -1,5 +1,5 @@
 import { consoleCaller, json, signInFirst } from '@/lib/api';
-import { addGatewayCompany, canManage, confirmAgent, getGateway, mutateGateway, pushEvent, removeGatewayCompany, rotateKey } from '@/lib/gateway';
+import { addGatewayCompany, canManage, confirmAgent, getGateway, holdLive, mutateGateway, pushEvent, removeGatewayCompany, rotateKey } from '@/lib/gateway';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
         .sort((a, b) => a.firstSeen - b.firstSeen)
         .map((a) => ({ ...a, online: now - a.lastSeen < ONLINE_MS })),
       events: d.events.filter((e) => e.company === c.id).slice(0, 40),
-      holds: d.holds.filter((h) => h.company === c.id && h.status === 'PENDING'),
+      holds: d.holds.filter((h) => h.company === c.id && h.status === 'PENDING' && holdLive(h)),
     })),
   });
 }
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       const decision = b.decision === 'approve' ? 'APPROVED' : 'REJECTED';
       const by = String(b.by ?? 'Guest Judge').slice(0, 40);
       const { result } = await mutateGateway((d) => {
-        const h = d.holds.find((x) => x.id === String(b.holdId ?? '') && x.status === 'PENDING');
+        const h = d.holds.find((x) => x.id === String(b.holdId ?? '') && x.status === 'PENDING' && holdLive(x));
         if (!h) return false;
         h.status = decision;
         h.by = by;

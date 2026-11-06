@@ -1,5 +1,5 @@
 import { json } from '@/lib/api';
-import { companyForKey, decideTool, fingerprint, getGateway, identify, moneyOf, mutateGateway, payoutKey, pushEvent, taint, type GwVerdict } from '@/lib/gateway';
+import { companyForKey, decideTool, fingerprint, getGateway, holdLive, identify, moneyOf, mutateGateway, parseArgs, payoutKey, pushEvent, taint, type GwVerdict } from '@/lib/gateway';
 import { chat, DEFAULT_MODEL, llmAvailable, type ChatMessage } from '@/lib/llm';
 
 export const dynamic = 'force-dynamic';
@@ -54,33 +54,32 @@ export async function POST(req: Request) {
   const kept: NonNullable<ChatMessage['tool_calls']> = [];
   const refused: string[] = [];
   for (const tc of msg.tool_calls ?? []) {
-    let args: Record<string, unknown> = {};
-    try {
-      args = JSON.parse(tc.function.arguments || '{}');
-    } catch {
-      /* unparseable arguments are judged as empty */
-    }
+    const parsed = parseArgs(tc.function.arguments);
+    const args = parsed ?? {};
     const t0 = performance.now();
-    const v: GwVerdict = decideTool(tc.function.name, args, company.rules, { tainted, paidOut: seen?.paidOut, unconfirmed: seen?.unconfirmed });
+    const v: GwVerdict = parsed
+      ? decideTool(tc.function.name, args, company.rules, { tainted, paidOut: seen?.paidOut, unconfirmed: seen?.unconfirmed })
+      : { decision: 'BLOCKED', rule: 'GW-MALFORMED@1', reason: 'Its arguments are not a JSON object, so Abhed cannot check them.' };
     const ms = Number((performance.now() - t0).toFixed(2));
-    const argStr = JSON.stringify(args).slice(0, 400);
+    // never cut: the approval covers exactly this text, so a difference anywhere in it needs its own approval
+    const argStr = parsed ? JSON.stringify(parsed) : String(tc.function.arguments);
     let final: GwVerdict['decision'] | 'APPROVED' | 'REJECTED' = v.decision;
     let holdId: string | null = null;
     if (v.decision === 'NEEDS_APPROVAL') {
       const fp = fingerprint(company.id, who.id, tc.function.name, argStr);
       // an identical action a person already approved goes through once
       const { result: prior } = await mutateGateway((d) => {
-        const h = d.holds.find((x) => x.fingerprint === fp && x.status === 'APPROVED');
+        const h = d.holds.find((x) => x.fingerprint === fp && x.status === 'APPROVED' && holdLive(x));
         if (h) {
           h.status = 'USED';
           return h.id;
         }
-        const open = d.holds.find((x) => x.fingerprint === fp && x.status === 'PENDING');
+        const open = d.holds.find((x) => x.fingerprint === fp && x.status === 'PENDING' && holdLive(x));
         if (open) return `wait:${open.id}`;
         const id = `GW-${String(d.seq + 1).padStart(3, '0')}`;
         d.holds.unshift({ id, company: company.id, agent: who.name, tool: tc.function.name, args: argStr, fingerprint: fp, reason: v.reason, rule: v.rule, at: Date.now(), status: 'PENDING' });
         if (d.holds.length > 60) d.holds.length = 60;
-        pushEvent(d, { company: company.id, agent: who.name, kind: 'tool', tool: tc.function.name, args: argStr, decision: 'NEEDS_APPROVAL', rule: v.rule, ms, text: v.reason });
+        pushEvent(d, { company: company.id, agent: who.name, kind: 'tool', tool: tc.function.name, args: argStr.slice(0, 400), decision: 'NEEDS_APPROVAL', rule: v.rule, ms, text: v.reason });
         return `wait:${id}`;
       });
       if (prior && !prior.startsWith('wait:')) final = 'APPROVED';
@@ -91,14 +90,24 @@ export async function POST(req: Request) {
           await sleep(1200);
           const h = (await getGateway()).holds.find((x) => x.id === holdId);
           if (h && h.status !== 'PENDING') {
-            final = h.status === 'REJECTED' ? 'REJECTED' : 'APPROVED';
-            if (h.status === 'APPROVED') await mutateGateway((d) => void (d.holds.find((x) => x.id === holdId)!.status = 'USED'));
+            if (h.status === 'REJECTED') final = 'REJECTED';
+            else {
+              // one approval releases one call: a request that loses this race stays held
+              const { result: claimed } = await mutateGateway((d) => {
+                const x = d.holds.find((y) => y.id === holdId);
+                if (x?.status !== 'APPROVED') return false;
+                x.status = 'USED';
+                return true;
+              });
+              if (claimed) final = 'APPROVED';
+            }
             break;
           }
         }
       }
     }
-    if (final === 'ALLOWED' || final === 'APPROVED') kept.push(tc);
+    // released as judged, so a duplicate key cannot mean something else to the company's parser
+    if (final === 'ALLOWED' || final === 'APPROVED') kept.push({ ...tc, function: { ...tc.function, arguments: argStr } });
     else if (final === 'NEEDS_APPROVAL') refused.push(`⏸ Abhed is holding “${tc.function.name}” for a person to approve (${holdId}). ${v.reason} Ask again once it is approved.`);
     else refused.push(`⛔ Abhed blocked “${tc.function.name}”: ${final === 'REJECTED' ? 'a person rejected it.' : v.reason}`);
     await mutateGateway((d) => {
@@ -118,7 +127,7 @@ export async function POST(req: Request) {
         const keys = Object.keys(c.paidOut);
         if (keys.length > 500) delete c.paidOut[keys[0]];
       }
-      if (v.decision !== 'NEEDS_APPROVAL' || final !== 'NEEDS_APPROVAL') pushEvent(d, { company: company.id, agent: who.name, kind: 'tool', tool: tc.function.name, args: argStr, decision: final, rule: v.rule || undefined, ms, text: final === 'APPROVED' ? 'Approved by a person; executed once.' : final === 'REJECTED' ? 'Rejected by a person.' : v.reason });
+      if (v.decision !== 'NEEDS_APPROVAL' || final !== 'NEEDS_APPROVAL') pushEvent(d, { company: company.id, agent: who.name, kind: 'tool', tool: tc.function.name, args: argStr.slice(0, 400), decision: final, rule: v.rule || undefined, ms, text: final === 'APPROVED' ? 'Approved by a person; executed once.' : final === 'REJECTED' ? 'Rejected by a person.' : v.reason });
     });
   }
 
