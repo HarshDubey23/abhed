@@ -350,13 +350,13 @@ export function onApprovalDecided(w: World, ap: Approval, now = Date.now()): str
   run.pendingApprovalId = undefined;
   if (run.planner === 'external') {
     // the company's own agent is polling this approval; it continues by itself
-    step(run, { kind: 'result', action: ap.req.action, decision: ap.status, approvalId: ap.id, seq: ap.executedSeq, output: ap.status === 'EXECUTED' ? clip(ap.output) : undefined, text: ap.status === 'EXECUTED' ? `${who} approved ${ap.id} on their phone. Executed exactly as approved.` : ap.status === 'REJECTED' ? `${who} rejected ${ap.id}.` : `${ap.id} is ${ap.status.toLowerCase()}.` }, now);
+    step(run, { kind: 'result', action: ap.req.action, decision: ap.status, approvalId: ap.id, seq: ap.executedSeq, output: ap.status === 'EXECUTED' || ap.commitId ? clip(ap.output) : undefined, text: ap.status === 'EXECUTED' ? `${who} approved ${ap.id} on their phone. Executed exactly as approved.` : ap.status === 'REJECTED' ? `${who} rejected ${ap.id}.` : `${ap.id} is ${ap.status.toLowerCase()}.` }, now);
     run.status = 'running';
     return undefined;
   }
-  if (ap.status === 'EXECUTED') {
+  if (ap.status === 'EXECUTED' || ap.commitId) {
     step(run, { kind: 'result', action: ap.req.action, decision: 'EXECUTED', approvalId: ap.id, seq: ap.executedSeq, output: clip(ap.output), text: `${who} approved ${ap.id} on their phone. Executed exactly as approved.` }, now);
-    if (run.pendingToolCallId) toolResult(run, run.pendingToolCallId, { decision: 'APPROVED_AND_EXECUTED', approvedBy: who, result: ap.output ?? 'done' });
+    if (run.pendingToolCallId) toolResult(run, run.pendingToolCallId, { decision: ap.commitId ? 'APPROVED_WAITING_TO_COMMIT' : 'APPROVED_AND_EXECUTED', approvedBy: who, result: ap.output ?? 'done' });
     run.pendingToolCallId = undefined;
     run.status = 'running';
     return run.id;

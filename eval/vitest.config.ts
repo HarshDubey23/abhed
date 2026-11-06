@@ -5,5 +5,5 @@ import path from 'node:path';
 export default defineConfig({
   root: path.resolve(__dirname, '..'),
   resolve: { alias: { '@': path.resolve(__dirname, '..') } },
-  test: { include: ['eval/**/*.eval.ts'], testTimeout: 600_000 },
+  test: { env: { ABHED_COMMIT_WINDOW_SECONDS: '0' }, include: ['eval/**/*.eval.ts'], testTimeout: 600_000 },
 });

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AbhedMark } from '@/components/mark';
 import { authHeader, readTokens, saveToken } from '@/lib/approver-client';
+import { CommitCard, type WaitingCommit } from '@/components/commit-card';
 import '../approve/ax.css';
 
 interface Pending {
@@ -67,6 +68,7 @@ export default function ApproverPage() {
   const router = useRouter();
   const [onDuty, setOnDuty] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
+  const [commits, setCommits] = useState<WaitingCommit[]>([]);
   const [recent, setRecent] = useState<{ id: string; company: string; status: string; summary: string; by: string }[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [companies, setCompanies] = useState<{ tenant: string; company: string; people: { id: string; name: string; title: string }[] }[]>([]);
@@ -175,11 +177,12 @@ export default function ApproverPage() {
     let alive = true;
     const load = async () => {
       try {
-        const d = (await (await fetch('/api/approver/inbox', { cache: 'no-store', headers: authHeader() })).json()) as { pending: Pending[]; recent: typeof recent };
+        const d = (await (await fetch('/api/approver/inbox', { cache: 'no-store', headers: authHeader() })).json()) as { pending: Pending[]; commits?: WaitingCommit[]; recent: typeof recent };
         if (!alive) return;
         const open = d.pending.filter((p) => !p.votes.some((v) => names.includes(v)));
         setPending(open);
         setRecent(d.recent);
+        setCommits(d.commits ?? []);
         const mine = open.filter((p) => p.canDecide && !p.hold);
         if (seen.current === null) {
           seen.current = new Set(open.map((p) => p.id)); // don't jump on what was already waiting
@@ -302,6 +305,8 @@ export default function ApproverPage() {
             </span>
           </span>
         </header>
+
+        {onDuty && commits.map((c) => <CommitCard key={c.id} commit={c} />)}
 
         {!onDuty ? (
           <>
