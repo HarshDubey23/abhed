@@ -16,7 +16,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "next": "^16.4.0",
+    "eslint-config-next": "^16.4.5",
+    "next": "^16.4.5",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
