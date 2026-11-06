@@ -280,10 +280,31 @@ export function decideTool(tool: string, args: Record<string, unknown>, rules: G
 
 export const fingerprint = (company: string, agent: string, tool: string, args: string) => sha(`${company}|${agent}|${tool}|${args}`).slice(0, 24);
 
-/** Text the model saw from people or tools, scanned for injected instructions. */
+/** How long a hold stays good, pending or approved: the same 15 minutes as an SDK approval. */
+export const HOLD_TTL_MS = 15 * 60_000;
+export const holdLive = (h: Pick<GwHold, 'at'>, now = Date.now()) => now - h.at <= HOLD_TTL_MS;
+
+/** A tool call's arguments as an object, or null if they are not one: the company's parser might read what Abhed could not. */
+export function parseArgs(raw: string | undefined): Record<string, unknown> | null {
+  if (!raw?.trim()) return {};
+  try {
+    const v: unknown = JSON.parse(raw);
+    return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A message's text, whether it is a plain string or OpenAI content parts. */
+const textOf = (content: unknown): string => {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) return content.map((p: { text?: unknown }) => (typeof p?.text === 'string' ? p.text : JSON.stringify(p))).join('\n');
+  return content == null ? '' : JSON.stringify(content);
+};
+
+/** Text the model saw from people or tools, scanned for injected instructions. The whole conversation counts: an injection keeps steering the model after newer messages arrive. */
 export function taint(messages: { role: string; content?: unknown }[]) {
-  const recent = messages.filter((m) => m.role === 'user' || m.role === 'tool').slice(-4);
   const signals = new Set<string>();
-  for (const m of recent) for (const s of scanInjection(String(m.content ?? '')).signals) signals.add(s);
+  for (const m of messages) if (m.role === 'user' || m.role === 'tool') for (const s of scanInjection(textOf(m.content)).signals) signals.add(s);
   return [...signals];
 }
