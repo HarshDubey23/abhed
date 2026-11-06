@@ -2,6 +2,7 @@ import type {
   ActionReq,
   Agent,
   Approval,
+  PendingCommit,
   ChainNode,
   Decision,
   Human,
@@ -22,6 +23,10 @@ import { canonical, inr, maskParams, sha256 } from './util';
 
 export const GENESIS = '0'.repeat(64);
 export const APPROVAL_TTL_MS = 15 * 60_000;
+/** Refunds from this amount wait out a cancel window before any money moves. */
+export const COMMIT_MIN_AMOUNT = 5_000;
+export const commitWindowMs = () => Number(process.env.ABHED_COMMIT_WINDOW_SECONDS ?? 60) * 1000;
+const waitsToCommit = (req: ActionReq) => req.action === 'issue_refund' && commitWindowMs() > 0 && Number(req.params.amount) >= COMMIT_MIN_AMOUNT;
 export const ESCALATE_AFTER_MS = 300_000; // unanswered for 5 minutes → the next level
 export const READ_ONLY = new Set([
   'read_ticket',
@@ -576,7 +581,16 @@ function gatewayInner(w: World, req: ActionReq, opts: { now?: number; reasoning?
     return { decision: 'NEEDS_APPROVAL', reason: why, ruleRef, seq: rec.seq, approvalId: id, category: 'checkpoint' };
   }
 
-  // 7 · execute against the systems of record + ledger
+  // 7 · a large refund waits out its cancel window; a retry joins the one already waiting instead of paying twice
+  if (waitsToCommit(req)) {
+    const hash = actionHash(req);
+    const waiting = (w.commits ?? []).find((c) => c.status === 'WAITING' && actionHash(c.req) === hash);
+    const { commit, output } = waiting ? { commit: waiting, output: commitOutput(waiting) } : scheduleCommit(w, req, { now, ruleRef, reason: ev.reasons[0], approvers: [] });
+    if (a) monitorRunaway(w, a, now);
+    return { decision: 'ALLOWED', reason: `${ev.reasons[0]} It commits in ${Math.round((commit.commitAt - now) / 1000)} s unless a person cancels it.`, ruleRef, seq: commit.scheduledSeq, output, category: 'auto' };
+  }
+
+  // 8 · execute against the systems of record + ledger
   const { rec, output } = execute(w, req, { now, ruleRef, reason: ev.reasons[0], approvers: [] });
   if (a) monitorRunaway(w, a, now);
   return { decision: 'ALLOWED', reason: ev.reasons[0], ruleRef, seq: rec.seq, output, category: 'auto' };
@@ -630,6 +644,105 @@ function execute(
       moveTicket(w, req.ticketId, 'DONE', o.approvers.length ? `Done after approval by ${o.approvers.join(' + ')}` : 'Done by agent within limits');
   }
   return { rec, output };
+}
+
+const COMMIT_PREFIX: Record<string, string> = { banking: 'CMB', healthcare: 'CMH', ecommerce: 'CME' };
+/** Commit ids carry their company, like approval ids. */
+export const tenantOfCommit = (id: string) => (id.startsWith('CMH-') ? 'healthcare' : id.startsWith('CME-') ? 'ecommerce' : 'banking');
+
+const commitOutput = (c: PendingCommit) => ({
+  status: 'WAITING_TO_COMMIT',
+  commitId: c.id,
+  commitAt: c.commitAt,
+  note: 'No money has moved yet. It commits at commitAt unless a person cancels it. Do not tell anyone it is done, and do not retry.',
+});
+
+function scheduleCommit(w: World, req: ActionReq, o: { now: number; ruleRef?: string; reason: string; approvers: string[]; approvalId?: string }) {
+  w.commits ??= [];
+  const id = `${COMMIT_PREFIX[w.sector] ?? 'CMB'}-${w.commits.length + 1}`;
+  const commitAt = o.now + commitWindowMs();
+  const summary = describeAction(w, req);
+  const a = req.actorType === 'agent' ? agent(w, req.actorId) : undefined;
+  // counted while it waits, so waiting refunds cannot stack past the agent's budget
+  if (a) a.spentToday += Number(req.params.amount ?? 0);
+  const rec = appendLedger(w, {
+    ts: o.now,
+    actorType: req.actorType,
+    actorId: req.actorId,
+    actorName: nameOf(w, req.actorId),
+    action: 'commit_scheduled',
+    params: { commit: id, action: req.action, amount: req.params.amount as number },
+    decision: 'INFO',
+    ruleRef: o.ruleRef,
+    reason: `${summary}: waits ${Math.round(commitWindowMs() / 1000)} s before any money moves. A person can cancel it until then.`,
+    approvers: o.approvers,
+    ticketId: req.ticketId,
+    meta: { commitId: id, commitAt, approvalId: o.approvalId, desc: summary },
+  });
+  const commit: PendingCommit = { id, req, summary, status: 'WAITING', createdAt: o.now, commitAt, ruleRef: o.ruleRef, reason: o.reason, approvers: o.approvers, approvalId: o.approvalId, scheduledSeq: rec.seq };
+  w.commits.push(commit);
+  return { commit, output: commitOutput(commit) };
+}
+
+/** The window is over: re-check that the refund is still right, then move the money. */
+function settleCommit(w: World, c: PendingCommit, now: number) {
+  const a = c.req.actorType === 'agent' ? agent(w, c.req.actorId) : undefined;
+  if (a) a.spentToday -= Number(c.req.params.amount ?? 0);
+  const ap = c.approvalId ? w.approvals.find((x) => x.id === c.approvalId) : undefined;
+  const stale = a && (a.status === 'PAUSED' || a.keyRevoked) ? `${a.name} was paused during the cancel window.` : packFor(w.sector).ground(w, c.req);
+  if (stale) {
+    c.status = 'CANCELLED';
+    c.cancelledBy = 'Abhed';
+    c.cancelledAt = now;
+    if (ap) ap.status = 'VOID';
+    appendLedger(w, sys(w, now, 'commit_void', { commit: c.id }, 'VOID', `${c.summary}: not committed. No longer true at commit time: ${stale}`));
+    return;
+  }
+  const { rec, output } = execute(w, c.req, { now, ruleRef: c.ruleRef, reason: `${c.reason} Cancel window over, nobody cancelled it (${c.id}).`, approvers: c.approvers, approvalId: c.approvalId });
+  c.status = 'COMMITTED';
+  c.executedSeq = rec.seq;
+  if (ap) {
+    ap.status = 'EXECUTED';
+    ap.usedAt = now;
+    ap.executedSeq = rec.seq;
+    ap.output = output;
+  }
+}
+
+/** A signed-in person stops a refund during its cancel window. Agents have no way to call this. */
+export function cancelCommit(w: World, id: string, humanId: string, note: string, now = Date.now()) {
+  const c = (w.commits ?? []).find((x) => x.id === id);
+  if (!c) throw new GovError('Nothing waiting with that id', 404);
+  const h = human(w, humanId);
+  if (!h) throw new GovError('This person is no longer registered with the company.', 403);
+  if (c.status !== 'WAITING') throw new GovError(`Too late: this refund is already ${c.status.toLowerCase()}.`, 409);
+  if (now >= c.commitAt) {
+    settleCommit(w, c, now);
+    throw new GovError('Too late: the cancel window has ended.', 409);
+  }
+  c.status = 'CANCELLED';
+  c.cancelledBy = h.name;
+  c.cancelledAt = now;
+  const a = c.req.actorType === 'agent' ? agent(w, c.req.actorId) : undefined;
+  if (a) a.spentToday -= Number(c.req.params.amount ?? 0);
+  const ap = c.approvalId ? w.approvals.find((x) => x.id === c.approvalId) : undefined;
+  if (ap) ap.status = 'VOID';
+  appendLedger(w, {
+    ts: now,
+    actorType: 'human',
+    actorId: h.id,
+    actorName: h.name,
+    action: 'commit_cancelled',
+    params: { commit: id, action: c.req.action, amount: c.req.params.amount as number },
+    decision: 'VOID',
+    ruleRef: c.ruleRef,
+    reason: `${h.name} cancelled ${c.summary} with ${Math.ceil((c.commitAt - now) / 1000)} s left. No money moved.${note ? ` Note: ${note.slice(0, 200)}` : ''}`,
+    outcome: 'blocked',
+    ticketId: c.req.ticketId,
+    meta: { commitId: id, approvalId: c.approvalId, desc: c.summary },
+  });
+  if (c.req.ticketId) moveTicket(w, c.req.ticketId, 'HUMAN', `${h.name} cancelled the refund during its cancel window`);
+  return c;
 }
 
 /** Outputs are stored for the audit trail, but never with raw PII. */
@@ -814,6 +927,13 @@ export function decideApproval(w: World, id: string, input: DecideInput, now = D
     return ap;
   }
   ap.status = 'APPROVED';
+  if (waitsToCommit(ap.req)) {
+    const reason = `Approved by ${ap.votes.map((v) => v.name).join(' + ')} for exactly this action (hash ${ap.actionHash.slice(0, 10)}…).`;
+    const { commit, output } = scheduleCommit(w, ap.req, { now, ruleRef: ap.ruleIds[0], reason, approvers: ap.votes.map((v) => v.name), approvalId: id });
+    ap.commitId = commit.id;
+    ap.output = output;
+    return ap;
+  }
   const { rec, output } = execute(w, ap.req, {
     now,
     ruleRef: ap.ruleIds[0],
@@ -856,6 +976,12 @@ export function reuseApproval(w: World, id: string, params: Record<string, unkno
 /** Lazy clock: escalate unanswered approvals L1 → L2 → executive; expire old ones. Returns true if changed. */
 export function tick(w: World, now = Date.now()): boolean {
   let changed = false;
+  for (const c of w.commits ?? []) {
+    if (c.status === 'WAITING' && now >= c.commitAt) {
+      settleCommit(w, c, now);
+      changed = true;
+    }
+  }
   for (const ap of w.approvals) {
     if (ap.status !== 'PENDING') continue;
     if (ap.hold && now <= ap.expiresAt) continue; // parked by a person: no auto-escalation

@@ -199,10 +199,18 @@ export async function approvalStatus(tenant: Tenant, agentId: string, id: string
     approverRole: ap.approverRole,
     twoKey: ap.twoKey,
     votes: ap.votes.map((v) => ({ name: v.name, at: v.at, device: v.device })),
-    output: ap.status === 'EXECUTED' ? ap.output : undefined,
+    output: ap.status === 'EXECUTED' || ap.commitId ? ap.output : undefined,
+    commitId: ap.commitId,
     record: ap.executedSeq,
     expiresAt: ap.expiresAt,
   };
+}
+
+export async function commitStatus(tenant: Tenant, agentId: string, id: string) {
+  const w = await getWorld(tenant);
+  const c = (w.commits ?? []).find((x) => x.id === id);
+  if (!c || c.req.actorId !== agentId) throw new GovError('Commit not found', 404);
+  return { id: c.id, status: c.status, commitAt: c.commitAt, record: c.executedSeq, cancelledBy: c.cancelledBy };
 }
 
 export async function finishSession(tenant: Tenant, agentId: string, sessionId: string, summary?: string) {

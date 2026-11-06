@@ -22,6 +22,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const me = tokensFrom(req).find((t) => t.tenant === tenant);
   const h = me ? human(w, me.humanId) : undefined;
   return json({
+    commit: ap.commitId ? w.commits?.find((c) => c.id === ap.commitId) : undefined,
     approval: { ...ap, currentHash: actionHash(ap.req), assigneeNames: (ap.assignees ?? []).map((x) => nameOf(w, x)) },
     agent: a ? { name: a.name, framework: a.framework, model: a.model, risk: a.risk, ownerName: nameOf(w, a.owner), purpose: a.purpose } : null,
     proposer: !a ? human(w, ap.req.actorId)?.name ?? null : null,

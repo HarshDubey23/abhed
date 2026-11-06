@@ -109,6 +109,24 @@ export interface ApprovalVote {
   device: string;
 }
 
+/** A large refund that was allowed or approved, waiting out its cancel window before any money moves. */
+export interface PendingCommit {
+  id: string;
+  req: ActionReq;
+  summary: string;
+  status: 'WAITING' | 'COMMITTED' | 'CANCELLED';
+  createdAt: number;
+  commitAt: number;
+  ruleRef?: string;
+  reason: string;
+  approvers: string[];
+  approvalId?: string;
+  scheduledSeq: number;
+  executedSeq?: number;
+  cancelledBy?: string;
+  cancelledAt?: number;
+}
+
 export interface Approval {
   id: string;
   kind: 'action' | 'rule_change';
@@ -124,6 +142,8 @@ export interface Approval {
   agentReasoning?: string;
   votes: ApprovalVote[];
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'VOID' | 'EXPIRED' | 'EXECUTED';
+  /** Approved, and waiting out its cancel window: status stays APPROVED until the commit settles. */
+  commitId?: string;
   createdAt: number;
   expiresAt: number;
   escalateAt: number;
@@ -301,6 +321,7 @@ export interface World {
   agentTrace: { at: number; agentId: string; text: string; tone: string }[];
   tamper?: { seq: number; field: string; original: unknown };
   counters: { approval: number; incident: number; ticket: number; run?: number };
+  commits?: PendingCommit[];
   sessions?: Record<string, { untrusted?: boolean; customerData?: boolean; subject?: string }>;
   humanMinutesToday: number;
   runs?: Run[];

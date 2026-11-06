@@ -1,5 +1,6 @@
 'use client';
 
+import { CommitCard, type WaitingCommit } from '@/components/commit-card';
 import { useRouter } from 'next/navigation';
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { AbhedMark } from '@/components/mark';
@@ -8,6 +9,7 @@ import { authHeader, saveToken } from '@/lib/approver-client';
 import '../ax.css';
 
 interface Payload {
+  commit?: WaitingCommit;
   approval: Approval & { currentHash: string; assigneeNames?: string[] };
   tenant: string;
   company: string;
@@ -180,7 +182,7 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
             {ap && done && (
               <span className={`ax-pill ${executed ? 'on' : ap.status === 'PENDING' ? 'warn' : 'bad'}`}>
                 <i />
-                {executed ? 'Approved' : ap.status === 'PENDING' ? 'Key 1 turned' : ap.status.charAt(0) + ap.status.slice(1).toLowerCase()}
+                {data?.commit?.status === 'WAITING' ? 'Waiting to commit' : executed ? 'Approved' : ap.status === 'PENDING' ? 'Key 1 turned' : ap.status.charAt(0) + ap.status.slice(1).toLowerCase()}
               </span>
             )}
           </span>
@@ -375,12 +377,20 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
                 </svg>
               </div>
               <h1 className="ax-h1" style={{ marginTop: 0 }}>
-                {executed ? 'Approved.' : ap.status === 'PENDING' ? `Key ${ap.votes.length} of ${ap.twoKey} turned.` : `${ap.status.charAt(0) + ap.status.slice(1).toLowerCase()}.`}
+                {data?.commit?.status === 'WAITING' ? 'Approved, not yet committed.' : executed ? 'Approved.' : ap.status === 'PENDING' ? `Key ${ap.votes.length} of ${ap.twoKey} turned.` : `${ap.status.charAt(0) + ap.status.slice(1).toLowerCase()}.`}
                 <br />
                 <em>{executed ? 'Your name is on it.' : ap.status === 'PENDING' ? 'One more person must agree.' : 'Nothing moved.'}</em>
               </h1>
               <p className="ax-sub">{ap.summary}</p>
             </section>
+            {data?.commit?.status === 'WAITING' && <CommitCard commit={data.commit} onDone={load} />}
+            {data?.commit?.status === 'CANCELLED' && (
+              <section className="ax-card" role="status">
+                <p className="ax-sub" style={{ marginTop: 0 }}>
+                  {data.commit.cancelledBy ? `Cancelled by ${data.commit.cancelledBy}.` : 'Cancelled.'} No money moved.
+                </p>
+              </section>
+            )}
             <section className="ax-card">
               <div className="ax-card-t">
                 <span>On the ledger</span>

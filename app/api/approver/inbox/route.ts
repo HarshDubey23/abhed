@@ -43,9 +43,14 @@ export async function GET(req: Request) {
         });
     })
     .sort((a, b) => Number(b.assignedToMe) - Number(a.assignedToMe) || b.createdAt - a.createdAt);
+  const commits = worlds.flatMap((w) =>
+    (w.commits ?? [])
+      .filter((c) => c.status === 'WAITING')
+      .map((c) => ({ id: c.id, company: packFor(w.sector).company, summary: c.summary, commitAt: c.commitAt, approvers: c.approvers, canCancel: me.some((m) => m.tenant === w.sector) })),
+  );
   const recent = worlds
     .flatMap((w) => w.approvals.filter((a) => a.status !== 'PENDING').slice(-6).map((a) => ({ id: a.id, company: packFor(w.sector).company, status: a.status, summary: a.summary, by: a.votes.map((v) => v.name).join(' + '), at: a.usedAt ?? a.votes[a.votes.length - 1]?.at ?? a.createdAt })))
     .sort((a, b) => b.at - a.at)
     .slice(0, 8);
-  return json({ now: Date.now(), me, pending, recent });
+  return json({ now: Date.now(), me, pending, commits, recent });
 }
