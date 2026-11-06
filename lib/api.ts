@@ -50,12 +50,12 @@ export function directorAllowed(req: Request) {
  * (DIRECTOR_KEY header, for scripts) or a signed-in account, the same rule as the feature pages. Null = refuse.
  * Without this, anyone on the internet could approve held actions or reset an approver's PIN.
  */
-export async function consoleCaller(req: Request): Promise<{ director: boolean; accountId: string | null } | null> {
+export async function consoleCaller(req: Request): Promise<{ director: boolean; accountId: string | null; name?: string } | null> {
   const need = process.env.DIRECTOR_KEY;
   if (need && req.headers.get('x-director-key') === need) return { director: true, accountId: null };
   if (!sameOrigin(req)) return null;
   const a = await currentAccount(tokenFrom(req));
-  return a ? { director: false, accountId: a.id } : null;
+  return a ? { director: false, accountId: a.id, name: a.name } : null;
 }
 
 export const signInFirst = () => json({ error: 'Sign in to Abhed first.', needSignIn: true }, 401);

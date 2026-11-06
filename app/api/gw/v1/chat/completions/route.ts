@@ -1,5 +1,5 @@
 import { json } from '@/lib/api';
-import { companyForKey, decideTool, fingerprint, getGateway, holdLive, identify, moneyOf, mutateGateway, parseArgs, payoutKey, pushEvent, taint, type GwVerdict } from '@/lib/gateway';
+import { companyForKey, decideTool, fingerprint, getGateway, holdLive, identify, moneyOf, mutateGateway, parseArgs, PAYOUT, payoutKey, pushEvent, spent24h, taint, textFrom, type GwVerdict } from '@/lib/gateway';
 import { chat, DEFAULT_MODEL, llmAvailable, type ChatMessage } from '@/lib/llm';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +23,8 @@ export async function POST(req: Request) {
 
   const who = identify(body);
   const tainted = taint(body.messages);
+  const toolText = textFrom(body.messages, 'tool');
+  const userText = textFrom(body.messages, 'user');
   const lastUser = [...body.messages].reverse().find((m) => m.role === 'user');
   const now = Date.now();
   // first sight of this agent, and the call itself, appear live in Abhed
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
     c.agents[who.id].calls += 1;
     if (lastUser && body.messages!.at(-1)?.role === 'user') pushEvent(d, { company: c.id, agent: who.name, kind: 'call', text: String(lastUser.content ?? '').slice(0, 200) });
     if (tainted.length) pushEvent(d, { company: c.id, agent: who.name, kind: 'flag', text: `Suspected prompt injection in the input: ${tainted.join(', ')}` });
-    return { unconfirmed: c.agents[who.id].confirmed === false, paidOut: { ...(c.paidOut ?? {}) } };
+    return { unconfirmed: c.agents[who.id].confirmed === false || Boolean(who.mismatch), paidOut: { ...(c.paidOut ?? {}) }, spent: spent24h(c.spent?.[who.id], now) };
   });
 
   let result;
@@ -58,7 +60,7 @@ export async function POST(req: Request) {
     const args = parsed ?? {};
     const t0 = performance.now();
     const v: GwVerdict = parsed
-      ? decideTool(tc.function.name, args, company.rules, { tainted, paidOut: seen?.paidOut, unconfirmed: seen?.unconfirmed })
+      ? decideTool(tc.function.name, args, company.rules, { tainted, paidOut: seen?.paidOut, unconfirmed: seen?.unconfirmed, spent24h: seen?.spent, toolText, userText })
       : { decision: 'BLOCKED', rule: 'GW-MALFORMED@1', reason: 'Its arguments are not a JSON object, so Abhed cannot check them.' };
     const ms = Number((performance.now() - t0).toFixed(2));
     // never cut: the approval covers exactly this text, so a difference anywhere in it needs its own approval
@@ -117,9 +119,15 @@ export async function POST(req: Request) {
         if (final === 'BLOCKED' || final === 'REJECTED') c.agents[who.id].blocked += 1;
         if (v.decision === 'NEEDS_APPROVAL') c.agents[who.id].held += 1;
       }
-      // money that went out is added to its invoice, so the next payout on it is judged on the running total
+      // money that went out is added to its invoice and to its agent, so the next payout is judged on the running totals
       const key = payoutKey(tc.function.name, args);
       const { amount } = moneyOf(args);
+      if (c && amount > 0 && PAYOUT.test(tc.function.name) && (final === 'ALLOWED' || final === 'APPROVED')) {
+        const at = Date.now();
+        c.spent ??= {};
+        c.spent[who.id] = [...(c.spent[who.id] ?? []).filter((e) => spent24h([e], at) > 0), { at, amount }].slice(-200);
+        if (seen) seen.spent = spent24h(c.spent[who.id], at);
+      }
       if (c && key && amount > 0 && (final === 'ALLOWED' || final === 'APPROVED')) {
         c.paidOut ??= {};
         c.paidOut[key] = (c.paidOut[key] ?? 0) + amount;

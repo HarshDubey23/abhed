@@ -1,3 +1,4 @@
+import { devSecret } from './secret';
 import { agent, appendLedger, gateway, GovError, isReadOnly, nameOf, type GatewayResult } from './engine';
 import { scanInjection, securityEvent, OWASP } from './security';
 import { packFor, SECTORS } from './sectors';
@@ -131,7 +132,7 @@ export function nextTicketFor(w: World, agentId: string, now = Date.now()): Tick
 
 // ───────── agent credentials: Abhed-issued, never the provider key ─────────
 
-const secret = () => process.env.KAVACH_AGENT_SECRET ?? process.env.SUPABASE_KEY ?? 'kavach-local-dev-secret';
+const secret = () => process.env.KAVACH_AGENT_SECRET ?? process.env.SUPABASE_KEY ?? devSecret('kavach-local-dev-secret');
 export const keyFor = (agentId: string) => `kv_live_${sha256(`${secret()}:${agentId}`).slice(0, 32)}`;
 
 export const AGENT_IDS = [...new Set(Object.values(SECTORS).flatMap((p) => Object.keys(p.agentTools)))];
