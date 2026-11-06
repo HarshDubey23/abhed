@@ -15,6 +15,8 @@ export interface GwRules {
   blockAbove: number;
   allowedDomains: string[];
   blockTools: string[];
+  /** Money one agent may pay out in 24 hours before a person must approve. Older companies have no value and get the default. */
+  rollingAbove?: number;
 }
 export interface GwAgent {
   id: string;
@@ -46,6 +48,8 @@ export interface GwCompany {
   agents: Record<string, GwAgent>;
   /** money paid out so far per invoice/order (calls that went through), so a refund cannot be split under the line */
   paidOut?: Record<string, number>;
+  /** payouts per agent in the last 24 hours, so many small refunds on different invoices still add up */
+  spent?: Record<string, { at: number; amount: number }[]>;
 }
 export type GwDecision = 'ALLOWED' | 'BLOCKED' | 'NEEDS_APPROVAL' | 'APPROVED' | 'REJECTED';
 export interface GwEvent {
@@ -90,7 +94,9 @@ export const mutateGateway = <T,>(fn: (d: GatewayDoc) => T) => mutateShared<Gate
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'agent';
-export const DEFAULT_RULES = (domain?: string): GwRules => ({ holdAbove: 10_000, blockAbove: 2_00_000, allowedDomains: domain ? [domain] : [], blockTools: [] });
+const DEFAULT_ROLLING = 50_000;
+const DAY_MS = 24 * 60 * 60_000;
+export const DEFAULT_RULES = (domain?: string): GwRules => ({ holdAbove: 10_000, blockAbove: 2_00_000, rollingAbove: DEFAULT_ROLLING, allowedDomains: domain ? [domain] : [], blockTools: [] });
 
 export function pushEvent(d: GatewayDoc, e: Omit<GwEvent, 'id' | 'at'> & { at?: number }) {
   d.seq += 1;
@@ -178,11 +184,15 @@ export async function markLinked(id: string, from: string) {
   });
 }
 
-/** Who is calling: the OpenAI `user` field if set, else the name in the system prompt ("You are Atlas, …"). */
-export function identify(body: { user?: unknown; messages?: { role: string; content?: unknown }[] }) {
-  if (typeof body.user === 'string' && body.user.trim()) return { id: slug(body.user), name: body.user.trim().slice(0, 40) };
+/**
+ * Who is calling: the OpenAI `user` field if set, else the name in the system prompt ("You are Atlas, …").
+ * Both are self-declared. A disagreement is flagged, but a caller holding the company key that lies consistently is not caught.
+ * shortcut: names are not authenticated, upgrade to one key per agent for real identity.
+ */
+export function identify(body: { user?: unknown; messages?: { role: string; content?: unknown }[] }): { id: string; name: string; mismatch?: boolean } {
   const sys = String(body.messages?.find((m) => m.role === 'system')?.content ?? '');
   const m = /\byou are ([A-Z][\w-]{1,30})/i.exec(sys) ?? /\bname(?: is|:)\s*([A-Z][\w-]{1,30})/i.exec(sys);
+  if (typeof body.user === 'string' && body.user.trim()) return { id: slug(body.user), name: body.user.trim().slice(0, 40), ...(m && slug(m[1]) !== slug(body.user) ? { mismatch: true } : {}) };
   if (m) return { id: slug(m[1]), name: m[1][0].toUpperCase() + m[1].slice(1) };
   const h = sha(sys).slice(0, 4);
   return { id: `agent-${h}`, name: `Agent ${h.toUpperCase()}` };
@@ -198,11 +208,15 @@ const num = (v: unknown) => {
 const MONEY_KEY = /amount|price|value|refund|total|sum|inr|rupees|payment/i;
 const COUNT_KEY = /^(limit|count|records|rows|max|size|n)$/i;
 const OUTWARD = /(email|mail|send|share|upload|post|webhook|forward|transfer|export)/i;
-const DESTRUCTIVE = /(^|_|\b)(delete|drop|truncate|wipe|destroy|purge|erase)/i;
+const DESTROY = new Set(['delete', 'drop', 'truncate', 'wipe', 'destroy', 'purge', 'erase']);
+const HARD_TO_UNDO = new Set(['remove', 'cancel', 'revoke', 'overwrite', 'deploy', 'terminate', 'shutdown', 'rollback', 'publish', 'reset', 'disable']);
 const BULK = /(export|dump|bulk|download_all|list_all|all_customers)/i;
 const PRIVILEGE = /(grant|role|permission|admin|password|credential|api_key|secret)/i;
-const PAYOUT = /(refund|payout|reimburs|cashback|compensat|credit|transfer|^pay|_pay)/i;
-const tokens = (k: string) => k.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase().split(/[^a-z0-9]+/);
+export const PAYOUT = /(refund|payout|reimburs|cashback|compensat|credit|transfer|charge|debit|remit|^pay|_pay)/i;
+const tokens = (k: string) => k.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/([A-Z])([A-Z][a-z])/g, '$1_$2').toLowerCase().split(/[^a-z0-9]+/);
+// whole words only: "fee" is not "feedback", "pay" is not "payload"
+const MONEY_WORD = new Set(['cost', 'fee', 'fees', 'charge', 'fare', 'salary', 'wage', 'debit', 'credit', 'pay', 'cash', 'fund', 'funds', 'deposit', 'withdrawal', 'principal', 'paise', 'rs', 'usd', 'dollars']);
+const isMoneyKey = (k: string) => MONEY_KEY.test(k) || tokens(k).some((t) => MONEY_WORD.has(t));
 // a money-named key that holds an identifier or a label, not an amount (refund_id, payment_method, currency)
 const NOT_AMOUNT = new Set(['id', 'ref', 'reference', 'no', 'number', 'code', 'method', 'mode', 'type', 'status', 'reason', 'note', 'notes', 'currency', 'account', 'upi', 'vpa', 'date', 'time']);
 const INVOICE = new Set(['invoice', 'order', 'txn', 'transaction', 'booking', 'bill', 'ref', 'reference']);
@@ -213,13 +227,18 @@ export function moneyOf(args: Record<string, unknown>) {
   let amount = 0;
   const unreadable: string[] = [];
   const walk = (o: unknown, money: boolean, depth: number) => {
-    if (depth > 3 || o === null || typeof o !== 'object') return;
+    if (o === null || typeof o !== 'object') return;
+    if (depth > 3) {
+      unreadable.push('(nested too deep to read)');
+      return;
+    }
     for (const [k, v] of Object.entries(o)) {
-      const m = money || MONEY_KEY.test(k);
+      const m = money || isMoneyKey(k);
       if (v !== null && typeof v === 'object') walk(v, m, depth + 1);
       else if (m) {
         const n = num(v);
-        if (Number.isFinite(n)) amount = Math.max(amount, n);
+        // a negative amount still moves money, so it is judged by its size
+        if (Number.isFinite(n)) amount = Math.max(amount, Math.abs(n));
         else if (typeof v === 'string' && /\d/.test(v) && !tokens(k).some((t) => NOT_AMOUNT.has(t))) unreadable.push(v.slice(0, 40));
       }
     }
@@ -245,11 +264,12 @@ export interface GwVerdict {
  * The deterministic rulebook every tool call is checked against. No model is involved in this decision.
  * ctx.paidOut: what the company has already paid out per invoice/order; ctx.unconfirmed: nobody has confirmed this agent yet.
  */
-export function decideTool(tool: string, args: Record<string, unknown>, rules: GwRules, ctx: { tainted: string[]; paidOut?: Record<string, number>; unconfirmed?: boolean }): GwVerdict {
+export function decideTool(tool: string, args: Record<string, unknown>, rules: GwRules, ctx: { tainted: string[]; paidOut?: Record<string, number>; unconfirmed?: boolean; spent24h?: number; toolText?: string; userText?: string }): GwVerdict {
   const values = Object.values(args);
   const text = values.map((v) => (typeof v === 'string' ? v : JSON.stringify(v))).join(' ');
   if (rules.blockTools.some((t) => t && t.toLowerCase() === tool.toLowerCase())) return { decision: 'BLOCKED', rule: 'COMPANY-BLOCK@1', reason: `The company has switched off “${tool}” for its agents.` };
-  if (DESTRUCTIVE.test(tool)) return { decision: 'BLOCKED', rule: 'GW-DESTRUCTIVE@1', reason: `“${tool}” destroys data. No agent may do that on its own.` };
+  const words = tokens(tool);
+  if (words.some((t) => DESTROY.has(t))) return { decision: 'BLOCKED', rule: 'GW-DESTRUCTIVE@1', reason: `“${tool}” destroys data. No agent may do that on its own.` };
   const count = Math.max(0, ...Object.entries(args).filter(([k]) => COUNT_KEY.test(k)).map(([, v]) => num(v)).filter((n) => Number.isFinite(n)));
   const all = values.some((v) => typeof v === 'string' && /^(all|\*|everyone|every)$/i.test(v.trim()));
   if (BULK.test(tool) || count > 100 || all) return { decision: 'BLOCKED', rule: 'GW-BULK@1', reason: `Bulk data access${count > 100 ? ` (${count.toLocaleString('en-IN')} records)` : ''}. No agent may take more than 100 records at once.` };
@@ -259,8 +279,14 @@ export function decideTool(tool: string, args: Record<string, unknown>, rules: G
   const domain = recipient ? (recipient.includes('@') ? recipient.split('@')[1] : recipient.replace(/^https?:\/\//, '').split('/')[0]).toLowerCase() : null;
   // whole words only: "call" is not "all", "listen" is not "list"
   const dataish = /\b(all|every|list|export|records|csv|database|dump|customers|patients)\b/i.test(text);
-  if (OUTWARD.test(tool) && domain && dataish && !rules.allowedDomains.some((d) => domain.endsWith(d.toLowerCase()))) return { decision: 'BLOCKED', rule: 'GW-EXFIL@1', reason: `Company data addressed to an outside domain (${domain}).` };
+  if (OUTWARD.test(tool) && domain && dataish && !inAllowed(domain, rules)) return { decision: 'BLOCKED', rule: 'GW-EXFIL@1', reason: `Company data addressed to an outside domain (${domain}).` };
   if (ctx.tainted.length && (OUTWARD.test(tool) || Object.keys(args).some((k) => MONEY_KEY.test(k)))) return { decision: 'BLOCKED', rule: 'GW-INJECTION@1', reason: `The conversation contains a suspected prompt injection (${ctx.tainted.join(', ')}); outward and money actions are refused.` };
+  // the agent read outside content, and now sends to somewhere the person never named: the address may come from that content
+  if (ctx.toolText && (OUTWARD.test(tool) || PAYOUT.test(tool))) {
+    const user = (ctx.userText ?? '').toLowerCase();
+    const stranger = values.filter((v): v is string => typeof v === 'string' && /^\S+@\S+$|^https?:\/\//.test(v.trim())).find((v) => !user.includes(v.trim().toLowerCase()) && !inAllowed(domainOf(v), rules));
+    if (stranger) return { decision: 'NEEDS_APPROVAL', rule: 'GW-PROVENANCE@1', reason: `The agent read outside content and now addresses “${stranger.slice(0, 60)}”, which the person never named: a person must check it.` };
+  }
   const { amount, unreadable } = moneyOf(args);
   if (amount > rules.blockAbove) return { decision: 'BLOCKED', rule: 'GW-LIMIT@1', reason: `${inr(amount)} is above the company’s hard limit of ${inr(rules.blockAbove)}.` };
   if (amount > rules.holdAbove) return { decision: 'NEEDS_APPROVAL', rule: 'GW-APPROVAL@1', reason: `${inr(amount)} is above ${inr(rules.holdAbove)}: a person must approve.` };
@@ -273,10 +299,23 @@ export function decideTool(tool: string, args: Record<string, unknown>, rules: G
     if (total > rules.blockAbove) return { decision: 'BLOCKED', rule: 'GW-CUMULATIVE@1', reason: `${inr(amount)} more on ${key} would make ${inr(total)} paid out, above the company’s hard limit of ${inr(rules.blockAbove)}.` };
     if (total > rules.holdAbove) return { decision: 'NEEDS_APPROVAL', rule: 'GW-CUMULATIVE@1', reason: `${key} already had ${inr(before)} paid out; ${inr(amount)} more makes ${inr(total)}, above ${inr(rules.holdAbove)}: a person must approve.` };
   }
+  const rolling = rules.rollingAbove ?? DEFAULT_ROLLING;
+  if (amount > 0 && PAYOUT.test(tool) && (ctx.spent24h ?? 0) + amount > rolling) return { decision: 'NEEDS_APPROVAL', rule: 'GW-ROLLING@1', reason: `This agent has paid out ${inr(ctx.spent24h ?? 0)} in 24 hours; ${inr(amount)} more is above ${inr(rolling)}: a person must approve.` };
+  const past = Math.max(0, ...Object.entries(args).filter(([k]) => /^(offset|skip)$/i.test(k)).map(([, v]) => num(v)).filter((n) => Number.isFinite(n)));
+  const page = Math.max(0, ...Object.entries(args).filter(([k]) => /^page$/i.test(k)).map(([, v]) => num(v)).filter((n) => Number.isFinite(n)));
+  if ((past > 0 || page > 1) && count >= 50) return { decision: 'NEEDS_APPROVAL', rule: 'GW-BULK-PAGE@1', reason: `Reading ${count} records past the first page looks like a dump in pieces: a person must approve.` };
+  if (words.some((t) => HARD_TO_UNDO.has(t))) return { decision: 'NEEDS_APPROVAL', rule: 'GW-HARD-TO-UNDO@1', reason: `“${tool}” is hard to undo. A person must approve.` };
   if (PRIVILEGE.test(tool)) return { decision: 'NEEDS_APPROVAL', rule: 'GW-PRIVILEGE@1', reason: `“${tool}” changes access. A person must approve.` };
   if (ctx.unconfirmed && (amount > 0 || PAYOUT.test(tool) || OUTWARD.test(tool))) return { decision: 'NEEDS_APPROVAL', rule: 'GW-NEW-AGENT@1', reason: 'Nobody has confirmed this agent in Abhed yet, so its money and outward actions wait for a person. Confirm it on the Connect page.' };
   return { decision: 'ALLOWED', rule: '', reason: 'Inside the company’s rules.' };
 }
+
+const domainOf = (v: string) => (v.includes('@') ? v.split('@').pop()! : v.replace(/^https?:\/\//, '').split('/')[0]).trim().toLowerCase();
+// a whole domain or a subdomain of it: "evilzentro.example" is not "zentro.example"
+const inAllowed = (domain: string, rules: GwRules) => rules.allowedDomains.some((d) => domain === d.toLowerCase() || domain.endsWith(`.${d.toLowerCase()}`));
+
+/** What this agent has paid out in the last 24 hours. */
+export const spent24h = (entries: { at: number; amount: number }[] | undefined, now = Date.now()) => (entries ?? []).filter((e) => now - e.at < DAY_MS).reduce((sum, e) => sum + e.amount, 0);
 
 export const fingerprint = (company: string, agent: string, tool: string, args: string) => sha(`${company}|${agent}|${tool}|${args}`).slice(0, 24);
 
@@ -301,6 +340,9 @@ const textOf = (content: unknown): string => {
   if (Array.isArray(content)) return content.map((p: { text?: unknown }) => (typeof p?.text === 'string' ? p.text : JSON.stringify(p))).join('\n');
   return content == null ? '' : JSON.stringify(content);
 };
+
+/** All the text from one role in the conversation. */
+export const textFrom = (messages: { role: string; content?: unknown }[], role: string) => messages.filter((m) => m.role === role).map((m) => textOf(m.content)).join('\n');
 
 /** Text the model saw from people or tools, scanned for injected instructions. The whole conversation counts: an injection keeps steering the model after newer messages arrive. */
 export function taint(messages: { role: string; content?: unknown }[]) {

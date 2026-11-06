@@ -53,7 +53,8 @@ export async function POST(req: Request) {
       return json({ ok: true });
     case 'decide': {
       const decision = b.decision === 'approve' ? 'APPROVED' : 'REJECTED';
-      const by = String(b.by ?? 'Guest Judge').slice(0, 40);
+      // the signed-in account decides, not a name the browser sends
+      const by = caller.name?.slice(0, 40) ?? 'Director';
       const { result } = await mutateGateway((d) => {
         const h = d.holds.find((x) => x.id === String(b.holdId ?? '') && x.status === 'PENDING' && holdLive(x));
         if (!h) return false;

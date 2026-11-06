@@ -1,3 +1,4 @@
+import { devSecret } from './secret';
 import { agent, nameOf, type GatewayResult } from './engine';
 import { chat, promptGuard, type ChatMessage } from './llm';
 import { keyFor } from './live';
@@ -242,7 +243,7 @@ function clean(p: Record<string, unknown>) {
 export { onApprovalDecided };
 
 // ───────── company admin key (for the company's own admin panel) ─────────
-const adminSecret = () => process.env.KAVACH_AGENT_SECRET ?? process.env.SUPABASE_KEY ?? 'kavach-local-dev-secret';
+const adminSecret = () => process.env.KAVACH_AGENT_SECRET ?? process.env.SUPABASE_KEY ?? devSecret('kavach-local-dev-secret');
 export const adminKeyFor = (tenant: string) => `kv_admin_${sha256(`${adminSecret()}:admin:${tenant}`).slice(0, 32)}`;
 export function resolveAdmin(auth: string | null): Tenant | null {
   const key = (auth ?? '').replace(/^Bearer\s+/i, '').trim();
