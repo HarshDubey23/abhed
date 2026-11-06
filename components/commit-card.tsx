@@ -36,10 +36,10 @@ export function CommitCard({ commit, onDone }: { commit: WaitingCommit; onDone?:
     <section className="ax-card" role="status" data-commit={commit.id}>
       <div className="ax-card-t">
         <span>{commit.company ? `${commit.company.replace(' (fictional)', '')} · waiting to commit` : 'Waiting to commit'}</span>
-        <span className="mono" data-commit-left>
-          {left} s
-        </span>
       </div>
+      <p className="ax-h1" data-commit-left aria-live="off" style={{ margin: '6px 0 4px', fontVariantNumeric: 'tabular-nums' }}>
+        {left} s <em>to cancel</em>
+      </p>
       <p className="ax-sub" style={{ marginTop: 0 }}>
         {commit.summary}
       </p>

@@ -10,6 +10,24 @@ AI agents now refund customers, change records and send data on their own. When 
 
 **Documents:** [Connect guide (PDF)](docs/Abhed_Connect_Guide.pdf) · [How the gateway works, 2 pages (PDF)](docs/Abhed_Gateway_Explained.pdf) · [Solution brief](docs/Abhed_Solution_Brief.pdf) · [Pricing note](docs/Abhed_Pricing_Note.pdf) · [Round 1 deck](docs/Abhed_Round1_Deck.pdf) · [Demo script](DEMO_SCRIPT.md)
 
+## See it run
+
+| | |
+|---|---|
+| [![End-to-end demo](docs/video/abhed-demo.jpg)](docs/video/abhed-demo.webm) | [![MCP setup guide](docs/video/abhed-mcp-guide.jpg)](docs/video/abhed-mcp-guide.webm) |
+| **[End-to-end demo](docs/video/abhed-demo.webm)** (2:44). An agent tries a ₹5,00,000 refund and Abhed blocks it. A ₹40,000 refund waits for a person, who approves it, then cancels it during its cancel window. | **[Connect over MCP](docs/video/abhed-mcp-guide.webm)** (3:12). Every step from pairing code to a working client. [Written guide](docs/MCP_GUIDE.md). |
+
+Run the same thing yourself. It needs no keys, accounts or database:
+
+```bash
+git clone https://github.com/HarshDubey23/abhed
+cd abhed
+npm install
+npm run demo
+```
+
+**[Attack report](docs/ATTACK_REPORT.md):** what broke when we attacked Abhed, what fixed it, the test that proves each fix, and what's still open.
+
 ---
 
 ## Contents
@@ -262,6 +280,7 @@ One Next.js app (TypeScript, App Router) on Render, with Supabase Postgres for s
 
 ```bash
 npm install
+npm run demo         # the whole flow, one command, no keys
 npm run dev          # http://localhost:3000
 npm test             # 68 tests
 npm run typecheck
@@ -296,6 +315,8 @@ Built by a team of five for CodeX 3.0.
 | **Manshi Chaudhary** | Market, go-to-market & pricing | Market gap analysis; the go-to-market plan (first customers, sectors, pilots); the pricing model: per agent each month, by risk level |
 
 ## 12. Honest limits
+
+The [attack report](docs/ATTACK_REPORT.md#still-open) has the current list of what's still open, including how little a gate like this catches on its own on the [AgentAbstain tasks](eval/AGENTABSTAIN.md).
 
 - **What the gate misses, measured.** [eval/RESULTS.md](eval/RESULTS.md) sends 78 fixed agent action requests through both paths in CI (`npm run eval`; the model is a stub, so this measures the gate, not a model). SDK path: 24 of 26 malicious requests blocked, 1 held, 1 allowed through (a paraphrased injection the pattern scanner does not catch); 0 of 18 benign requests blocked. No-code gateway: 11 of 21 blocked, 7 held, 3 allowed through (two paraphrased injections and a 100-row page of a dump); 1 of 13 benign requests blocked (an honest "system message" trips the injection scanner). Earlier misses (an amount written as "45000 INR", a refund split under the line after an approval, an agent name the company never set up, an injected email sent before customer data was read, the "Thanks for your call" false block) are now closed; the split refund is held for a person rather than blocked.
 - Tools in the demo companies are simulated adapters: refunds do not move real money.

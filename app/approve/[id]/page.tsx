@@ -182,7 +182,7 @@ export default function ApprovePage({ params }: { params: Promise<{ id: string }
             {ap && done && (
               <span className={`ax-pill ${executed ? 'on' : ap.status === 'PENDING' ? 'warn' : 'bad'}`}>
                 <i />
-                {executed ? 'Approved' : ap.status === 'PENDING' ? 'Key 1 turned' : ap.status.charAt(0) + ap.status.slice(1).toLowerCase()}
+                {data?.commit?.status === 'WAITING' ? 'Waiting to commit' : executed ? 'Approved' : ap.status === 'PENDING' ? 'Key 1 turned' : ap.status.charAt(0) + ap.status.slice(1).toLowerCase()}
               </span>
             )}
           </span>
