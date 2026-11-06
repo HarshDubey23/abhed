@@ -10,14 +10,9 @@ AI agents now refund customers, change records and send data on their own. When 
 
 **Documents:** [Connect guide (PDF)](docs/Abhed_Connect_Guide.pdf) · [How the gateway works, 2 pages (PDF)](docs/Abhed_Gateway_Explained.pdf) · [Solution brief](docs/Abhed_Solution_Brief.pdf) · [Pricing note](docs/Abhed_Pricing_Note.pdf) · [Round 1 deck](docs/Abhed_Round1_Deck.pdf) · [Demo script](DEMO_SCRIPT.md)
 
-## See it run
+## Try it in one command
 
-| | |
-|---|---|
-| [![End-to-end demo](docs/video/abhed-demo.jpg)](docs/video/abhed-demo.webm) | [![MCP setup guide](docs/video/abhed-mcp-guide.jpg)](docs/video/abhed-mcp-guide.webm) |
-| **[End-to-end demo](docs/video/abhed-demo.webm)** (2:44). An agent tries a ₹5,00,000 refund and Abhed blocks it. A ₹40,000 refund waits for a person, who approves it, then cancels it during its cancel window. | **[Connect over MCP](docs/video/abhed-mcp-guide.webm)** (3:12). Every step from pairing code to a working client. [Written guide](docs/MCP_GUIDE.md). |
-
-Run the same thing yourself. It needs no keys, accounts or database:
+It needs no keys, accounts or database:
 
 ```bash
 git clone https://github.com/HarshDubey23/abhed

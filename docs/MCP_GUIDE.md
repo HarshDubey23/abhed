@@ -2,8 +2,6 @@
 
 This puts an MCP client's tool calls behind Abhed: each one is allowed, held for a person, or blocked, and goes on the signed ledger. It takes about 5 minutes.
 
-**[Watch the guide](video/abhed-mcp-guide.webm)**, which follows these same steps.
-
 ## What you need
 
 - Node 18 or newer
