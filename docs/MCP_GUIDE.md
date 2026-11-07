@@ -2,6 +2,8 @@
 
 This puts an MCP client's tool calls behind Abhed: each one is allowed, held for a person, or blocked, and goes on the signed ledger. It takes about 5 minutes.
 
+**[Watch the guide](video/abhed-mcp-guide.mp4)** (1:12), which follows these same steps.
+
 ## What you need
 
 - Node 18 or newer
@@ -40,6 +42,14 @@ The answer has a `kv_live_` key for each agent. Treat each key as a secret, and 
 
 **Pairing a company that isn't connected yet wipes its demo history.** Check this before you pair on a shared server.
 
+On PowerShell, this keeps the key off your screen. Replace `ABC123` with your code:
+
+```powershell
+$body = '{"code":"ABC123","site":{"url":"https://your-site.com","name":"Your Company","sector":"banking","agents":[{"id":"rex","name":"Rex"}]}}'
+$pair = irm https://abhed.onrender.com/api/connect/pair -Method Post -ContentType application/json -Body $body
+$env:ABHED_AGENT_KEY = $pair.keys.rex
+```
+
 ## 3. Check the connection
 
 This speaks MCP to the real server, as your client will, and walks through every outcome one step at a time. It requests a real ₹40,000 refund on the fictional customer `C-1029`, so use a demo company.
@@ -50,7 +60,7 @@ cd abhed-mcp
 ABHED_AGENT_KEY=kv_live_your_key ABHED_URL=https://abhed.onrender.com npm run try
 ```
 
-On PowerShell, set both first with `$env:ABHED_AGENT_KEY = "kv_live_your_key"` and `$env:ABHED_URL = "https://abhed.onrender.com"`, then run `npm run try`.
+On PowerShell, set the address with `$env:ABHED_URL = "https://abhed.onrender.com"`, then run `npm run try`. If you didn't set the key above, set `$env:ABHED_AGENT_KEY` too.
 
 | Step | What you should see |
 |---|---|
