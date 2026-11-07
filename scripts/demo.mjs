@@ -25,7 +25,7 @@ const PORT = flag('port', '3000');
 const WINDOW = flag('window', '60');
 const AUTO = flag('auto', '');
 const BASE = `http://localhost:${PORT}`;
-const DIRECTOR = randomBytes(12).toString('hex');
+const DIRECTOR = process.env.DIRECTOR_KEY || randomBytes(12).toString('hex');
 const NEXT = path.join(ROOT, 'node_modules', 'next', 'dist', 'bin', 'next');
 
 const tty = process.stdout.isTTY || process.env.FORCE_COLOR;

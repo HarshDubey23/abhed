@@ -10,6 +10,15 @@ AI agents now refund customers, change records and send data on their own. When 
 
 **Documents:** [Connect guide (PDF)](docs/Abhed_Connect_Guide.pdf) · [How the gateway works, 2 pages (PDF)](docs/Abhed_Gateway_Explained.pdf) · [Solution brief](docs/Abhed_Solution_Brief.pdf) · [Pricing note](docs/Abhed_Pricing_Note.pdf) · [Round 1 deck](docs/Abhed_Round1_Deck.pdf) · [Demo script](DEMO_SCRIPT.md)
 
+## See it run
+
+| | |
+|---|---|
+| [![End-to-end demo](docs/video/abhed-demo.jpg)](docs/video/abhed-demo.mp4) | [![MCP setup guide](docs/video/abhed-mcp-guide.jpg)](docs/video/abhed-mcp-guide.mp4) |
+| **[End-to-end demo](docs/video/abhed-demo.mp4)** (1:20). A ₹5,00,000 refund is blocked, a ₹40,000 refund is approved and then cancelled, and a tampered ledger record is caught. | **[Connect over MCP](docs/video/abhed-mcp-guide.mp4)** (1:12). From pairing code to a working connection. [Written guide](docs/MCP_GUIDE.md). |
+
+Both videos are silent, real runs in PowerShell on one laptop, with waits shortened. The bank and its customers are fictional.
+
 ## Try it in one command
 
 It needs no keys, accounts or database:
