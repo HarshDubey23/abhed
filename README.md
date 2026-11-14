@@ -12,10 +12,13 @@ AI agents now refund customers, change records and send data on their own. When 
 
 ## See it run
 
-| | |
-|---|---|
-| [![End-to-end demo](docs/video/abhed-demo.jpg)](docs/video/abhed-demo.mp4) | [![MCP setup guide](docs/video/abhed-mcp-guide.jpg)](docs/video/abhed-mcp-guide.mp4) |
-| **[End-to-end demo](docs/video/abhed-demo.mp4)** (1:20). A ₹5,00,000 refund is blocked, a ₹40,000 refund is approved and then cancelled, and a tampered ledger record is caught. | **[Connect over MCP](docs/video/abhed-mcp-guide.mp4)** (1:12). From pairing code to a working connection. [Written guide](docs/MCP_GUIDE.md). |
+[![Abhed blocks a ₹5,00,000 refund, holds a ₹40,000 one for a person, the person cancels it, and the ledger catches a tampered record](docs/video/abhed-demo-loop.gif)](docs/video/abhed-demo.mp4)
+
+**End-to-end demo.** A ₹5,00,000 refund is blocked, a ₹40,000 refund is approved and then cancelled, and a tampered ledger record is caught. [Full video, 1:20](docs/video/abhed-demo.mp4).
+
+[![An MCP agent's safe read is allowed, a ₹5,00,000 refund is blocked, and a ₹40,000 refund waits for a person, who cancels it](docs/video/abhed-mcp-loop.gif)](docs/video/abhed-mcp-guide.mp4)
+
+**Connect over MCP.** From a pairing code to a working connection. [Full video, 1:12](docs/video/abhed-mcp-guide.mp4) · [Written guide](docs/MCP_GUIDE.md).
 
 Both videos are silent, real runs in PowerShell on one laptop, with waits shortened. The bank and its customers are fictional.
 
